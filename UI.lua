@@ -95,6 +95,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local CoreGui = game:GetService("CoreGui")
+local RobloxGui = CoreGui:WaitForChild("RobloxGui")
 local viewport = workspace.CurrentCamera.ViewportSize
 
 local function isMobileDevice()
@@ -108,26 +109,27 @@ local isMobile = isMobileDevice()
 local function generateHash(length)
     local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     local result = ""
-    for i = 1, length or 20 do
+    math.randomseed(tick() * 1000 + math.random(1, 99999))
+    for i = 1, length or 12 do
         local randIndex = math.random(1, #chars)
         result = result .. string.sub(chars, randIndex, randIndex)
     end
     return result
 end
 
-if getgenv().NapoleonWindowHash and CoreGui:FindFirstChild(getgenv().NapoleonWindowHash) then
-    CoreGui[getgenv().NapoleonWindowHash]:Destroy()
+if getgenv().NapoleonWindowHash and RobloxGui:FindFirstChild(getgenv().NapoleonWindowHash) then
+    RobloxGui[getgenv().NapoleonWindowHash]:Destroy()
 end
-if getgenv().NapoleonToggleHash and CoreGui:FindFirstChild(getgenv().NapoleonToggleHash) then
-    CoreGui[getgenv().NapoleonToggleHash]:Destroy()
+if getgenv().NapoleonToggleHash and RobloxGui:FindFirstChild(getgenv().NapoleonToggleHash) then
+    RobloxGui[getgenv().NapoleonToggleHash]:Destroy()
 end
-if getgenv().NapoleonNotifyHash and CoreGui:FindFirstChild(getgenv().NapoleonNotifyHash) then
-    CoreGui[getgenv().NapoleonNotifyHash]:Destroy()
+if getgenv().NapoleonNotifyHash and RobloxGui:FindFirstChild(getgenv().NapoleonNotifyHash) then
+    RobloxGui[getgenv().NapoleonNotifyHash]:Destroy()
 end
 
-getgenv().NapoleonWindowHash = generateHash(20)
-getgenv().NapoleonToggleHash = generateHash(20)
-getgenv().NapoleonNotifyHash = generateHash(20)
+getgenv().NapoleonWindowHash = generateHash(12)
+getgenv().NapoleonToggleHash = generateHash(12)
+getgenv().NapoleonNotifyHash = generateHash(12)
 
 local windowName = getgenv().NapoleonWindowHash
 local toggleName = getgenv().NapoleonToggleHash
@@ -302,13 +304,13 @@ function Napoleon:MakeNotify(NotifyConfig)
     NotifyConfig.Delay = NotifyConfig.Delay or 5
     local NotifyFunction = {}
     spawn(function()
-        if not CoreGui:FindFirstChild(notifyName) then
+        if not RobloxGui:FindFirstChild(notifyName) then
             local NotifyGui = Instance.new("ScreenGui");
             NotifyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
             NotifyGui.Name = notifyName
-            NotifyGui.Parent = CoreGui
+            NotifyGui.Parent = RobloxGui
         end
-        local ActualNotifyGui = CoreGui[notifyName]
+        local ActualNotifyGui = RobloxGui[notifyName]
         if not ActualNotifyGui:FindFirstChild("NotifyLayout") then
             local NotifyLayout = Instance.new("Frame");
             NotifyLayout.AnchorPoint = Vector2.new(1, 1)
@@ -557,7 +559,7 @@ function Napoleon:Window(GuiConfig)
     NapoleonOnTop.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     NapoleonOnTop.Name = windowName
     NapoleonOnTop.ResetOnSpawn = false
-    NapoleonOnTop.Parent = game:GetService("CoreGui")
+    NapoleonOnTop.Parent = RobloxGui
 
     DropShadowHolder.BackgroundTransparency = 1
 	--DropShadowHolder.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -926,11 +928,11 @@ function Napoleon:Window(GuiConfig)
     ScrollTab.ChildRemoved:Connect(UpdateSize1)
 
     function GuiFunc:DestroyGui()
-        if CoreGui:FindFirstChild(windowName) then
-            CoreGui[windowName]:Destroy()
+        if RobloxGui:FindFirstChild(windowName) then
+            RobloxGui[windowName]:Destroy()
         end
-        if CoreGui:FindFirstChild(toggleName) then
-            CoreGui[toggleName]:Destroy()
+        if RobloxGui:FindFirstChild(toggleName) then
+            RobloxGui[toggleName]:Destroy()
         end
     end
 
@@ -1037,8 +1039,8 @@ function Napoleon:Window(GuiConfig)
 
         Yes.MouseButton1Click:Connect(function()
             if NapoleonOnTop then NapoleonOnTop:Destroy() end
-            if game.CoreGui:FindFirstChild(toggleName) then
-                game.CoreGui[toggleName]:Destroy()
+            if RobloxGui:FindFirstChild(toggleName) then
+                RobloxGui[toggleName]:Destroy()
             end
         end)
 
@@ -1059,7 +1061,7 @@ function Napoleon:Window(GuiConfig)
 
     function GuiFunc:ToggleUI()
         local ScreenGui = Instance.new("ScreenGui")
-        ScreenGui.Parent = game:GetService("CoreGui")
+        ScreenGui.Parent = RobloxGui
         ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         ScreenGui.Name = toggleName
 
