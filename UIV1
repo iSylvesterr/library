@@ -189,11 +189,14 @@ local viewport = workspace.CurrentCamera.ViewportSize
 -- Nama GUI utama di-random tiap sesi (bukan "NapoleonOnTop" yang gampang ditebak),
 -- dan di-parent ke RobloxGui (bukan langsung ke CoreGui) -- sama persis kayak NewUI.lua.
 local function generateHash(length)
+    -- Random.new() tanpa argumen di-seed otomatis pakai entropy internal Roblox --
+    -- jauh lebih reliable buat "beda tiap execute" dibanding math.randomseed(tick()),
+    -- yang gampang hasilin urutan mirip/sama kalau di-seed ulang di rentang waktu berdekatan.
     local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local rng = Random.new()
     local hash = ""
-    math.randomseed(tick() * 1000 + math.random(1, 99999))
     for i = 1, length do
-        local rand = math.random(1, #chars)
+        local rand = rng:NextInteger(1, #chars)
         hash = hash .. chars:sub(rand, rand)
     end
     return hash
