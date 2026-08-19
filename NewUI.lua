@@ -667,6 +667,14 @@ function Napoleon:Window(GuiConfig)
     Main.Name = "Main"
     Main.Parent = DropShadow
 
+    local MainGradient = Instance.new("UIGradient")
+    MainGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 80))
+    }
+    MainGradient.Rotation = 90
+    MainGradient.Parent = Main
+
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
