@@ -356,7 +356,7 @@ function Napoleon:MakeNotify(NotifyConfig)
     NotifyConfig.Description = NotifyConfig.Description or "Notification"
     NotifyConfig.Content = NotifyConfig.Content or "Content"
     NotifyConfig.Icon = NotifyConfig.Icon or "108203634075572"
-    NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(81, 66, 255)
+    NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(150, 150, 150)
     NotifyConfig.Time = NotifyConfig.Time or 0.5
     NotifyConfig.Delay = NotifyConfig.Delay or 5
     local NotifyFunction = {}
@@ -568,7 +568,7 @@ function notif(msg, delay, color, title, desc)
         Title = title or "Napoleon",
         Description = desc or "Notification",
         Content = msg or "Content",
-        Color = color or Color3.fromRGB(81, 66, 255),
+        Color = color or Color3.fromRGB(150, 150, 150),
         Delay = delay or 4
     })
 end
@@ -577,7 +577,7 @@ function Napoleon:Window(GuiConfig)
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "Napoleon"
     GuiConfig.Footer       = GuiConfig.Footer or "Napoleon >:D"
-    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(81, 66, 255)
+    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(150, 150, 150)
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
 
@@ -3551,7 +3551,7 @@ function Napoleon:Window(GuiConfig)
             local ThemeSection = SettingsTab:AddSection("Theme")
 
             local themePresets = {
-                ["Blue"]  = { color = Color3.fromRGB(81, 66, 255),  color2 = Color3.fromRGB(0, 0, 14) },
+                ["Blue"]  = { color = Color3.fromRGB(150, 150, 150),  color2 = Color3.fromRGB(0, 0, 14) },
                 ["Red"] = { color = Color3.fromRGB(255, 66, 66),  color2 = Color3.fromRGB(14, 0, 0) },
                 ["Purple"]  = { color = Color3.fromRGB(160, 30, 255), color2 = Color3.fromRGB(10, 0, 14) },
             }
@@ -3712,7 +3712,7 @@ end
 -- local Window = Napoleon:Window({
 --     Title    = "Napoleon",
 --     Footer   = GameName,
---     Color    = Color3.fromRGB(81, 66, 255),
+--     Color    = Color3.fromRGB(150, 150, 150),
 --     Color2   = Color3.fromRGB(0, 0, 14),
 --     ["Tab Width"] = 130,
 --     Image      = "76157300179532",

@@ -1723,7 +1723,7 @@ end
 local Window = Library:Window({
     Title = "Napoleon",
     Footer = "Steal An Egg",
-    Color = Color3.fromRGB(81, 66, 255),
+    Color = Color3.fromRGB(150, 150, 150),
     Color2 = Color3.fromRGB(0, 0, 14),
     ["Tab Width"] = 130,
     Image = "111895858615511",
@@ -3974,7 +3974,7 @@ local cachedPredictKey = nil
 local eggLogsDirty = true
 
 local function makeEggPanelWindow()
-    local accentColor = Color3.fromRGB(81, 66, 255) -- samain sama warna UI utama Napoleon
+    local accentColor = Color3.fromRGB(150, 150, 150) -- samain sama warna UI utama Napoleon
 
     local gui = Instance.new("ScreenGui")
     gui.Name = "NapoleonEggPanelUI"

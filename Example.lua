@@ -35,7 +35,7 @@ ExampleSection:AddButton({
         Napoleon:MakeNotify({
             Title = "Sukses",
             Content = "Berhasil klik tombol!",
-            Color = Color3.fromRGB(81, 66, 255),
+            Color = Color3.fromRGB(150, 150, 150),
             Delay = 3
         })
     end
@@ -49,3 +49,11 @@ ExampleSection:AddToggle({
         print("Toggle diubah menjadi:", Value)
     end
 })
+
+Napoleon:MakeNotify({
+    Title = "Welcome",
+    Content = "Test notifikasi abu-abu!",
+    Color = Color3.fromRGB(150, 150, 150),
+    Delay = 10
+})
+
