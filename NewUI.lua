@@ -671,9 +671,10 @@ function Napoleon:Window(GuiConfig)
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
     local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Color3.fromRGB(120, 120, 120) -- Outline abu-abu terang
+    MainStroke.Color = Color3.fromRGB(180, 180, 180) -- Outline abu-abu lebih terang
     MainStroke.Transparency = 0
-    MainStroke.Thickness = 1.2
+    MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    MainStroke.Thickness = 1.5
     MainStroke.Parent = Main
 
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -1021,8 +1022,8 @@ function Napoleon:Window(GuiConfig)
     UICorner2.Parent = LayersTab
 
     DecideFrame.AnchorPoint = Vector2.new(0.5, 0)
-    DecideFrame.BackgroundColor3 = GuiConfig.Color
-    DecideFrame.BackgroundTransparency = 0.5
+    DecideFrame.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+    DecideFrame.BackgroundTransparency = 0
     DecideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     DecideFrame.BorderSizePixel = 0
     DecideFrame.Position = UDim2.new(0.5, 0, 0, 38)
