@@ -686,7 +686,7 @@ function Napoleon:Window(GuiConfig)
 
     TextLabel.Font = Enum.Font.GothamBold
     TextLabel.Text = GuiConfig.Title
-    TextLabel.TextColor3 = GuiConfig.Color
+    TextLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
     TextLabel.TextSize = 14
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
     TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -3577,7 +3577,7 @@ function Napoleon:Window(GuiConfig)
         GuiConfig.Color2 = newColor2 or newColor
 
         -- Update topbar (Title & Footer text)
-        TweenService:Create(_themeColorElements.titleLabel, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+        -- TweenService:Create(_themeColorElements.titleLabel, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
         if _themeColorElements.footerFrm then
             TweenService:Create(_themeColorElements.footerFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
         end
