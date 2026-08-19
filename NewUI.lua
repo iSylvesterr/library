@@ -679,7 +679,7 @@ function Napoleon:Window(GuiConfig)
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
     local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Color3.fromRGB(90, 90, 90) -- Outline abu-abu agak gelap
+    MainStroke.Color = Color3.fromRGB(115, 115, 115) -- Outline abu-abu agak terang
     MainStroke.Transparency = 0
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     MainStroke.Thickness = 1.2
