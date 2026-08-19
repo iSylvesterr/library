@@ -1054,7 +1054,7 @@ function Napoleon:Window(GuiConfig)
 	WindowImg1.Name = "WindowImg1"
 	WindowImg1.ZIndex = -1
 	WindowImg1.Parent = Layers
-    WindowImg1.Visible = false
+    WindowImg1.Visible = true
 
 	local WindowImg2 = Instance.new("ImageLabel")
 	WindowImg2.Image = "rbxassetid://" .. GuiConfig.WindowIMG
@@ -1067,7 +1067,7 @@ function Napoleon:Window(GuiConfig)
 	WindowImg2.Name = "WindowImg2"
 	WindowImg2.ZIndex = 0
 	WindowImg2.Parent = Layers
-    WindowImg2.Visible = false
+    WindowImg2.Visible = true
 
     -- NameTab.Font = Enum.Font.GothamBold
     -- NameTab.Text = ""
