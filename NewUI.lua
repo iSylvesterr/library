@@ -800,37 +800,6 @@ function Napoleon:Window(GuiConfig)
     ExecutorTextLabel.AutomaticSize = Enum.AutomaticSize.X
     ExecutorTextLabel.Parent = Executor
 
-    local ServiceProvider = Instance.new("Frame")
-    ServiceProvider.Name = "ServiceProvider"
-    ServiceProvider.LayoutOrder = 3
-    ServiceProvider.Size = UDim2.new(0, 0, 0.6, 0)
-    ServiceProvider.BackgroundColor3 = GuiConfig.Color
-    ServiceProvider.BackgroundTransparency = 0
-    ServiceProvider.BorderSizePixel = 0
-    ServiceProvider.AutomaticSize = Enum.AutomaticSize.X
-    ServiceProvider.Parent = RightContainer
-
-    local SPPadding = Instance.new("UIPadding")
-    SPPadding.PaddingLeft = UDim.new(0, 10)
-    SPPadding.PaddingRight = UDim.new(0, 10)
-    SPPadding.Parent = ServiceProvider
-
-    local SPUICorner = Instance.new("UICorner")
-    SPUICorner.CornerRadius = UDim.new(0, 4)
-    SPUICorner.Parent = ServiceProvider
-
-    local SPTextLabel = Instance.new("TextLabel")
-    SPTextLabel.Name = "TextLabel"
-    SPTextLabel.Size = UDim2.new(0, 0, 1, 0)
-    SPTextLabel.Position = UDim2.new(0, 0, 0, 0)
-    SPTextLabel.BackgroundTransparency = 1
-    SPTextLabel.Font = Enum.Font.GothamBold
-    SPTextLabel.Text = "Service Provider"
-    SPTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SPTextLabel.TextSize = 12
-    SPTextLabel.TextXAlignment = Enum.TextXAlignment.Center
-    SPTextLabel.AutomaticSize = Enum.AutomaticSize.X
-    SPTextLabel.Parent = ServiceProvider
 
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
@@ -3610,7 +3579,7 @@ function Napoleon:Window(GuiConfig)
         decideFrm   = DecideFrame,
         mainBG      = Main,
         executorFrm = Executor,
-        spFrm       = ServiceProvider,
+
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
 
@@ -3626,9 +3595,7 @@ function Napoleon:Window(GuiConfig)
         if _themeColorElements.executorFrm then
             TweenService:Create(_themeColorElements.executorFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
         end
-        if _themeColorElements.spFrm then
-            TweenService:Create(_themeColorElements.spFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
-        end
+
 
         -- Update border stroke & DecideFrame
         -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
