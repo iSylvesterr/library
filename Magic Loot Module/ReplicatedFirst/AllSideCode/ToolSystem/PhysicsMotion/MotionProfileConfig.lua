@@ -1,0 +1,102 @@
+-- Decompiled with Potassium's decompiler.
+
+return {
+    ["默认击退"] = {
+        mode = "velocity",
+        channel = "knockback",
+        speed = 48,
+        duration = 0.22,
+        endFactor = 0,
+        easingStyle = "Quad",
+        easingDirection = "Out",
+        plane = "xz",
+        preserveVertical = true,
+        maxForceMultiplier = 800,
+        verticalDampDuration = 0,
+        verticalDampFactor = 0.7
+    },
+    ["中等击退"] = {
+        mode = "velocity",
+        channel = "knockback",
+        speed = 72,
+        duration = 0.28,
+        endFactor = 0.05,
+        easingStyle = "Quad",
+        easingDirection = "Out",
+        plane = "xz",
+        preserveVertical = true,
+        maxForceMultiplier = 800,
+        verticalDampDuration = 0,
+        verticalDampFactor = 0.7
+    },
+    ["重击退"] = {
+        mode = "velocity",
+        channel = "knockback",
+        speed = 96,
+        duration = 0.32,
+        endFactor = 0.08,
+        easingStyle = "Quad",
+        easingDirection = "Out",
+        plane = "xz",
+        preserveVertical = true,
+        maxForceMultiplier = 1000,
+        verticalDampDuration = 0.15,
+        verticalDampFactor = 0.7
+    },
+    ["轻位移"] = {
+        mode = "displacement",
+        channel = "skillMove",
+        distance = 6,
+        duration = 0.25,
+        easingStyle = "Quad",
+        easingDirection = "Out",
+        plane = "xz"
+    },
+    ["通用受击物理效果"] = {
+        mode = "velocity",
+        channel = "knockback",
+        speed = 50,
+        duration = 0.2,
+        endFactor = 0,
+        easingStyle = "Quad",
+        easingDirection = "Out",
+        plane = "xz",
+        preserveVertical = true,
+        maxForceMultiplier = 10000,
+        verticalDampDuration = 0,
+        verticalDampFactor = 0.7,
+        clearVelocityOnStart = true,
+        kickSpeed = 80,
+        suppressCompetingVelocity = true,
+        restoreVelocityOnEnd = false,
+        restoreVelocityOnCancel = true,
+        freezeWalkSpeed = true
+    },
+    ["中等力度受击物理效果"] = {
+        mode = "velocity",
+        channel = "knockback",
+        speed = 78,
+        duration = 0.2,
+        endFactor = 0,
+        easingStyle = "Quad",
+        easingDirection = "Out",
+        plane = "xz",
+        preserveVertical = true,
+        maxForceMultiplier = 10000,
+        verticalDampDuration = 0,
+        verticalDampFactor = 0.7,
+        clearVelocityOnStart = true,
+        kickSpeed = 100,
+        suppressCompetingVelocity = true,
+        restoreVelocityOnEnd = false,
+        restoreVelocityOnCancel = true,
+        freezeWalkSpeed = true
+    },
+    ["通用受击冲量效果"] = {
+        mode = "impulse",
+        channel = "knockback",
+        speed = 200,
+        plane = "xz",
+        preserveVertical = true
+    }
+};

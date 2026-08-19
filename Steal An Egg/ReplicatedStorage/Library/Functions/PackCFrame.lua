@@ -1,0 +1,5 @@
+-- Decompiled with Potassium's decompiler.
+
+return function(p1) -- Line: 4
+    return CFrame.new(p1[1], p1[2], p1[3], p1[4], p1[5], p1[6], p1[7], p1[8], p1[9], p1[10], p1[11], p1[12]);
+end;

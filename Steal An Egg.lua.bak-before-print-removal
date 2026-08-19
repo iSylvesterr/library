@@ -1,0 +1,3493 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Sama kayak pola di Gag2.lua: cegah toggle yang di-restore otomatis mulai loop
+-- SEBELUM semua dropdown filter di section yang sama sempat ke-restore juga. Baru
+-- jadi true di paling bawah script, setelah semua UI + restore selesai settle.
+local UI_LOADED = false
+
+-- ============================================================
+-- GLOBAL ZOMBIE MODE (INVINCIBILITY)
+-- ============================================================
+-- Hilangkan efek darah merah berkedip saat kena damage
+pcall(function()
+    game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+end)
+
+local function setupInvincibility(humanoid)
+    if not humanoid then return end
+
+    local healthConn
+
+    -- Step 1: Disable state mati
+    pcall(function()
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+    end)
+
+    -- Step 2: Listener saat "mati"
+    humanoid.Died:Connect(function()
+        print("[ZombieMode] Died terpanggil — server baca kematian!")
+
+        local maxHp = humanoid.MaxHealth
+        healthConn = RunService.RenderStepped:Connect(function()
+            if not humanoid or not humanoid.Parent then
+                if healthConn then healthConn:Disconnect() end
+                return
+            end
+            humanoid.Health = maxHp
+        end)
+
+        print("[ZombieMode] Invincibility aktif — mayat hidup!")
+    end)
+
+    -- Step 3: Picu kematian palsu
+    task.spawn(function()
+        task.wait(0.05)
+        humanoid.Health = 0
+    end)
+end
+
+task.spawn(function()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid", 5)
+    if hum then setupInvincibility(hum) end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    local hum = newChar:WaitForChild("Humanoid", 5)
+    if hum then setupInvincibility(hum) end
+end)
+
+-- ============================================================
+-- TELEPORT BYPASS (SMOOTH BULK MOVE) - THE ULTIMATE BYPASS
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- ============================================================
+-- 1. DISABLE GUARDS / DEATH BY HOOKING MODULE
+-- ============================================================
+-- Ini untuk mencegah karakter dibunuh oleh Boss/Guard di client
+-- saat melakukan Instant Teleport ke dalam area mereka.
+local successHook, GuardLookup = pcall(function()
+    return require(game:GetService("ReplicatedStorage").Library.Util.GuardAreaLookupUtil)
+end)
+if successHook and GuardLookup then
+    GuardLookup.IsInGameplaySide = function()
+        return false
+    end
+    print("[Bypass] GuardAreaLookupUtil berhasil di-hook! Guard tidak akan menyerang.")
+end
+
+
+-- ============================================================
+-- CONFIGURATION
+-- ============================================================
+local Config = {
+    AutoSteal = false,
+    StealAreas = {"None"},
+    StealRarities = {"None"},
+    AntiAFK = true,
+    AutoPlace = false,
+    PlaceRarities = {"None"},
+    AutoHatch = false,
+    SellAll = false,
+    AutoSell = false,
+    SellNames = {"None"},
+    SellRarities = {"None"},
+    AutoSellEgg = false,
+    SellEggRarities = {"None"},
+    WebhookEnabled = false,
+    WebhookURL = "",
+    TweenSpeedMultiplier = 2, -- Live-editable via the "Move Speed Multiplier" input below Auto Steal (max 5)
+    AntiTreadmillMount = true, -- Toggle-able lewat "Anti Treadmill Mount" di tab Misc
+    EggPredictUI = false,
+    EggPredictTargetRarity = "Secret"
+}
+
+-- ============================================================
+-- CATATAN: gak perlu sistem persist custom di sini. NPLN-UIv4.lua (library UI-nya)
+-- SUDAH auto-save & auto-restore tiap Toggle/Dropdown ke Napoleon/Config/Napoleon_<gameId>.json
+-- dengan sendirinya (lihat ConfigData[configKey] check di AddToggle/AddDropdown).
+-- Yang perlu kita tangani sendiri cuma: (1) cegah loop mulai duluan sebelum SEMUA
+-- element (termasuk dropdown filter) selesai di-restore -> pakai UI_LOADED gate,
+-- dan (2) bikin script ini re-exec abis server hop -> queue_on_teleport di bawah.
+-- ============================================================
+
+-- Baca source file kita sendiri (bukan lewat URL/hub -- langsung dari file lokal
+-- yang lagi dieksekusi), buat dititipkan ke queue_on_teleport atau disalin ke autoexec.
+local AUTOEXEC_BACKUP_PATH = "autoexec/Steal An Egg.lua"
+
+local function getOwnScriptSource()
+    if typeof(readfile) ~= "function" or typeof(isfile) ~= "function" then
+        return nil, "readfile/isfile gak ada di executor ini"
+    end
+
+    -- Metode utama: debug.getinfo(1, "S").source = chunk name script yang lagi jalan,
+    -- biasanya "@<path file>". Ini CUMA valid kalau script-nya dijalanin langsung dari
+    -- file lokal -- kalau di-loadstring dari HttpGet/hub, source-nya BUKAN path asli,
+    -- jadi isfile() bakal gagal di sini.
+    local ok, info = pcall(debug.getinfo, 1, "S")
+    local src = ok and info and info.source or ""
+    local path = src:gsub("^@", "")
+
+    if path ~= "" and isfile(path) then
+        local content = readfile(path)
+        if content and #content >= 1000 then
+            return content
+        end
+    end
+
+    -- Fallback: kalau metode utama gagal (path bukan file asli/kependekan), coba baca
+    -- balik backup yang udah ditulis selfInstallAutoExec() di sesi SEBELUMNYA (kalau
+    -- ada). Bisa aja agak ketinggalan versi kalau script-nya baru diubah, tapi jauh
+    -- lebih baik daripada gak ada apa-apa buat dititipkan ke queue_on_teleport.
+    if isfile(AUTOEXEC_BACKUP_PATH) then
+        local backupContent = readfile(AUTOEXEC_BACKUP_PATH)
+        if backupContent and #backupContent >= 1000 then
+            return backupContent
+        end
+    end
+
+    return nil, "Gak nemu source sendiri lewat path: '" .. tostring(path) .. "' (executor mungkin gak expose path asli), dan gak ada backup autoexec juga"
+end
+
+-- Log ke FILE (bukan cuma console) tiap kali queueSelfForTeleport dipanggil -- karena
+-- pemicu utamanya (Anti AFK abis 18 menit idle) kejadian pas user LAGI GAK DI DEPAN
+-- LAYAR, jadi gak ada yang bisa liat warn() di console pas itu kejadian. Kalau nanti
+-- masih gagal auto-lanjut, tinggal cek isi file ini abis balik.
+local ANTIAFK_LOG_PATH = "Napoleon_AntiAFK_Log.txt"
+local ANTIAFK_LOG_MAX_LINES = 50
+
+local function logSelfTeleportAttempt(message)
+    pcall(function()
+        if typeof(writefile) ~= "function" then return end
+
+        -- APPEND (bukan overwrite kayak sebelumnya) -- biar histori kejadiannya kesimpen
+        -- semua, gak cuma pesan paling terakhir. Dibatasi ANTIAFK_LOG_MAX_LINES baris
+        -- biar gak membengkak kalau dibiarin farming lama.
+        local existing = ""
+        if typeof(readfile) == "function" and typeof(isfile) == "function" and isfile(ANTIAFK_LOG_PATH) then
+            existing = readfile(ANTIAFK_LOG_PATH) or ""
+        end
+
+        local lines = {}
+        for line in existing:gmatch("[^\r\n]+") do
+            table.insert(lines, line)
+        end
+        table.insert(lines, "[" .. os.date("%Y-%m-%d %H:%M:%S") .. "] " .. message)
+
+        while #lines > ANTIAFK_LOG_MAX_LINES do
+            table.remove(lines, 1)
+        end
+
+        writefile(ANTIAFK_LOG_PATH, table.concat(lines, "\n"))
+    end)
+end
+
+-- Titipkan script ini sendiri ke queue_on_teleport supaya begitu kita landing di
+-- server/place baru abis teleport apa pun (dipakai Anti AFK buat auto-lanjut abis
+-- rejoin idle), executor otomatis nge-run script ini lagi -- gak butuh host URL sama sekali.
+local function queueSelfForTeleport()
+    local queueFunc = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport)
+    if not queueFunc then
+        warn("[SelfPersist] Executor gak punya queue_on_teleport! Abis teleport, kamu perlu inject manual lagi.")
+        logSelfTeleportAttempt("GAGAL: executor gak punya queue_on_teleport sama sekali.")
+        return false
+    end
+
+    local ownSource, srcErr = getOwnScriptSource()
+    if not ownSource then
+        warn("[SelfPersist] Gagal ambil source sendiri buat dititipkan:", srcErr)
+        logSelfTeleportAttempt("GAGAL ambil source: " .. tostring(srcErr))
+        return false
+    end
+
+    local qok, qerr = pcall(queueFunc, ownSource)
+    if qok then
+        print("[SelfPersist] Script berhasil dititipkan lewat queue_on_teleport, bakal lanjut otomatis abis teleport.")
+        logSelfTeleportAttempt("SUKSES dititipkan (" .. #ownSource .. " char).")
+        return true
+    else
+        warn("[SelfPersist] queue_on_teleport gagal:", qerr)
+        logSelfTeleportAttempt("GAGAL queue_on_teleport: " .. tostring(qerr))
+        return false
+    end
+end
+
+-- Best-effort tambahan: salin juga ke folder autoexec bawaan executor (kalau ada),
+-- biar tetap auto-jalan pas kamu manual rejoin/restart Roblox di lain waktu, DAN
+-- jadi fallback source buat getOwnScriptSource() di atas kalau metode utama gagal.
+local function selfInstallAutoExec()
+    local ok, resultOrErr = pcall(function()
+        if typeof(writefile) ~= "function" or typeof(isfolder) ~= "function" or typeof(makefolder) ~= "function" then
+            return "writefile/isfolder/makefolder gak ada di executor ini"
+        end
+
+        local content, srcErr = getOwnScriptSource()
+        if not content then
+            return srcErr
+        end
+
+        if not isfolder("autoexec") then
+            makefolder("autoexec")
+        end
+        writefile(AUTOEXEC_BACKUP_PATH, content)
+        return true
+    end)
+
+    if ok and resultOrErr == true then
+        print("[SelfPersist] Berhasil install ke " .. AUTOEXEC_BACKUP_PATH .. " juga (jaga-jaga buat rejoin manual / fallback queue_on_teleport).")
+        return true
+    else
+        warn("[SelfPersist] Gagal self-install ke autoexec (opsional, bukan fatal):", ok and resultOrErr or tostring(resultOrErr))
+        return false
+    end
+end
+
+-- BUG FIX: sebelumnya selfInstallAutoExec() cuma kepanggil kalau toggle "Auto Server
+-- Hop" nyala -- padahal toggle itu lagi di-disable/di-comment di UI, jadi backup-nya
+-- gak pernah ke-buat, dan queueSelfForTeleport() (dipakai Anti AFK di bawah) gak
+-- punya fallback kalau metode utama getOwnScriptSource() gagal. Sekarang dipanggil
+-- SEKALI, UNCONDITIONAL, tiap script ini jalan -- biar backup-nya selalu ke-refresh
+-- ke versi terbaru & Anti AFK bisa auto-lanjut abis rejoin idle.
+task.spawn(selfInstallAutoExec)
+
+local RarityWeights = {
+    ["Common"] = 1,
+    ["Uncommon"] = 2,
+    ["Rare"] = 3,
+    ["Epic"] = 4,
+    ["Legendary"] = 5,
+    ["Mythic"] = 6,
+    ["Cosmic"] = 7,
+    ["Secret"] = 8,
+    ["Eternal"] = 9,
+    ["Divine"] = 10,
+    ["Prismatic"] = 11,
+    ["Transcendent"] = 12
+}
+
+-- ============================================================
+-- LOAD NAPOLEON UI LIBRARY
+-- ============================================================
+local function LoadNapoleonUI()
+    local url = "https://pastebin.com/raw/GvJe6AE9"
+    local success, result = pcall(function()
+        return game:HttpGet(url)
+    end)
+    
+    if success and result and string.len(result) > 100 then
+        local func, err = loadstring(result)
+        if func then
+            local success2, lib = pcall(func)
+            if success2 and lib then 
+                return lib 
+            end
+        end
+    end
+    
+    return nil
+end
+
+local Library = LoadNapoleonUI()
+if not Library then
+    warn("Failed to load Napoleon UI Library!")
+    return
+end
+
+-- ============================================================
+-- HELPER FUNCTIONS
+-- ============================================================
+-- PENTING: dropObj:Set(...) di NPLN-UIv4.lua, di akhir eksekusinya, manggil balik
+-- DropdownConfig.Callback(...) -- yaitu Callback KITA SENDIRI. Jadi kalau
+-- handleDropdownChange manggil dropObj:Set() buat "benerin" pilihan (misal strip
+-- "None"), itu bikin Callback kita ke-panggil ULANG secara rekursif dari dalam
+-- panggilan yang lagi berjalan. Biasanya berhenti sendiri di 1 level, tapi ini
+-- re-entrant call chain yang rawan -- apalagi kalau user klik cepat berturut-turut,
+-- beberapa event Activated bisa numpuk sebelum call stack yang pertama kelar, dan
+-- itu kemungkinan besar penyebab item yang gak diklik ikut ke-toggle. Guard ini
+-- mastiin Callback gak pernah masuk lagi ke dirinya sendiri buat dropdown yang sama.
+local dropdownUpdateGuard = {}
+local function handleDropdownChange(val, dropObj)
+    local arr = {}
+    if type(val) == "table" then
+        for k, v in pairs(val) do
+            if type(k) == "number" then
+                table.insert(arr, v)
+            elseif type(k) == "string" and v == true then
+                table.insert(arr, k)
+            end
+        end
+    else
+        arr = {val}
+    end
+
+    if dropObj and dropdownUpdateGuard[dropObj] then
+        -- Lagi di tengah proses koreksi buat dropdown ini (dipanggil ulang dari
+        -- dalam dropObj:Set() di bawah) -- jangan koreksi lagi, cukup balikin apa adanya.
+        return arr
+    end
+
+    local changed = false
+    if #arr > 1 and table.find(arr, "None") then
+        local newArr = {}
+        for _, item in ipairs(arr) do
+            if item ~= "None" then table.insert(newArr, item) end
+        end
+        arr = newArr
+        changed = true
+    elseif #arr == 0 then
+        arr = {"None"}
+        changed = true
+    end
+
+    if changed and dropObj then
+        dropdownUpdateGuard[dropObj] = true
+        pcall(function() dropObj:Set(arr) end)
+        dropdownUpdateGuard[dropObj] = nil
+    end
+    return arr
+end
+
+-- ============================================================
+-- SMOOTH MOVEMENT (TWEEN, BUKAN TELEPORT)
+-- ============================================================
+-- Gerakin HumanoidRootPart secara mulus dari posisi sekarang ke targetCFrame,
+-- dengan kecepatan = Humanoid.WalkSpeed karakter saat ini (studs/detik).
+-- WalkSpeed ini server-authoritative (di-set lewat SpeedController game, hasil
+-- akumulasi semua speed upgrade/modifier yang kita punya), jadi nge-tween di
+-- speed ini otomatis ngikutin speed MAKSIMAL yang valid dikenal server --
+-- bukan CFrame snap instan yang keliatan/tercatat sebagai teleport.
+-- Multiplier di atas WalkSpeed asli karakter -- tetep pakai speed asli kita di game
+-- (bukan angka ngasal), tapi dipercepat lagi biar gerakannya gak selambat jalan normal.
+-- Nilai AKTIF-nya sekarang live lewat Config.TweenSpeedMultiplier, yang bisa diubah
+-- kapan aja dari input "Move Speed Multiplier" di bawah toggle Auto Steal Egg
+-- (max 5, kosong/invalid/lebih dari 5 balik ke default 2).
+local DEFAULT_TWEEN_SPEED_MULTIPLIER = 2
+local MAX_TWEEN_SPEED_MULTIPLIER = 5
+
+-- Floor durasi minimum tiap tween -- kalau WalkSpeed karakter lagi tinggi (game ini
+-- bisa sampe 300 lewat upgrade treadmill) dikali TweenSpeedMultiplier sampe 5x, speed
+-- efektifnya bisa ~1500 stud/detik, dan jarak pendek jadi selesai dalam hitungan
+-- milidetik -- visualnya SAMA PERSIS kayak teleport instan, apalagi di device dengan
+-- frame rate rendah (mobile/executor kayak Delta). Floor ini mastiin tween SELALU
+-- keliatan sebagai gerakan, gak pernah collapse jadi snap sekejap mata lagi.
+local MIN_TWEEN_DURATION = 0.15
+
+local activeMoveTweens = {}
+-- isCancelledFn (opsional): dipanggil TIAP FRAME selama tween jalan. Kalau
+-- balikin true (misal karena toggle Config-nya di-OFF-in di tengah jalan),
+-- tween langsung di-Cancel() SEKARANG JUGA -- gak nunggu sampe durasi abis.
+-- Ini yang bikin toggle OFF beneran ngestop script seketika, bukan nunggu
+-- tween/loop yang lagi jalan kelar dulu.
+local function TweenMoveTo(hrp, hum, targetCFrame, isCancelledFn)
+    if not hrp then return end
+    if isCancelledFn and isCancelledFn() then return end
+
+    -- Batalin tween yang masih jalan di HRP yang sama biar gak numpuk/tabrakan
+    local prevTween = activeMoveTweens[hrp]
+    if prevTween then
+        prevTween:Cancel()
+        activeMoveTweens[hrp] = nil
+    end
+
+    local distance = (targetCFrame.Position - hrp.Position).Magnitude
+    if distance < 0.1 then
+        hrp.CFrame = targetCFrame
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        return
+    end
+
+    local speed = hum and hum.WalkSpeed
+    if not speed or speed <= 0 then
+        speed = 16 -- fallback ke BASE_WALK_SPEED game kalau Humanoid belum siap
+    end
+
+    local multiplier = tonumber(Config.TweenSpeedMultiplier)
+    if not multiplier or multiplier <= 0 then
+        multiplier = DEFAULT_TWEEN_SPEED_MULTIPLIER
+    end
+    speed = speed * multiplier
+
+    local duration = math.max(distance / speed, MIN_TWEEN_DURATION)
+    local tween = TweenService:Create(
+        hrp,
+        TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut),
+        { CFrame = targetCFrame }
+    )
+    activeMoveTweens[hrp] = tween
+
+    tween:Play()
+
+    -- Poll tiap Heartbeat (bukan tween.Completed:Wait() doang) biar bisa
+    -- di-cancel di tengah jalan begitu toggle di-OFF-in.
+    while tween.PlaybackState == Enum.PlaybackState.Playing do
+        if isCancelledFn and isCancelledFn() then
+            tween:Cancel()
+            break
+        end
+        RunService.Heartbeat:Wait()
+    end
+
+    if activeMoveTweens[hrp] == tween then
+        activeMoveTweens[hrp] = nil
+    end
+
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+end
+
+-- ============================================================
+-- ANTI TRAP (Auto Delete PlayerTrap di workspace.__DEBRIS) -- SELALU AKTIF, gak ada toggle
+-- ============================================================
+-- CATATAN: PlayerTrap ini instance yang muncul di workspace.__DEBRIS, sementara status
+-- "IsTrapped" yang beneran nge-block prompt/carry itu ATTRIBUTE di Character yang
+-- di-set SERVER (lihat AreaEggs.client.lua bawaan game). Artinya :Destroy() di sini
+-- cuma ngapus REPLIKA LOKAL part-nya -- kalau server yang nentuin status trapped-nya,
+-- ini gak jamin lepas dari efeknya, cuma ngilangin visualnya. Tetep worth dicoba
+-- (gak ada ruginya kalau ternyata gak ngefek).
+local function destroyPlayerTrap(inst)
+    if inst and inst.Name == "PlayerTrap" then
+        pcall(function() inst:Destroy() end)
+    end
+end
+
+-- Jalan sekali begitu script di-exec: bersihin trap yang udah ada, terus pantau
+-- terus-terusan (ChildAdded) biar trap baru yang muncul kapan aja langsung kehapus.
+local function startAutoRemoveTraps()
+    local debris = workspace:FindFirstChild("__DEBRIS") or workspace:WaitForChild("__DEBRIS", 10)
+    if not debris then
+        warn("[AntiTrap] workspace.__DEBRIS gak ketemu, gak bisa mantau trap.")
+        return
+    end
+
+    for _, child in ipairs(debris:GetChildren()) do
+        destroyPlayerTrap(child)
+    end
+
+    debris.ChildAdded:Connect(function(child)
+        destroyPlayerTrap(child)
+    end)
+end
+task.spawn(startAutoRemoveTraps)
+
+-- ============================================================
+-- ANTI TREADMILL MOUNT -- toggle-able lewat "Anti Treadmill Mount" di tab Misc
+-- ============================================================
+-- BUG: treadmill di game ini otomatis "nempel"/ke-mount begitu karakter berdiri
+-- persis di atasnya (raycast turun tiap Heartbeat dari game sendiri, lihat
+-- TreadmillStaticController.client.lua di dump game -- fungsi tryEnterStaticTreadmill).
+-- Kalau tween Auto Place (ke PetArea) kebetulan lewat/mendarat di atas treadmill KITA
+-- SENDIRI, karakter bisa ke-mount gak sengaja dan macet di situ.
+--
+-- Daripada coba hitung ulang geometri buat NGEHINDARIN posisi treadmill (rapuh, posisi
+-- PetArea vs treadmill beda-beda tiap plot), kita pantau event YANG SAMA yang dipakai
+-- game buat nge-track status mount kita sendiri (Treadmills.ACTIVE_TREADMILL_EVENT --
+-- Network.Fired ngasih signal yang bisa didengerin banyak listener sekaligus, jadi kita
+-- bisa numpang dengerin tanpa ganggu listener asli game). Begitu ke-detect ke-mount
+-- (treadmillId ~= nil) DAN Config.AntiTreadmillMount lagi nyala, langsung minta lepas
+-- lewat remote resmi REQUEST_UNEQUIP. Kalau togglenya dimatiin, listener-nya tetep
+-- jalan tapi gak ngapa-ngapain -- jadi treadmill bisa dipake normal kapan aja mau,
+-- dan tinggal dinyalain lagi pas mau fokus farming tanpa gangguan.
+local function setupAntiTreadmillMount()
+    local ok, err = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Network = require(ReplicatedStorage.Library.Client.Network)
+        local Constants = require(ReplicatedStorage.Library.Globals.Constants)
+        local Treadmills = Constants.NETWORK_MAP.Treadmills
+
+        Network.Fired(Treadmills.ACTIVE_TREADMILL_EVENT):Connect(function(treadmillId)
+            if treadmillId == nil then return end
+            if not Config.AntiTreadmillMount then return end
+            task.spawn(function()
+                task.wait(0.05) -- Kasih waktu sepersekian detik biar state kesinkron server dulu
+                if not Config.AntiTreadmillMount then return end -- Dicek ulang, siapa tau keburu dimatiin
+                local uOk, uErr = pcall(function()
+                    return Network.Invoke(Treadmills.REQUEST_UNEQUIP)
+                end)
+                if uOk then
+                    print("[AntiTreadmill] Ke-detect ke-mount treadmill, langsung minta lepas.")
+                else
+                    warn("[AntiTreadmill] Ke-detect ke-mount tapi gagal minta lepas:", uErr)
+                end
+            end)
+        end)
+    end)
+    if not ok then
+        warn("[AntiTreadmill] Gagal setup listener:", err)
+    end
+end
+task.spawn(setupAntiTreadmillMount)
+
+-- ============================================================
+-- FPS BOOST (low graphics + hide other players' pets & placed eggs)
+-- ============================================================
+-- Data game yang dipake di sini (dicek dari dump NewSteal An Egg):
+-- - ReplicatedStorage.Library.Variables.PotatoMode: flag boolean bawaan game,
+--   dibaca GraphicsQuality.lua & FixParticleRate.lua buat maksa quality level 1
+--   + minimalin rate semua particle effect di seluruh game.
+-- - ReplicatedStorage.Library.Client.LightingsController: sistem layering lighting
+--   bawaan game (:SetModifier), dipake biar perubahan kita gak "ditimpa balik" sama
+--   modifier lain (misal transisi malam) -- alih-alih ngedit Lighting children langsung.
+-- - ReplicatedStorage.Library.Client.SettingsCmds: sistem "Settings" resmi game
+--   (server-authoritative, lewat RemoteFunction) -- ada key "HideOtherPets" yang
+--   udah disediain game sendiri buat nyembunyiin pet pemain lain.
+-- - ReplicatedStorage.Library.Client.Eggs.PlacedEggRenderer.GetRenderFolder(): folder
+--   berisi SEMUA telur yang ditaruh SEMUA pemain (nama Model = "{OwnerUserId}_{Uid}").
+--   Gak ada toggle bawaan buat nyembunyiin punya orang lain, jadi kita bikin sendiri.
+local fpsBoostApplied = false
+
+-- Dipakai buat egg (workspace.PlacedEggRenders) DAN pet (workspace.ClientRenderedAssets)
+-- -- dua-duanya sama persis pola nama Model-nya: "{OwnerUserId}_{Uid}" (dicek langsung
+-- dari source: PlacedEggRenderer.lua pakai `{OwnerUserId}_{Uid}`, ItemDisplay.lua
+-- (CreateWanderingAssetModel) juga persis sama `{OwnerUserId}_{Uid}`).
+local function hideModelIfNotMine(model)
+    if not model or not model:IsA("Model") then return end
+    local ownerIdStr = model.Name:match("^(%d+)_")
+    local ownerId = ownerIdStr and tonumber(ownerIdStr)
+    if not ownerId or ownerId == LocalPlayer.UserId then return end
+
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 1
+            part.CanCollide = false
+        elseif part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 1
+        elseif part:IsA("ParticleEmitter") or part:IsA("Trail") or part:IsA("Beam") then
+            part.Enabled = false
+        elseif part:IsA("BillboardGui") or part:IsA("SurfaceGui") then
+            part.Enabled = false
+        end
+    end
+end
+
+local function hideOtherPlayersEggs()
+    local ok, err = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local PlacedEggRenderer = require(ReplicatedStorage.Library.Client.Eggs.PlacedEggRenderer)
+        local renderFolder = PlacedEggRenderer.GetRenderFolder()
+        if not renderFolder then return end
+
+        local children = renderFolder:GetChildren()
+        local hidden = 0
+        for _, model in ipairs(children) do
+            local ownerIdStr = model.Name:match("^(%d+)_")
+            local ownerId = ownerIdStr and tonumber(ownerIdStr)
+            if ownerId and ownerId ~= LocalPlayer.UserId then
+                hidden = hidden + 1
+            end
+            hideModelIfNotMine(model)
+        end
+        print("[FPSBoost] Egg pemain lain di-hide:", hidden, "/", #children)
+
+        -- Telur pemain lain terus ditaruh selama kita main -- pantau terus biar
+        -- yang baru muncul juga langsung ke-hide, gak cuma yang udah ada sekarang.
+        renderFolder.ChildAdded:Connect(function(model)
+            task.defer(hideModelIfNotMine, model)
+        end)
+    end)
+    if not ok then
+        warn("[FPSBoost] Gagal hide egg pemain lain:", err)
+    end
+end
+
+-- Sama kayak hideModelIfNotMine, tapi TANPA pengecualian owner -- dipakai khusus
+-- buat pet, karena request user: pet DIHILANGIN SEMUA (termasuk punya kita sendiri),
+-- yang tetep kelihatan cuma egg-nya doang. Pet gak ngaruh ke fungsi steal/carry sama
+-- sekali (itu semua jalan lewat EggCmds & data, bukan lewat visual), jadi aman disembunyiin total.
+local function hideModelAlways(model)
+    if not model or not model:IsA("Model") then return end
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 1
+            part.CanCollide = false
+        elseif part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 1
+        elseif part:IsA("ParticleEmitter") or part:IsA("Trail") or part:IsA("Beam") then
+            part.Enabled = false
+        elseif part:IsA("BillboardGui") or part:IsA("SurfaceGui") then
+            part.Enabled = false
+        elseif part:IsA("Highlight") then
+            part.Enabled = false
+        end
+    end
+end
+
+-- CATATAN: SettingsCmds.Set("HideOtherPets", true) di-coba dulu (fitur resmi game,
+-- meski itu cuma nyembunyiin punya ORANG LAIN), TAPI ditambah sistem hide MANUAL
+-- independen yang nyembunyiin SEMUA pet (termasuk punya kita sendiri, sesuai
+-- permintaan user: "sisain kelihatan egg nya aja"). Manual hide ini gak bergantung
+-- sama sekali ke toggle bawaan, jadi tetep jalan walau toggle-nya gak ngefek.
+local function hideOtherPlayersPets()
+    local ok, err = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local SettingsCmds = require(ReplicatedStorage.Library.Client.SettingsCmds)
+        local setOk = SettingsCmds.Set("HideOtherPets", true)
+        print("[FPSBoost] SettingsCmds.Set(HideOtherPets, true) ->", setOk, "| IsEnabled now:", SettingsCmds.IsEnabled("HideOtherPets"))
+    end)
+    if not ok then
+        warn("[FPSBoost] Gagal set HideOtherPets bawaan game:", err)
+    end
+
+    local ok2, err2 = pcall(function()
+        local renderFolder = workspace:FindFirstChild("ClientRenderedAssets")
+            or workspace:WaitForChild("ClientRenderedAssets", 10)
+        if not renderFolder then return end
+
+        local children = renderFolder:GetChildren()
+        for _, model in ipairs(children) do
+            hideModelAlways(model)
+        end
+        print("[FPSBoost] Pet di-hide (manual, SEMUA termasuk punya kita):", #children)
+
+        if not fpsBoostApplied then
+            renderFolder.ChildAdded:Connect(function(model)
+                task.defer(hideModelAlways, model)
+            end)
+        end
+    end)
+    if not ok2 then
+        warn("[FPSBoost] Gagal hide pet (manual):", err2)
+    end
+end
+
+local function reduceGraphicsQuality()
+    -- Native Roblox render settings -- dibungkus pcall masing-masing karena beberapa
+    -- executor/security context bisa nolak nulis ke sini.
+    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+    pcall(function()
+        UserSettings():GetService("UserGameSettings").SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
+    end)
+
+    -- Flag bawaan game -- maksa quality level 1 + minimalin particle rate di semua
+    -- sistem yang udah baca flag ini sendiri (lihat catatan di atas).
+    pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Variables = require(ReplicatedStorage.Library.Variables)
+        Variables.PotatoMode = true
+    end)
+
+    -- Matiin efek Lighting yang paling mahal lewat sistem modifier bawaan game
+    -- (bukan edit Lighting children langsung, biar gak ketimpa modifier lain kayak
+    -- transisi malam/hari). CATATAN: Fog di-drop dari sini -- Fog di Roblox itu cuma
+    -- shader tint doang, GAK beneran nge-cull rendering apa pun (gak nambah FPS), dan
+    -- malah keliatan kayak "kabut aneh". Yang beneran nurunin beban render itu material
+    -- flatten + CastShadow di bawah.
+    pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local LightingsController = require(ReplicatedStorage.Library.Client.LightingsController)
+        LightingsController:SetModifier("FPSBoost", function(cfg)
+            local boosted = table.clone(cfg)
+            boosted.Bloom = nil
+            boosted.ColorCorrection = nil
+            boosted.SunRays = nil
+            boosted.DepthOfField = nil
+            boosted.Blur = nil
+            boosted.Clouds = nil
+            boosted.Atmosphere = nil
+            boosted.ShadowSoftness = 1
+            return boosted
+        end, 100, 0) -- priority tinggi biar menang dari modifier lain, tween 0 = langsung
+    end)
+
+    -- Setting Lighting yang gak masuk skema modifier di atas (GlobalShadows gak
+    -- di-serialize/di-apply LightingsCore, jadi harus di-set langsung).
+    -- CATATAN: sebelumnya di sini juga ada Lighting.Technology = Compatibility +
+    -- EnvironmentDiffuseScale/EnvironmentSpecularScale = 0 -- itu YANG BIKIN keliatan
+    -- kayak "kabut aneh" (ganti technology rendering + nge-nolin environment lighting
+    -- bikin skybox/permukaan jauh keliatan flat abu-abu ngambang, mirip kabut). Dicabut
+    -- karena efek visualnya lebih ganggu daripada manfaat FPS-nya -- material flatten
+    -- (SmoothPlastic + CastShadow off) di bawah udah cukup buat FPS gain-nya.
+    pcall(function()
+        local Lighting = game:GetService("Lighting")
+        Lighting.GlobalShadows = false
+    end)
+
+    -- Matiin semua particle/trail/beam/fire/smoke yang masih tersisa di workspace
+    -- (di luar yang udah kena PotatoMode) buat boost maksimal.
+    pcall(function()
+        for _, inst in ipairs(workspace:GetDescendants()) do
+            if inst:IsA("ParticleEmitter") or inst:IsA("Trail") or inst:IsA("Beam")
+                or inst:IsA("Fire") or inst:IsA("Smoke") or inst:IsA("Sparkles") then
+                inst.Enabled = false
+            end
+        end
+    end)
+end
+
+-- Ini yang beneran bikin "full abu-abu": paksa SEMUA BasePart di workspace pake
+-- Material SmoothPlastic (paling murah dirender, gak ada texture/bump) + Color abu-abu
+-- rata + CastShadow off. Sekali sapu penuh workspace, TERUS dipasang DescendantAdded
+-- biar part baru yang muncul (pet baru wander, egg baru di-render, dll) ikut kena juga.
+local GRAY_MATERIAL_COLOR = Color3.fromRGB(120, 120, 120)
+
+local function flattenPart(part)
+    if not part or not part:IsA("BasePart") then return end
+    part.Material = Enum.Material.SmoothPlastic
+    part.Color = GRAY_MATERIAL_COLOR
+    part.CastShadow = false
+end
+
+local function flattenWorldMaterials()
+    local ok, err = pcall(function()
+        for _, inst in ipairs(workspace:GetDescendants()) do
+            flattenPart(inst)
+        end
+        if not fpsBoostApplied then
+            workspace.DescendantAdded:Connect(function(inst)
+                task.defer(flattenPart, inst)
+            end)
+        end
+    end)
+    if not ok then
+        warn("[FPSBoost] Gagal flatten material workspace:", err)
+    end
+end
+
+-- Hapus TOTAL (bukan cuma hide) plot pemain lain -- instance yang di-Destroy() gak
+-- dirender, gak dihitung fisika, gak jalanin update loop apa pun sama sekali, jadi
+-- jauh lebih ngirit daripada sekadar transparan. Dibandingin per SLOT NUMBER (nama
+-- folder-nya = tostring(slot)), bukan reference Instance -- karena plot bisa
+-- di-recreate ulang sama sistem Streamable bawaan game (misal abis balik dari jauh),
+-- jadi cache reference Instance bisa jadi basi & keliru ngedelete plot kita sendiri.
+local function deleteOtherPlayersPlots()
+    local ok, err = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local PlotCmds = require(ReplicatedStorage.Library.Client.PlotCmds)
+
+        -- Jaga-jaga: kalau slot kita BELUM ke-resolve (PlotCmds.GetMySlot() masih nil,
+        -- misal karena baru join/data belum sinkron), JANGAN hapus apa-apa dulu --
+        -- daripada semua plot (termasuk punya kita) ke-anggep "bukan punya kita" dan
+        -- ke-Destroy() semua. Mending nunggu, coba lagi kapan-kapan.
+        local mySlot = PlotCmds.GetMySlot()
+        if mySlot == nil then
+            warn("[FPSBoost] Slot plot kita belum ke-resolve, skip delete plot dulu (biar aman).")
+            return
+        end
+
+        local function isMyPlot(plot)
+            local currentSlot = PlotCmds.GetMySlot()
+            return currentSlot ~= nil and plot.Name == tostring(currentSlot)
+        end
+
+        local plotsFolder = PlotCmds.GetPlotsFolder() or workspace:WaitForChild("Plots", 10)
+        if not plotsFolder then
+            warn("[FPSBoost] workspace.Plots gak ketemu sama sekali.")
+            return
+        end
+
+        local children = plotsFolder:GetChildren()
+        local deleted = 0
+        for _, plot in ipairs(children) do
+            if not isMyPlot(plot) then
+                local dOk = pcall(function() plot:Destroy() end)
+                if dOk then deleted = deleted + 1 end
+            end
+        end
+        print("[FPSBoost] Plot pemain lain dihapus:", deleted, "/", #children, "| Slot kita:", tostring(PlotCmds.GetMySlot()))
+
+        if not fpsBoostApplied then
+            plotsFolder.ChildAdded:Connect(function(plot)
+                task.defer(function()
+                    if plot.Parent and not isMyPlot(plot) then
+                        pcall(function() plot:Destroy() end)
+                    end
+                end)
+            end)
+        end
+    end)
+    if not ok then
+        warn("[FPSBoost] Gagal delete plot pemain lain:", err)
+    end
+end
+
+-- Treadmill di-render flat di workspace.__ClientTreadmillRenders (gak per-plot-folder).
+-- BUG SEBELUMNYA: ownership cuma dicek pakai PlotCmds.IsWorldPositionWithinLocalPlotBounds
+-- (cek posisi treadmill ada di dalem bounding-box plot kita) -- ini heuristik doang,
+-- dan kalau pivot/posisi treadmill kebetulan ada di pinggir/luar bounding-box plot
+-- (misal nempel pager/border), treadmill KITA SENDIRI ikut ke-anggep "bukan punya kita"
+-- dan ke-Destroy(). Sekarang dicek DUA LAPIS: (1) cara PASTI -- game sendiri nyimpen
+-- reference treadmill KITA di RuntimeInstanceRegistry dengan key "TreadmillPlotRender"
+-- (cuma di-set buat treadmill milik LocalPlayer, lihat TreadmillStaticController.client.lua
+-- di dump game) -- kalau model-nya PERSIS sama reference itu, udah pasti punya kita,
+-- gak peduli hasil cek posisi. (2) fallback ke cek bounding-box kalau registry-nya
+-- belum ke-set (misal treadmill kita belum sempet ke-render).
+local function deleteOtherPlayersTreadmills()
+    local ok, err = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local PlotCmds = require(ReplicatedStorage.Library.Client.PlotCmds)
+        local RuntimeInstanceRegistry = require(ReplicatedStorage.Library.Modules.RuntimeInstanceRegistry)
+        local folder = workspace:FindFirstChild("__ClientTreadmillRenders")
+            or workspace:WaitForChild("__ClientTreadmillRenders", 10)
+        if not folder then return end
+
+        -- Diambil FRESH tiap panggilan (bukan di-cache), biar tetep akurat kalau
+        -- treadmill kita ke-rebuild ulang (misal abis upgrade base/treadmill).
+        local function getMyTreadmillModel()
+            local mySlot = PlotCmds.GetMySlot()
+            if mySlot == nil then return nil end
+            local okReg, result = pcall(RuntimeInstanceRegistry.Get, "TreadmillPlotRender", tostring(mySlot))
+            if okReg then return result end
+            return nil
+        end
+
+        local function isMyTreadmill(model)
+            local myTreadmillModel = getMyTreadmillModel()
+            if myTreadmillModel and model == myTreadmillModel then
+                return true
+            end
+            local okPos, pos = pcall(function() return model:GetPivot().Position end)
+            if not okPos then return true end -- gak yakin posisinya, jangan diapa-apain
+            local okBounds, within = pcall(PlotCmds.IsWorldPositionWithinLocalPlotBounds, pos)
+            return okBounds and within
+        end
+
+        local children = folder:GetChildren()
+        local deleted = 0
+        for _, model in ipairs(children) do
+            if model:IsA("Model") and not isMyTreadmill(model) then
+                local dOk = pcall(function() model:Destroy() end)
+                if dOk then deleted = deleted + 1 end
+            end
+        end
+        print("[FPSBoost] Treadmill pemain lain dihapus:", deleted, "/", #children)
+
+        if not fpsBoostApplied then
+            folder.ChildAdded:Connect(function(model)
+                task.defer(function()
+                    if model.Parent and model:IsA("Model") and not isMyTreadmill(model) then
+                        pcall(function() model:Destroy() end)
+                    end
+                end)
+            end)
+        end
+    end)
+    if not ok then
+        warn("[FPSBoost] Gagal delete treadmill pemain lain:", err)
+    end
+end
+
+local function ApplyFPSBoost()
+    reduceGraphicsQuality()
+    -- Delete plot/treadmill orang lain DULU sebelum flatten material, biar gak
+    -- buang waktu ngeflatten part yang toh bakal ke-Destroy() abis ini juga.
+    deleteOtherPlayersPlots()
+    deleteOtherPlayersTreadmills()
+    flattenWorldMaterials()
+    hideOtherPlayersPets()
+    -- hideOtherPlayersEggs() masang listener ChildAdded -- cuma sekali aja biar gak
+    -- numpuk koneksi duplikat kalau tombolnya diklik berkali-kali.
+    if not fpsBoostApplied then
+        hideOtherPlayersEggs()
+    end
+    fpsBoostApplied = true
+    print("[FPSBoost] Diterapkan: graphics full-flat + plot/treadmill/pet/egg pemain lain dibersihin.")
+end
+
+-- ============================================================
+-- BUILD UI WINDOW
+-- ============================================================
+local Window = Library:Window({
+    Title = "Napoleon",
+    Footer = "Steal An Egg",
+    Color = Color3.fromRGB(81, 66, 255),
+    Color2 = Color3.fromRGB(0, 0, 14),
+    ["Tab Width"] = 130,
+    Image = "111895858615511",
+    WindowIMG = "91334002283698",
+    LogoHUB = "136289055140268"
+})
+
+local Tabs = Window
+
+-- ============================================================
+-- AUTO STEAL LOGIC (RAGDOLL BYPASS + STEAL + BACK)
+-- ============================================================
+local function AutoStealLoop()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RunService = game:GetService("RunService")
+    local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+    -- Tidak perlu StealEvent manual, kita pakai EggCmds yang sudah ada
+
+    -- Wall reset malam hari (AreaEggResetWall) -- nutup akses ke gameplay side pas lagi
+    -- reset cycle (lihat ResetStartTimer.client.lua & AreaEggResetWall.lua bawaan game).
+    -- Selama ini kebuka, ngoyo maksa carry cuma buang waktu (server nolak terus) --
+    -- mending nunggu dulu sampe collapse (ilang) baru gerak ambil egg.
+    local successWallReq, AreaEggResetWall = pcall(function()
+        return require(ReplicatedStorage.Library.Client.AreaEggResetWall)
+    end)
+    if not successWallReq then
+        warn("[AutoSteal] Gagal require AreaEggResetWall, skip pengecekan wall:", AreaEggResetWall)
+        AreaEggResetWall = nil
+    end
+
+    -- Invincibility sekarang ditangani secara global oleh Zombie Mode di atas
+
+    -- UID egg yang BARU AJA berhasil kita carry sendiri. Snapshot lokal (GetAreaEggSnapshot)
+    -- kadang telat beberapa frame buat ngapus egg yang udah diklaim, jadi tanpa blacklist ini
+    -- iterasi berikutnya bisa milih ulang egg yang barusan KITA sendiri ambil, gagal carry
+    -- (karena udah gak ada), dan salah dikira "keduluan orang lain" -> hop yang gak perlu.
+    local recentlyClaimedByMe = {}
+
+    -- Semua UID egg yang match filter kita di scan TERAKHIR (bukan cuma 1 UID "terbaik" --
+    -- set ini di-replace total tiap iterasi, jadi gak akan pernah nyangkut/stale).
+    -- Kalau ada UID yang match di iterasi sebelumnya tapi sekarang hilang dari set yang baru,
+    -- dan bukan kita yang ngambil (gak ada di recentlyClaimedByMe), berarti keduluan orang
+    -- lain sebelum kita sempat coba sama sekali -- kasus ini gak lewat carry-fail.
+    local watchedMatchingUids = {}
+
+    -- Dulu balik-ke-safezone-pas-idle ini jalan TIAP iterasi outer loop (~0.3-0.35 detik
+    -- sekali) selama gak ada target -- efeknya character keukeuh ke-tarik balik ke safezone
+    -- terus-terusan kalau kita coba gerakin manual pas AutoSteal lagi idle (gak nemu egg).
+    -- Sekarang cuma sekali per "sesi idle": begitu udah nyampe/deket safezone, flag ini
+    -- di-set true dan gak nge-tween lagi sampai ada target baru ketemu (flag direset).
+    local hasSettledAtSafezoneWhileIdle = false
+
+    while Config.AutoSteal do
+        -- Bersihin blacklist yang udah kadaluarsa (>5 detik, snapshot pasti udah update)
+        local nowClock = os.clock()
+        for uid, claimedAt in pairs(recentlyClaimedByMe) do
+            if nowClock - claimedAt > 5 then
+                recentlyClaimedByMe[uid] = nil
+            end
+        end
+
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if char and hrp then
+            local eggSnapshot = EggCmds.GetAreaEggSnapshot()
+            local targetEgg = nil
+            local currentMatchingUids = {}
+
+            if eggSnapshot and eggSnapshot.Records then
+                local highestWeight = -1
+
+                for _, record in pairs(eggSnapshot.Records) do
+                    local area = record.AreaId
+
+                    -- Lookup Rarity dari game data
+                    local Assets = require(game:GetService("ReplicatedStorage").Directory.Assets)
+                    local rarityData = Assets.Directory[record.AssetCategory] and Assets.Directory[record.AssetCategory].Rarity
+                    local rarity = rarityData and rarityData.DisplayName or rarityData and rarityData._id or "Unknown"
+
+                        if not recentlyClaimedByMe[record.Uid] and (record.State == "Slot" or record.State == "Dropped") and record.BottomCFrame then -- Pastikan telur fisik sudah render
+                            -- "None" (belum dipilih) = gak ada batasan buat dimensi itu, jadi match semua.
+                            -- Kalau Area diisi tapi Rarity kosong -> ambil semua rarity di area itu.
+                            -- Kalau Rarity diisi tapi Area kosong -> ambil rarity itu di area manapun.
+                            local areaMatch = false
+                            if #Config.StealAreas == 0 or table.find(Config.StealAreas, "None") then
+                                areaMatch = true
+                            else
+                                areaMatch = table.find(Config.StealAreas, area) ~= nil
+                            end
+
+                            local rarityMatch = false
+                            if #Config.StealRarities == 0 or table.find(Config.StealRarities, "None") then
+                                rarityMatch = true
+                            else
+                                rarityMatch = table.find(Config.StealRarities, rarity) ~= nil
+                            end
+
+                            if areaMatch and rarityMatch then
+                                currentMatchingUids[record.Uid] = true
+                                local weight = RarityWeights[rarity] or 0
+                                if weight > highestWeight then
+                                    highestWeight = weight
+                                    targetEgg = record
+                                    targetEgg.Rarity = rarity -- Simpan ke record sementara untuk dipakai di print
+                                end
+                            end
+                        end
+                    end
+                end
+
+            -- Egg yang match filter kita di iterasi SEBELUMNYA tapi sekarang udah gak match
+            -- lagi (hilang dari currentMatchingUids) DAN bukan kita yang ngambil -> kemungkinan
+            -- besar keduluan orang lain sebelum kita sempat coba carry.
+            for uid in pairs(watchedMatchingUids) do
+                if not currentMatchingUids[uid] and not recentlyClaimedByMe[uid] then
+                    print("[AutoSteal] Egg yang tadinya match (" .. tostring(uid) .. ") hilang sebelum sempat dicoba, kemungkinan diambil orang lain.")
+                    break -- Cukup 1x per iterasi, gak perlu spam cek sisanya
+                end
+            end
+            watchedMatchingUids = currentMatchingUids
+
+            -- Lakukan pencurian via CARRY + DROP (mekanisme resmi game)
+            if targetEgg then
+                -- Ada target lagi -> reset flag idle-settle, biar SESI IDLE BERIKUTNYA
+                -- (kalau abis ini gak ada target lagi) dapet 1x kesempatan balik ke
+                -- safezone yang fresh, bukan ke-skip terus karena flag lama masih true.
+                hasSettledAtSafezoneWhileIdle = false
+                Config.IsStealing = true
+                print("[AutoSteal] Target:", targetEgg.Uid, "Rarity:", targetEgg.Rarity)
+                
+                local success, err = pcall(function()
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    local hum = char:FindFirstChild("Humanoid")
+                    if not hrp or not hum then return end
+
+                    -- Dipakai TweenMoveTo buat cek tiap frame: begitu toggle Auto Steal
+                    -- di-OFF-in, tween yang lagi jalan langsung di-Cancel() SEKARANG JUGA.
+                    local function stealCancelled()
+                        return not Config.AutoSteal
+                    end
+                    if stealCancelled() then return end
+
+                    -- Lepas telur yang mungkin sedang dipegang oleh AutoPlace
+                    hum:UnequipTools()
+
+                    local safezoneCF = CFrame.new(518.66, 70.57, -364.73) * CFrame.Angles(math.rad(180.00), math.rad(-89.82), math.rad(180.00))
+
+                    -- GERAK (TWEEN) KE SAFEZONE DULU SEBELUM MENGAMBIL TELUR (Mencegah bug Anti-Cheat)
+                    if (hrp.Position - safezoneCF.Position).Magnitude > 5 then
+                        TweenMoveTo(hrp, hum, safezoneCF, stealCancelled)
+                        if stealCancelled() then return end
+                        -- Pin sebentar di safezone biar server sempat catat posisi kita di sana
+                        local initSafezoneConn = RunService.Heartbeat:Connect(function()
+                            if hrp then
+                                hrp.CFrame = safezoneCF
+                                hrp.AssemblyLinearVelocity = Vector3.zero
+                                hrp.AssemblyAngularVelocity = Vector3.zero
+                            end
+                        end)
+                        local waited = 0
+                        while waited < 0.5 and not stealCancelled() do
+                            task.wait(0.05)
+                            waited = waited + 0.05
+                        end
+                        initSafezoneConn:Disconnect()
+                        if stealCancelled() then return end
+                    end
+
+                    -- eggCF MUTABLE -- di-update ke BottomCFrame TERBARU kalau egg-nya
+                    -- kepental/jatuh lagi (misal kena pukul Guard pas kita bawa balik ke
+                    -- safezone), biar kita samperin lagi dari lokasi jatuh yang bener.
+                    local eggCF = targetEgg.BottomCFrame * CFrame.new(0, 3, 0)
+
+                    -- BUG SEBELUMNYA: kita SELALU maksa bikin FirstAreaSlotKey (dari AreaId:NestId
+                    -- atau regex fallback) buat SEMUA egg -- padahal dicek langsung dari source asli
+                    -- game (AreaEggs.client.lua, function bindPrompt yang jalan pas real player mencet
+                    -- prompt "Steal"), field ini CUMA boleh diisi buat egg yang UID-nya diawali
+                    -- "FirstAreaEgg_" (dicek via AreaEggSlotIdentity.IsFirstAreaUid) -- buat SEMUA
+                    -- egg biasa/liar lainnya (mayoritas target kita), field ini HARUS nil. Ngirim
+                    -- key "ngarang" buat egg yang seharusnya nil itu yang bikin server nolak carry-nya
+                    -- diam-diam ("kadang gak ke-carry" walau posisi udah bener) -- makanya sekarang
+                    -- kita replikasi PERSIS logic aslinya, bukan nebak-nebak lagi.
+                    local firstAreaSlotKey = nil
+                    local slotIdentityOk, AreaEggSlotIdentity = pcall(function()
+                        return require(ReplicatedStorage.Library.Util.AreaEggSlotIdentity)
+                    end)
+                    if slotIdentityOk and AreaEggSlotIdentity then
+                        local isFirstAreaOk, isFirstArea = pcall(AreaEggSlotIdentity.IsFirstAreaUid, tostring(targetEgg.Uid))
+                        if isFirstAreaOk and isFirstArea then
+                            if type(targetEgg.AreaId) == "string" and type(targetEgg.NestId) == "string" then
+                                local buildOk, built = pcall(AreaEggSlotIdentity.BuildSlotKey, targetEgg.AreaId, targetEgg.NestId)
+                                if buildOk then firstAreaSlotKey = built end
+                            end
+                        end
+                    else
+                        warn("[AutoSteal] Gagal require AreaEggSlotIdentity, FirstAreaSlotKey dipaksa nil (aman buat egg biasa):", AreaEggSlotIdentity)
+                    end
+                    print("[AutoSteal] FirstAreaSlotKey:", tostring(firstAreaSlotKey), "| AreaId:", tostring(targetEgg.AreaId), "| NestId:", tostring(targetEgg.NestId))
+
+                    -- Kalau wall reset (malam/reset cycle) lagi NUTUP, jangan maksa tween/
+                    -- carry -- egg gak bakal keambil (server nolak carry-nya terus) walau
+                    -- kita udah di posisinya. Nunggu dulu sampe wall-nya collapse (ilang).
+                    if AreaEggResetWall and AreaEggResetWall.IsClosed() then
+                        print("[AutoSteal] Wall reset lagi nutup, nunggu ilang dulu sebelum ambil egg...")
+                        while AreaEggResetWall.IsClosed() and not stealCancelled() do
+                            task.wait(0.2)
+                        end
+                        if stealCancelled() then return end
+                        print("[AutoSteal] Wall udah ilang, lanjut ambil egg.")
+                    end
+
+                    -- Loop LUAR: kalau kita udah berhasil carry tapi kena pukul Guard di
+                    -- tengah jalan balik (egg-nya kepental/jatuh -- State server balik jadi
+                    -- "Dropped", BUKAN lagi "Carried" sama kita), JANGAN lanjut ke safezone
+                    -- kosongan -- balik lagi ke lokasi jatuhnya & coba carry ulang dari situ.
+                    -- Dibatesin maxOuterAttempts biar gak nyangkut selamanya kalau emang
+                    -- guard-nya terus-terusan mukul di lokasi yang sama.
+                    local outerAttempt = 0
+                    local maxOuterAttempts = 4
+                    local finalOutcome = nil -- "claimed" | "lost" | "gaveup" | "cancelled"
+
+                    while not finalOutcome do
+                        outerAttempt = outerAttempt + 1
+                        if stealCancelled() then
+                            finalOutcome = "cancelled"
+                            break
+                        end
+                        if outerAttempt > maxOuterAttempts then
+                            print("[AutoSteal] Udah " .. (outerAttempt - 1) .. "x kena pukul Guard pas mau balik, nyerah sementara.")
+                            finalOutcome = "gaveup"
+                            break
+                        end
+
+                        -- ==========================================
+                        -- 1. TWEEN KE TELUR (bukan teleport), lalu PIN posisi (TANPA anchor)
+                        -- Anchor di sini justru blokir server baca posisi kita
+                        -- untuk proximity check → carry gagal. Pakai loop biasa buat pin.
+                        -- ==========================================
+                        TweenMoveTo(hrp, hum, eggCF, stealCancelled)
+                        if stealCancelled() then finalOutcome = "cancelled" break end
+                        local loopConn = game:GetService("RunService").Heartbeat:Connect(function()
+                            hrp.CFrame = eggCF
+                            hrp.AssemblyLinearVelocity = Vector3.zero
+                            hrp.AssemblyAngularVelocity = Vector3.zero
+                        end)
+
+                        local approachWaited = 0
+                        while approachWaited < 0.4 and not stealCancelled() do
+                            task.wait(0.05)
+                            approachWaited = approachWaited + 0.05
+                        end
+                        if stealCancelled() then
+                            loopConn:Disconnect()
+                            finalOutcome = "cancelled"
+                            break
+                        end
+
+                        -- ==========================================
+                        -- 2. REQUEST CARRY (Spam berkali-kali, DIULANG kalau kelempar Guard)
+                        -- Karena posisi butuh waktu sampai ke server, kita spam request
+                        -- carry-nya sampai diterima (max 10x percobaan per ronde). Kalau
+                        -- gagal tapi egg-nya MASIH ADA di server (bukan keduluan orang lain,
+                        -- tapi kita kelempar/keserempet Guard pas nyoba), JANGAN kabur balik
+                        -- ke safezone -- langsung samperin lagi telurnya & coba carry ulang.
+                        -- ==========================================
+                        local carryOk, carryErr
+                        local eggStillThere = true
+                        local round = 0
+                        local maxRounds = 8 -- ~8 ronde x 10 request sebelum nyerah (bukan retreat, cuma stop nyoba)
+
+                        repeat
+                            round = round + 1
+                            for i = 1, 10 do
+                                if stealCancelled() then break end
+                                carryOk, carryErr = EggCmds.RequestCarryAreaEgg(targetEgg.Uid, firstAreaSlotKey)
+                                if carryOk then
+                                    break
+                                end
+                                task.wait(0.03) -- Jeda 1-2 frame antar request
+                            end
+
+                            if stealCancelled() then
+                                break
+                            end
+
+                            if not carryOk then
+                                local freshRecord = EggCmds.GetAreaEggRecord(targetEgg.Uid)
+                                eggStillThere = freshRecord ~= nil
+                                if eggStillThere and freshRecord.BottomCFrame then
+                                    eggCF = freshRecord.BottomCFrame * CFrame.new(0, 3, 0)
+                                end
+                                if eggStillThere and round < maxRounds then
+                                    print("[AutoSteal] Carry gagal (" .. tostring(carryErr) .. "), kemungkinan kelempar Guard, egg masih ada. Samperin lagi... (ronde " .. round .. "/" .. maxRounds .. ")")
+                                    -- Balik lagi ke telur (BUKAN kabur ke safezone) & pin ulang posisinya
+                                    TweenMoveTo(hrp, hum, eggCF, stealCancelled)
+                                    if stealCancelled() then break end
+                                    task.wait(0.15) -- Beri waktu server catat posisi kita balik lagi
+                                end
+                            end
+                        until carryOk or not eggStillThere or round >= maxRounds
+
+                        loopConn:Disconnect()
+
+                        if stealCancelled() then
+                            finalOutcome = "cancelled"
+                            break
+                        end
+
+                        if not carryOk then
+                            if eggStillThere then
+                                -- Masih ada tapi udah nyerah abis max ronde -- diem di dekat telur,
+                                -- JANGAN balik ke safezone. Iterasi loop utama berikutnya otomatis
+                                -- coba lagi (egg ini masih match) atau ganti target kalau udah gak match.
+                                print("[AutoSteal] Carry gagal setelah " .. round .. " ronde (egg masih ada). Nyerah sementara, TETAP di dekat telur, gak balik ke safezone.")
+                                finalOutcome = "gaveup"
+                            else
+                                -- Beneran udah keduluan orang lain -- JANGAN balik ke safezone dulu.
+                                -- Biarin diem di sini; iterasi loop utama berikutnya (di bawah, cuma
+                                -- 0.05s lagi) langsung scan ulang & kalau ketemu egg lain yang masih
+                                -- match filter, TweenMoveTo bakal langsung narik kita dari posisi
+                                -- SEKARANG ini ke egg baru itu -- gak perlu muter dulu ke safezone.
+                                -- Safezone cuma didatengin kalau scan berikutnya BENERAN gak nemu
+                                -- target sama sekali (lihat cabang "else" di bawah, di luar pcall ini).
+                                print("[AutoSteal] Egg udah diambil orang lain (ronde " .. round .. "). Cari egg lain, gak balik ke safezone dulu...")
+                                finalOutcome = "lost"
+                            end
+                            break
+                        end
+
+                        print("[AutoSteal] Carry berhasil! Kembali ke safezone... (percobaan " .. outerAttempt .. ")")
+                        recentlyClaimedByMe[targetEgg.Uid] = os.clock()
+
+                        -- ==========================================
+                        -- 3. TWEEN KEMBALI KE SAFEZONE, SAMBIL MANTAU status egg (throttled,
+                        -- tiap ~0.15s) selama perjalanan. Kalau State-nya balik jadi bukan
+                        -- "Carried" sama kita lagi (kena pukul Guard di tengah jalan), langsung
+                        -- BATALIN tween ke safezone (BUKAN lanjut ke safezone kosongan) dan
+                        -- update eggCF ke lokasi jatuh yang baru buat di-retry outer loop.
+                        -- ==========================================
+                        -- BUG SEBELUMNYA: TweenMoveTo manggil isCancelledFn() SEKALI LAGI
+                        -- di awal, SEBELUM tween mulai jalan sama sekali. Record egg abis
+                        -- carry berhasil itu butuh waktu buat kereplikasi ke client (belum
+                        -- pasti State-nya udah "Carried" tepat sepersekian detik abis carry
+                        -- sukses) -- jadi kalau kita langsung anggap "State bukan Carried" =
+                        -- dropped di cek PERTAMA, itu false-positive, dan hasilnya TweenMoveTo
+                        -- kabur duluan sebelum sempet mulai (makanya karakter diem di tempat,
+                        -- gak pernah tween ke safezone). Makanya sekarang WAJIB kekonfirmasi
+                        -- State-nya "Carried" MINIMAL SEKALI dulu (confirmedCarrying) sebelum
+                        -- status "bukan Carried" boleh dianggap beneran dropped.
+                        local droppedAgain = false
+                        local confirmedCarrying = false
+                        local lastDropCheckAt = 0
+                        local function abortTripIfDropped()
+                            if stealCancelled() then return true end
+                            local now = os.clock()
+                            if now - lastDropCheckAt < 0.15 then
+                                return false
+                            end
+                            lastDropCheckAt = now
+
+                            local rec = EggCmds.GetAreaEggRecord(targetEgg.Uid)
+                            if rec == nil then
+                                -- Belum kekonfirmasi carrying -> kemungkinan besar cuma delay
+                                -- replikasi, bukan dropped. Udah kekonfirmasi -> record kosong
+                                -- berarti udah ke-claim duluan (bagus), biar loop klaim di
+                                -- bawah yang nangani, bukan di sini.
+                                return false
+                            end
+
+                            if rec.State == "Carried" and rec.CarrierUserId == LocalPlayer.UserId then
+                                confirmedCarrying = true
+                                return false
+                            end
+
+                            if not confirmedCarrying then
+                                -- Belum pernah kekonfirmasi State-nya "Carried" -- kasih
+                                -- kesempatan dulu, jangan buru-buru anggap dropped.
+                                return false
+                            end
+
+                            -- Udah pernah kekonfirmasi Carried, tapi sekarang bukan lagi -> beneran dropped.
+                            droppedAgain = true
+                            if rec.BottomCFrame then
+                                eggCF = rec.BottomCFrame * CFrame.new(0, 3, 0)
+                            end
+                            return true
+                        end
+
+                        TweenMoveTo(hrp, hum, safezoneCF, abortTripIfDropped)
+
+                        if stealCancelled() then
+                            finalOutcome = "cancelled"
+                            break
+                        end
+
+                        if droppedAgain then
+                            print("[AutoSteal] Egg kepental/jatuh lagi di tengah jalan (kena Guard?). Balik lagi ambil egg-nya, BUKAN ke safezone...")
+                            -- Lanjut ke outerAttempt berikutnya di while loop
+                        else
+                            local safezoneConn = game:GetService("RunService").Heartbeat:Connect(function()
+                                hrp.CFrame = safezoneCF
+                                hrp.AssemblyLinearVelocity = Vector3.zero
+                                hrp.AssemblyAngularVelocity = Vector3.zero
+                            end)
+
+                            -- Tunggu egg hilang dari snapshot = server sudah claim (max 5 detik,
+                            -- atau berhenti lebih cepat kalau toggle di-OFF-in di tengah jalan)
+                            local claimWaited = 0
+                            local maxClaimWait = 5.0
+                            repeat
+                                task.wait(0.03) -- Poll super cepat
+                                claimWaited = claimWaited + 0.03
+                                -- Cek setelah minimal 0.06s
+                                if claimWaited >= 0.06 and EggCmds.GetAreaEggRecord(targetEgg.Uid) == nil then
+                                    print("[AutoSteal] Egg berhasil di-claim oleh server! (" .. string.format("%.2f", claimWaited) .. "s)")
+                                    break
+                                end
+                            until claimWaited >= maxClaimWait or stealCancelled()
+
+                            safezoneConn:Disconnect()
+
+                            if stealCancelled() then
+                                finalOutcome = "cancelled"
+                                break
+                            end
+
+                            if claimWaited >= maxClaimWait then
+                                -- Double-check sebelum nyerah nunggu: mungkin kena pukul PAS
+                                -- lagi nunggu klaim di safezone (bukan pas di perjalanan).
+                                local rec = EggCmds.GetAreaEggRecord(targetEgg.Uid)
+                                if rec == nil then
+                                    finalOutcome = "claimed"
+                                elseif rec.State ~= "Carried" or rec.CarrierUserId ~= LocalPlayer.UserId then
+                                    print("[AutoSteal] Egg kepental pas nunggu klaim (kena Guard?). Balik lagi ambil, BUKAN nyerah...")
+                                    if rec.BottomCFrame then
+                                        eggCF = rec.BottomCFrame * CFrame.new(0, 3, 0)
+                                    end
+                                    -- Lanjut ke outerAttempt berikutnya di while loop
+                                else
+                                    print("[AutoSteal] Claim timeout (" .. maxClaimWait .. "s) tapi egg masih kebawa kita, anggap berhasil, lanjut...")
+                                    finalOutcome = "claimed"
+                                end
+                            else
+                                finalOutcome = "claimed"
+                            end
+                        end
+                    end
+
+                    print("[AutoSteal] Selesai (" .. tostring(finalOutcome) .. ")! Lanjut ke egg berikutnya...")
+                end)
+                
+                if not success then
+                    warn("[AutoSteal] Error saat mencuri:", err)
+                end
+                
+                Config.IsStealing = false
+                task.wait(0.05)
+            else
+                -- Beneran gak ada egg sama sekali yang match filter kita SEKARANG --
+                -- baru di titik INI kita balik ke safezone (bukan tiap kali ada egg
+                -- yang keduluan orang lain). Kalau abis ini scan berikutnya ternyata
+                -- ketemu target lagi, iterasi selanjutnya bakal TweenMoveTo langsung
+                -- dari safezone ke egg itu seperti biasa.
+                --
+                -- CUMA SEKALI per sesi idle (hasSettledAtSafezoneWhileIdle) -- kalau
+                -- gak dibatasin gini, ini bakal jalan TIAP iterasi (~0.3 detik sekali)
+                -- selama masih idle, jadi kalau kita gerakin character manual pas lagi
+                -- gak ngambil egg, langsung ke-tarik balik lagi dalam sepersekian detik,
+                -- berulang terus -- itu bug "kesitu lagi kesitu lagi" yang dilaporkan.
+                pcall(function()
+                    EggCmds.RequestAreaEggSnapshot()
+                end)
+                if not hasSettledAtSafezoneWhileIdle then
+                    pcall(function()
+                        if hrp then
+                            local safezoneCF = CFrame.new(518.66, 70.57, -364.73) * CFrame.Angles(math.rad(180.00), math.rad(-89.82), math.rad(180.00))
+                            if (hrp.Position - safezoneCF.Position).Magnitude > 5 then
+                                TweenMoveTo(hrp, hum, safezoneCF, function() return not Config.AutoSteal end)
+                            end
+                        end
+                    end)
+                    hasSettledAtSafezoneWhileIdle = true
+                end
+                task.wait(0.3)
+            end
+        end
+        task.wait(0.05)
+    end
+end
+
+-- ============================================================
+-- MAIN TAB
+-- ============================================================
+local MainTab = Tabs:AddTab({ Name = "Main", Icon = "rbxassetid://10734950309" })
+
+local FarmSection = MainTab:AddSection("Auto Farm")
+
+local autoStealToggle
+autoStealToggle = FarmSection:AddToggle({
+    Title = "Auto Steal Egg",
+    Content = "Automatically teleports and steals eggs based on filters",
+    Default = false,
+    Callback = function(val)
+        Config.AutoSteal = val
+        if val and UI_LOADED then
+            print("Auto Steal Started!")
+            task.spawn(AutoStealLoop)
+        elseif not val then
+            print("Auto Steal Stopped!")
+            Config.IsStealing = false
+        end
+    end
+})
+
+local tweenSpeedInput
+tweenSpeedInput = FarmSection:AddInput({
+    Title = "Move Speed Multiplier",
+    Content = "Speed multiplier for movement (max 5, default 2)",
+    Default = tostring(Config.TweenSpeedMultiplier),
+    Callback = function(val)
+        local num = tonumber(val)
+        if num and num > 0 and num <= MAX_TWEEN_SPEED_MULTIPLIER then
+            Config.TweenSpeedMultiplier = num
+            if UI_LOADED then
+                print("Move Speed Multiplier:", num)
+            end
+        else
+            Config.TweenSpeedMultiplier = DEFAULT_TWEEN_SPEED_MULTIPLIER
+            if UI_LOADED then
+                warn("Move Speed Multiplier: '" .. tostring(val) .. "' is invalid or over the max (" .. MAX_TWEEN_SPEED_MULTIPLIER .. "), reset to default (" .. DEFAULT_TWEEN_SPEED_MULTIPLIER .. ")")
+            end
+        end
+    end
+})
+
+local areaDropdown
+areaDropdown = FarmSection:AddDropdown({
+    Title = "Select Area",
+    Content = "Choose which zone to farm eggs from",
+    Options = {
+        "None",
+        "Forest",
+        "Lake",
+        "Jungle", 
+        "Desert", 
+        "Snow", 
+        "Volcano", 
+        "Abyss Ocean",
+        "Prehistoric",
+        "Cosmic"
+    },
+    Default = {"None"},
+    Multi = true,
+    Callback = function(val)
+        Config.StealAreas = handleDropdownChange(val, areaDropdown)
+        if UI_LOADED then
+            print("Areas selected:")
+            for _, v in ipairs(Config.StealAreas) do print("-", v) end
+        end
+    end
+})
+
+local rarityDropdown
+rarityDropdown = FarmSection:AddDropdown({
+    Title = "Filter By Rarity (Steal)",
+    Content = "Select which egg rarities to prioritize",
+    Options = {
+        "None",
+        "Common",
+        "Uncommon", 
+        "Rare", 
+        "Epic", 
+        "Legendary", 
+        "Mythic", 
+        "Cosmic",
+        "Secret", 
+        "Eternal",
+        "Divine",
+        "Prismatic",
+        "Transcendent"
+    },
+    Default = {"None"},
+    Multi = true,
+    Callback = function(val)
+        Config.StealRarities = handleDropdownChange(val, rarityDropdown)
+
+        if UI_LOADED then
+            print("Rarities selected:")
+            for _, r in ipairs(Config.StealRarities) do
+                print("- " .. r)
+            end
+        end
+    end
+})
+-- ============================================================
+-- AUTO TAB (Auto Place Egg)
+-- ============================================================
+local AutoTab = Tabs:AddTab({ Name = "Auto", Icon = "rbxassetid://10734950309" })
+local PlaceSection = AutoTab:AddSection("Auto Place Egg")
+
+local function AutoPlaceLoop()
+    while Config.AutoPlace do
+        task.wait(1.5)
+        local success, err = pcall(function()
+            if Config.IsStealing then return end
+
+            print("AutoPlace check started...")
+                        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                        local HttpService = game:GetService("HttpService")
+                        local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+                        local Assets = require(ReplicatedStorage.Directory.Assets)
+                        
+                        -- Cari Plot ASLI kita lewat nama di papan PlotSign
+                        local myTruePlot = nil
+                        local plotsFolder = workspace:FindFirstChild("Plots")
+                        if plotsFolder then
+                            for _, p in ipairs(plotsFolder:GetChildren()) do
+                                local sign = p:FindFirstChild("PlotSign")
+                                if sign then
+                                    local pSign = sign:FindFirstChild("PlayerPlotSign")
+                                    if pSign and pSign:FindFirstChild("Frame") and pSign.Frame:FindFirstChild("PlayerName") then
+                                        local rawText = pSign.Frame.PlayerName.Text
+                                        local cleanText = string.gsub(rawText, "<[^>]+>", "")
+                                        if string.find(string.lower(cleanText), string.lower(LocalPlayer.Name)) or string.find(string.lower(cleanText), string.lower(LocalPlayer.DisplayName)) then
+                                            myTruePlot = p
+                                            print("Ditemukan myTruePlot:", p.Name)
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        else
+                            print("Folder workspace.Plots tidak ada!")
+                        end
+
+                        if not myTruePlot then 
+                            print("Gagal menemukan Plot milik", LocalPlayer.Name)
+                            return 
+                        end
+
+                        local ToUpdate = myTruePlot:FindFirstChild("ToUpdate")
+                        local PetArea = ToUpdate and ToUpdate:FindFirstChild("PetArea")
+                        local CenterPoint = myTruePlot:FindFirstChild("CenterPoint") or PetArea
+                        
+                        if not PetArea then 
+                            print("Gagal menemukan ToUpdate.PetArea di plot!")
+                            return 
+                        end
+
+                        -- Kumpulkan telur yang ada di inventory
+                        local eggsToPlace = {}
+                        local myEggs = EggCmds.GetOwnerRuntimeRecords(LocalPlayer.UserId)
+                        
+                        local placedCount = 0
+                        if type(myEggs) == "table" then
+                            for uid, record in pairs(myEggs) do
+                                if record.Placement ~= nil then
+                                    placedCount = placedCount + 1
+                                else
+                                    local category = record.AssetCategory
+                                    local categoryData = category and Assets.Directory[category]
+                                    local rarity = "Unknown"
+                                    
+                                    if categoryData and categoryData.Rarity then
+                                        local rObj = categoryData.Rarity
+                                        rarity = rObj.DisplayName or rObj._id or rObj.Name or "Unknown"
+                                    end
+                                    
+                                    local match = false
+                                    if #Config.PlaceRarities == 0 or table.find(Config.PlaceRarities, "None") or table.find(Config.PlaceRarities, "All") then
+                                        match = true
+                                    else
+                                        match = table.find(Config.PlaceRarities, rarity) ~= nil
+                                    end
+                                    
+                                    -- Coba ambil nilai Kg dari record atau asset data
+                                    local kgVal = tonumber(record.Kg) or tonumber(record.Weight) or tonumber(record.kg)
+                                    if not kgVal and categoryData then
+                                        kgVal = tonumber(categoryData.Kg) or tonumber(categoryData.Weight) or tonumber(categoryData.kg)
+                                    end
+                                    kgVal = kgVal or 0
+
+                                    if match then
+                                        table.insert(eggsToPlace, { Uid = uid, Rarity = rarity, Kg = kgVal })
+                                    end
+                                end
+                            end
+                        end
+                    -- Urutkan berdasarkan Kg paling besar (descending)
+                    table.sort(eggsToPlace, function(a, b)
+                        return a.Kg > b.Kg
+                    end)
+                    
+                    print("Total telor yg match untuk ditaruh:", #eggsToPlace, "| Di plot:", placedCount, "/ 30")
+                    
+                    -- Simpan posisi awal sebelum gerak ke plot (hanya jika kita ada telur)
+                    local char = LocalPlayer.Character
+                    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+                    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+                    local originalCF = nil
+
+                    if #eggsToPlace == 0 or placedCount >= 30 then
+                        -- Jika tidak ada telur yg mau di place, atau plot penuh,
+                        -- maka kembali idle (tunggu iterasi loop selanjutnya)
+                        return
+                    end
+
+                    if hrp then originalCF = hrp.CFrame end
+                    print("Auto Place: Ditemukan telur untuk dipajang! Bergerak ke plot...")
+
+                    if Config.IsStealing then return end
+
+                    -- Dipakai TweenMoveTo buat cek tiap frame: begitu toggle Auto Place
+                    -- di-OFF-in (atau Auto Steal jadi prioritas), tween yang lagi jalan
+                    -- langsung di-Cancel() SEKARANG JUGA.
+                    local function placeCancelled()
+                        return not Config.AutoPlace or Config.IsStealing
+                    end
+
+                    -- Gerak (tween) ke plot (di atas PetArea)
+                        if hrp and PetArea then
+                            TweenMoveTo(hrp, hum, PetArea.CFrame * CFrame.new(0, 3, 0), placeCancelled)
+                            if placeCancelled() then return end
+                            local fallWaited = 0
+                            while fallWaited < 0.5 and not placeCancelled() do
+                                task.wait(0.05)
+                                fallWaited = fallWaited + 0.05
+                            end
+                            if Config.IsStealing then return end -- Abort if steal started during wait
+                            if not Config.AutoPlace then return end
+                        end
+                        
+                        local stopPlacing = false
+                        
+                        -- Catat semua posisi yang sudah terisi di plot saat ini
+                        local occupiedPositions = {}
+                        for _, rec in pairs(myEggs) do
+                            if rec.Placement then
+                                local pos
+                                if typeof(rec.Placement) == "CFrame" then pos = rec.Placement.Position
+                                elseif typeof(rec.Placement) == "Vector3" then pos = rec.Placement
+                                elseif rec.Placement.Position then pos = rec.Placement.Position end
+                                if pos then table.insert(occupiedPositions, pos) end
+                            end
+                        end
+                        
+                        local searchIdx = 0
+
+                        for _, eggInfo in ipairs(eggsToPlace) do
+                            if not Config.AutoPlace or stopPlacing then break end
+                            
+                            -- CEK LIMIT MAKSIMAL 30 TELUR
+                            if placedCount >= 30 then
+                                print("Auto Place: Sudah mencapai batas maksimal 30 telur di plot!")
+                                stopPlacing = true
+                                break
+                            end
+                            
+                            -- PRIORITAS UTAMA: Jika Auto Steal sedang angkat telur, hentikan Auto Place sementara!
+                            if Config.IsStealing then
+                                print("Auto Place: Jeda dulu, Auto Steal sedang sibuk ambil egg!")
+                                return
+                            end
+                            
+                            local uid = eggInfo.Uid
+                            
+                            -- Request server untuk nge-equip telurnya karena gak ada fisik tool kalau belum di-equip
+                            local eqSuccess, eqErr = EggCmds.RequestEquipTool(uid)
+                            if eqSuccess then
+                                if Config.IsStealing then return end
+                                task.wait(0.15) -- Dipercepat dari 0.5
+                                
+                                local placed = false
+                                while searchIdx < 30 and not placed do
+                                    local placeCFrame = nil
+                                    if PetArea and CenterPoint then
+                                        while searchIdx < 30 do
+                                            local columns = 10 -- 10 telur per baris
+                                            local paddingX = 6
+                                            local paddingZ = 6
+                                            
+                                            local usableWidth = PetArea.Size.X - paddingX
+                                            local usableDepth = PetArea.Size.Z - paddingZ
+                                            
+                                            local spacingX = usableWidth / columns
+                                            local spacingZ = 6 -- Jarak antar baris ke belakang
+                                            
+                                            local row = math.floor(searchIdx / columns)
+                                            local col = searchIdx % columns
+                                            
+                                            -- Mulai dari pojok kiri atas (-X/2, -Z/2)
+                                            local startX = -(usableWidth / 2) + (spacingX / 2)
+                                            local startZ = -(usableDepth / 2) + (spacingZ / 2)
+                                            
+                                            local rx = startX + (col * spacingX)
+                                            local rz = startZ + (row * spacingZ)
+                                            
+                                            local worldPos = PetArea.CFrame * Vector3.new(rx, 0, rz)
+                                            local localPos = CenterPoint.CFrame:PointToObjectSpace(worldPos)
+                                            local testCFrame = CFrame.new(localPos.X, -0.5, localPos.Z)
+                                            
+                                            -- Cek apakah posisi ini kosong secara logis (tidak ada telur terdekat)
+                                            local isOccupied = false
+                                            for _, pos in ipairs(occupiedPositions) do
+                                                if (pos - testCFrame.Position).Magnitude < 1.0 then
+                                                    isOccupied = true
+                                                    break
+                                                end
+                                            end
+                                            
+                                            if not isOccupied then
+                                                placeCFrame = testCFrame
+                                                break
+                                            end
+                                            searchIdx = searchIdx + 1
+                                        end
+                                    end
+                                    
+                                    if not placeCFrame then
+                                        print("Auto Place: Grid penuh (tidak ada slot kosong)!")
+                                        stopPlacing = true
+                                        break
+                                    end
+                                    
+                                    if Config.IsStealing then return end
+                                    local plSuccess, plErr = EggCmds.RequestPlaceEgg(uid, placeCFrame)
+                                    if plSuccess then
+                                        print("Auto Place: Berhasil taruh", eggInfo.Rarity, "| Kg:", eggInfo.Kg)
+                                        table.insert(occupiedPositions, placeCFrame.Position)
+                                        placedCount = placedCount + 1
+                                        placed = true
+                                        task.wait(0.15) -- Dipercepat dari 0.5
+                                    else
+                                        local lErr = plErr and string.lower(tostring(plErr)) or ""
+                                        if string.find(lErr, "full") or string.find(lErr, "limit") 
+                                            or string.find(lErr, "capacity") or string.find(lErr, "maximum") then
+                                            print("Auto Place: Plot server menolak (PENUH)! Mematikan Auto Place.")
+                                            Config.AutoPlace = false
+                                            stopPlacing = true
+                                            break
+                                        end
+                                        
+                                        -- Jika gagal karena tertabrak hitbox telur besar, anggap grid ini penuh & lanjut ke grid sebelah
+                                        print("Auto Place: Gagal di slot", searchIdx, "(Tertabrak telur besar?). Mencoba slot sebelahnya...")
+                                        table.insert(occupiedPositions, placeCFrame.Position)
+                                        searchIdx = searchIdx + 1
+                                        task.wait(0.1)
+                                    end
+                                end
+                                
+                                if not placed and not stopPlacing then
+                                    print("Auto Place: Gagal menaruh telur (semua slot sisa tertutup telur besar).")
+                                end
+                            end
+                        end
+
+                        
+                        -- Kembalikan (tween) ke posisi awal setelah kelar place
+                        if originalCF and hrp and not Config.IsStealing then
+                            TweenMoveTo(hrp, hum, originalCF, placeCancelled)
+                            task.wait(0.2)
+                        end
+        end)
+        if not success then
+            warn("Auto Place Error: " .. tostring(err))
+        end
+    end -- End of while loop
+end
+
+local autoPlaceToggle
+autoPlaceToggle = PlaceSection:AddToggle({
+    Title = "Auto Place Egg",
+    Content = "Automatically place matching eggs on your plot",
+    Default = false,
+    Callback = function(val)
+        Config.AutoPlace = val
+        if UI_LOADED then print("Auto Place:", val) end
+        if val and UI_LOADED then
+            task.spawn(AutoPlaceLoop)
+        end
+    end
+})
+
+local placeDropdown
+placeDropdown = PlaceSection:AddDropdown({
+    Title = "Filter By Rarity (Place)",
+    Content = "Select which egg rarities to Auto Place",
+    Options = {
+        "None",
+        "All",
+        "Common", 
+        "Uncommon", 
+        "Rare", 
+        "Epic", 
+        "Legendary", 
+        "Mythic", 
+        "Cosmic",
+        "Secret", 
+        "Eternal",
+        "Divine",
+        "Prismatic",
+        "Transcendent"
+    },
+    Default = {"None"},
+    Multi = true,
+    Callback = function(val)
+        Config.PlaceRarities = handleDropdownChange(val, placeDropdown)
+    end
+})
+
+-- ============================================================
+-- AUTO HATCH SECTION
+-- ============================================================
+local HatchSection = AutoTab:AddSection("Auto Hatch Egg")
+
+local autoHatchToggle
+autoHatchToggle = HatchSection:AddToggle({
+    Title = "Auto Hatch Egg",
+    Content = "Automatically hatch any ready eggs on your plot",
+    Default = false,
+    Callback = function(val)
+        Config.AutoHatch = val
+        print("Auto Hatch:", val)
+        if val then
+            task.spawn(function()
+                local failedHatchAttempts = {}
+                while Config.AutoHatch do
+                    task.wait(2.5) -- Loop santai tiap 2.5 detik (tidak akan lag)
+                    pcall(function()
+                        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                        local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+                        
+                        -- Dapatkan telur yang kita punya
+                        local myEggs = EggCmds.GetOwnerRuntimeRecords(LocalPlayer.UserId)
+                        
+                        local eggsToHatch = {}
+                        for uid, record in pairs(myEggs) do
+                            -- Telur HANYA bisa menetas kalau sedang dipajang di Plot (Placement tidak nil)
+                            if record.Placement ~= nil then
+                                table.insert(eggsToHatch, uid)
+                            end
+                        end
+                        
+                        -- Coba hatch semua telur yang dipajang
+                        local now = os.time()
+                        for _, uid in ipairs(eggsToHatch) do
+                            if not Config.AutoHatch then break end
+                            
+                            -- PRIORITAS UTAMA: Jangan hatch kalau sedang steal
+                            if Config.IsStealing then 
+                                break 
+                            end
+                            
+                            -- Jangan spam request ke server kalau telur belum siap (baru di-check barusan)
+                            if failedHatchAttempts[uid] and now < failedHatchAttempts[uid] then
+                                continue
+                            end
+                            
+                            local success, err = EggCmds.RequestHatchEgg(uid)
+                            
+                            -- Jika server mengembalikan success == true, artinya telur itu READY!
+                            if success then
+                                print("Auto Hatch: Berhasil menetaskan telur!")
+                                EggCmds.RequestCompleteHatchEgg(uid)
+                                failedHatchAttempts[uid] = nil -- Bersihkan cache
+                                task.wait(0.1)
+                            else
+                                -- Jika server nolak, berarti BELUM MATENG, kita blacklist ID ini selama 15 detik biar gak spam
+                                failedHatchAttempts[uid] = now + 15
+                            end
+                        end
+                    end)
+                end -- End of while loop
+            end)
+        end
+    end
+})
+
+-- ============================================================
+-- AUTO SELL SECTION
+-- ============================================================
+local SellSection = AutoTab:AddSection("Auto Sell Pet")
+
+local isAutoSellRunning = false
+local function startAutoSellLoop()
+    if isAutoSellRunning then return end
+    isAutoSellRunning = true
+    task.spawn(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+        local Assets = require(ReplicatedStorage.Directory.Assets)
+        local Save = require(ReplicatedStorage.Library.Client.Save)
+        local AssetCmds = require(ReplicatedStorage.Library.Client.AssetCmds)
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+        
+        while Config.AutoSell or Config.SellAll do
+            local success, err = pcall(function()
+                if Config.IsStealing then return end
+                        
+                        -- Menggunakan Save.Get().Inventory (struktur flat dictionary: [uid] = record)
+                        local mySave = Save.Get()
+                        local myInventory = mySave and mySave.Inventory or {}
+                        
+                        -- Ambil array pet yang di-equip dari Save
+                        local equippedAssets = mySave and mySave.EquippedAssets or {}
+                        
+                        local uidsToSell = {}
+                        local foundMatching = 0
+                        
+                        if type(myInventory) == "table" then
+                            for uid, record in pairs(myInventory) do
+                                if type(record) == "table" then
+                                    -- Cek status equip: pet ada di array EquippedAssets milik Save
+                                    local isEquipped = record.Equipped or record.IsEquipped or record._eq or table.find(equippedAssets, uid) ~= nil
+                                    
+                                    -- Cek status favorit (mendukung berbagai nama dari localization / atribut)
+                                    local isFavorite = record.IsFavorite == true or record["Jadikan Favorit"] == true or record["Favorite"] == true
+                                    
+                                    -- Asset ID di data inventory PS99 / Steal an Egg disimpan di .Category
+                                    local assetId = record.Category or record.id or record.AssetCategory or record.ItemId
+                                    local categoryData = assetId and Assets.Directory[assetId]
+                                    
+                                    local petName = categoryData and (categoryData.DisplayName or categoryData._id or categoryData.Name) or "Unknown"
+                                    local rarityObj = categoryData and categoryData.Rarity
+                                    local rarity = rarityObj and (rarityObj.DisplayName or rarityObj._id or rarityObj.Name) or "Unknown"
+                                    
+                                    local match = false
+                                    if Config.SellAll then
+                                        match = true
+                                    else
+                                        local nameMatch = false
+                                        if #Config.SellNames == 0 or table.find(Config.SellNames, "None") then
+                                            nameMatch = false
+                                        elseif table.find(Config.SellNames, "All") then
+                                            nameMatch = true
+                                        else
+                                            nameMatch = table.find(Config.SellNames, petName) ~= nil
+                                        end
+                                        
+                                        local rarityMatch = false
+                                        if #Config.SellRarities == 0 or table.find(Config.SellRarities, "None") then
+                                            rarityMatch = false
+                                        elseif table.find(Config.SellRarities, "All") then
+                                            rarityMatch = true
+                                        else
+                                            rarityMatch = table.find(Config.SellRarities, rarity) ~= nil
+                                        end
+                                        
+                                        match = nameMatch or rarityMatch
+                                    end
+                                    
+                                    if match and not isFavorite then
+                                        foundMatching = foundMatching + 1
+                                        if isEquipped then
+                                            print("Auto Sell: Skip", petName, "karena sedang di-equip!")
+                                        else
+                                            table.insert(uidsToSell, uid)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if #uidsToSell > 0 then
+                            print("Auto Sell: Ditemukan " .. tostring(foundMatching) .. " pet match. Menjual " .. tostring(#uidsToSell) .. " pet...")
+                            
+                            -- Jika mode Ignore Filter aktif, gunakan SellAllAssets agar langsung bersih 1 tas (sangat cepat)
+                            -- Jika tidak (pakai filter), gunakan loop individual SellAsset
+                            if Config.SellAll then
+                                local EventAll = ReplicatedStorage.Network:FindFirstChild("AssetInventory: SellAllAssets")
+                                if EventAll then
+                                    EventAll:FireServer(uidsToSell)
+                                    print("Auto Sell: Berhasil FireServer (SellAllAssets) untuk " .. tostring(#uidsToSell) .. " pet!")
+                                else
+                                    warn("Auto Sell Error: Remote SellAllAssets tidak ditemukan di Network!")
+                                end
+                            else
+                                local EventSell = ReplicatedStorage.Network:FindFirstChild("AssetInventory: SellAsset")
+                                if EventSell then
+                                    for _, uid in ipairs(uidsToSell) do
+                                        -- Di game ini, pet sudah berupa Tool di dalam Backpack.
+                                        -- Kita hanya perlu mencari Tool dengan attribute UID yang cocok lalu meng-equip-nya
+                                        local char = LocalPlayer.Character
+                                        local hum = char and char:FindFirstChildOfClass("Humanoid")
+                                        if char and hum then
+                                            local foundTool = nil
+                                            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                                                if tool:IsA("Tool") and tool:GetAttribute("UID") == uid then
+                                                    foundTool = tool
+                                                    break
+                                                end
+                                            end
+                                            if not foundTool then
+                                                for _, tool in ipairs(char:GetChildren()) do
+                                                    if tool:IsA("Tool") and tool:GetAttribute("UID") == uid then
+                                                        foundTool = tool
+                                                        break
+                                                    end
+                                                end
+                                            end
+                                            
+                                            if foundTool then
+                                                hum:EquipTool(foundTool)
+                                                task.wait(0.05) -- Jeda super singkat (hanya beberapa frame)
+                                            else
+                                                print("Auto Sell: Tool pet tidak ditemukan di Backpack untuk UID", uid)
+                                            end
+                                        end
+                                        
+                                        EventSell:FireServer({uid})
+                                        task.wait(0.05) -- Jeda super singkat antar penjualan
+                                    end
+                                    print("Auto Sell: Berhasil FireServer (SellAsset) satu per satu untuk " .. tostring(#uidsToSell) .. " pet!")
+                            else
+                                warn("Auto Sell Error: Remote SellAsset tidak ditemukan di Network!")
+                            end
+                            end
+                        elseif foundMatching > 0 then
+                            print("Auto Sell: Ada " .. tostring(foundMatching) .. " pet yang match, tapi semua sedang di-equip atau tidak bisa dijual.")
+                        end
+                    end)
+                    if not success then
+                        warn("Auto Sell Error:", err)
+                    end
+                    task.wait(2)
+                end
+                isAutoSellRunning = false
+            end)
+end
+
+local isAutoSellEggRunning = false
+local function startAutoSellEggLoop()
+    if isAutoSellEggRunning then return end
+    isAutoSellEggRunning = true
+    task.spawn(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+        local Assets = require(ReplicatedStorage.Directory.Assets)
+        local Areas = require(ReplicatedStorage.Directory.Areas)
+        local Save = require(ReplicatedStorage.Library.Client.Save)
+        local LocalPlayer = game:GetService("Players").LocalPlayer
+
+        while Config.AutoSellEgg do
+            local success, err = pcall(function()
+                if Config.IsStealing then return end
+                
+                local mySave = Save.Get()
+                local equippedAssets = mySave and mySave.EquippedAssets or {}
+                
+                local myEggs = EggCmds.GetOwnerRuntimeRecords(LocalPlayer.UserId)
+                local uidsToSell = {}
+                local foundMatching = 0
+                local totalRecords = 0
+                if type(myEggs) == "table" then
+                    for _ in pairs(myEggs) do totalRecords = totalRecords + 1 end
+                end
+                print("[AutoSellEgg] Filter rarity aktif:", table.concat(Config.SellEggRarities, ", "), "| Total egg record:", totalRecords)
+
+                if type(myEggs) == "table" then
+                    for uid, record in pairs(myEggs) do
+                        if type(record) == "table" then
+                            local isEquipped = record.Equipped or record.IsEquipped or record._eq or table.find(equippedAssets, uid) ~= nil
+                            -- Jika telur sedang dipajang di plot, anggap seperti di-equip
+                            if record.Placement ~= nil then
+                                isEquipped = true
+                            end
+                            
+                            local isFavorite = record.IsFavorite == true or record["Jadikan Favorit"] == true or record["Favorite"] == true
+
+                            -- PENTING: AssetCategory di sini adalah nama PET di dalam egg (mis. "Tob Tobi Tob Tob"),
+                            -- bukan nama Area. Assets.Directory & Areas.Directory itu strict table:
+                            -- index dengan key yang gak ada bikin ERROR (bukan return nil), jadi jangan pernah
+                            -- Areas.Directory[assetId] langsung -- selalu pcall / iterasi pairs() aja.
+                            local assetId = record.AssetCategory or record.Category or record.id or record.ItemId
+
+                            local eggName = "Egg"
+                            local rarity = "Unknown"
+
+                            local assetOk, assetData = pcall(function()
+                                return assetId and Assets.Directory[assetId] or nil
+                            end)
+
+                            if assetOk and assetData then
+                                local rObj = assetData.Rarity or record.Rarity
+                                rarity = type(rObj) == "table" and (rObj.DisplayName or rObj._id or rObj.Name) or type(rObj) == "string" and rObj or "Unknown"
+
+                                -- Cari nama Area asal egg ini dengan iterasi aman (bukan index langsung)
+                                local areaOk = pcall(function()
+                                    for _, areaData in pairs(Areas.Directory) do
+                                        if type(areaData) == "table" and type(areaData.DropTable) == "table" then
+                                            for _, entry in ipairs(areaData.DropTable) do
+                                                if entry[1] == assetId then
+                                                    eggName = (areaData.DisplayName or "Egg") .. " Egg"
+                                                    return
+                                                end
+                                            end
+                                        end
+                                    end
+                                end)
+                                if not areaOk then
+                                    eggName = tostring(assetId) .. " Egg"
+                                end
+                            end
+
+                            if rarity == "Unknown" and record.Rarity then
+                                local rObj = record.Rarity
+                                rarity = type(rObj) == "table" and (rObj.DisplayName or rObj._id or rObj.Name) or type(rObj) == "string" and rObj or "Unknown"
+                            end
+
+                            local rarityMatch = false
+                            if #Config.SellEggRarities == 0 or table.find(Config.SellEggRarities, "None") then
+                                rarityMatch = false
+                            elseif table.find(Config.SellEggRarities, "All") then
+                                rarityMatch = true
+                            else
+                                rarityMatch = table.find(Config.SellEggRarities, rarity) ~= nil
+                            end
+
+                            print("[AutoSellEgg] Scan:", uid, "|", eggName, "| assetId:", tostring(assetId), "| rarity:", rarity, "| rarityMatch:", rarityMatch, "| equipped:", isEquipped, "| favorite:", isFavorite)
+
+                            if rarityMatch and not isFavorite then
+                                foundMatching = foundMatching + 1
+                                if isEquipped then
+                                    local reason = (record.Placement ~= nil) and "sedang dipajang di plot" or "sedang di-equip"
+                                    print("Auto Sell Egg: Skip", eggName, "karena", reason)
+                                else
+                                    table.insert(uidsToSell, uid)
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                if #uidsToSell > 0 then
+                    print("[AutoSellEgg] Ditemukan " .. tostring(#uidsToSell) .. " UID buat dijual:", table.concat(uidsToSell, ", "))
+                    local EventSell = ReplicatedStorage.Network:FindFirstChild("AssetInventory: SellAsset")
+                    print("[AutoSellEgg] Remote 'AssetInventory: SellAsset' ditemukan?", EventSell ~= nil)
+                    if EventSell then
+                        local soldCount = 0
+                        for _, uid in ipairs(uidsToSell) do
+                            if not Config.AutoSellEgg then break end
+                            if Config.IsStealing then break end
+
+                            local eqSuccess, eqErr = EggCmds.RequestEquipTool(uid)
+                            print("[AutoSellEgg] RequestEquipTool(" .. tostring(uid) .. ") -> success=" .. tostring(eqSuccess) .. " err=" .. tostring(eqErr))
+
+                            if eqSuccess then
+                                task.wait(0.15)
+                                EventSell:FireServer({uid})
+                                print("[AutoSellEgg] FireServer SellAsset untuk", uid)
+                                soldCount = soldCount + 1
+                                task.wait(0.1)
+                            end
+                        end
+                        print("[AutoSellEgg] Selesai. Berhasil equip+fire untuk " .. tostring(soldCount) .. "/" .. tostring(#uidsToSell) .. " telur.")
+                    else
+                        warn("Auto Sell Egg Error: Remote SellAsset tidak ditemukan!")
+                    end
+                elseif foundMatching > 0 then
+                    print("Auto Sell Egg: Ada " .. tostring(foundMatching) .. " telur yang match, tapi semua sedang di-equip/dipajang.")
+                else
+                    print("Auto Sell Egg: Tidak ada telur yang cocok filter Rarity saat ini (cek pilihan dropdown-nya).")
+                end
+            end)
+            if not success then warn("Auto Sell Egg Error:", err) end
+            task.wait(2)
+        end
+        isAutoSellEggRunning = false
+    end)
+end
+
+local autoSellToggle
+autoSellToggle = SellSection:AddToggle({
+    Title = "Auto Sell Pet",
+    Content = "Automatically sells pets that match the Name or Rarity filter",
+    Default = false,
+    Callback = function(val)
+        Config.AutoSell = val
+        if val and UI_LOADED then
+            startAutoSellLoop()
+        end
+    end
+})
+
+SellSection:AddToggle({
+    Title = "Auto Sell All Pet",
+    Content = "WARNING: If Auto Sell is ON, this ignores filter and sells ALL pets!",
+    Default = false,
+    Callback = function(val)
+        Config.SellAll = val
+        if val and UI_LOADED then
+            startAutoSellLoop()
+        end
+    end
+})
+
+local petNamesList = {"None", "All"}
+pcall(function()
+    local Assets = require(game:GetService("ReplicatedStorage").Directory.Assets)
+    local namesMap = {}
+    for k, v in pairs(Assets.Directory) do
+        if type(v) == "table" and (v.DisplayName or v._id or v.Name) then
+            local disp = v.DisplayName or v._id or v.Name
+            if not namesMap[disp] then
+                namesMap[disp] = true
+                table.insert(petNamesList, disp)
+            end
+        end
+    end
+    table.sort(petNamesList, function(a, b) 
+        if a == "None" then return true end
+        if b == "None" then return false end
+        if a == "All" then return true end
+        if b == "All" then return false end
+        return a < b 
+    end)
+end)
+
+local sellNamesDropdown
+sellNamesDropdown = SellSection:AddDropdown({
+    Title = "Filter By Pet Name",
+    Content = "Select which pets to Auto Sell",
+    Options = petNamesList,
+    Default = {"None"},
+    Multi = true,
+    Callback = function(val)
+        Config.SellNames = handleDropdownChange(val, sellNamesDropdown)
+    end
+})
+
+local sellRarityDropdown
+sellRarityDropdown = SellSection:AddDropdown({
+    Title = "Filter By Rarity (Sell Pet)",
+    Content = "Select which pet rarities to Auto Sell",
+    Options = {
+        "None",
+        "All",
+        "Common", 
+        "Uncommon", 
+        "Rare", 
+        "Epic", 
+        "Legendary", 
+        "Mythic",
+        "Secret",
+        "Divine",
+        "Cosmic",
+        "Eternal",
+        "Prismatic",
+        "Transcendent"
+    },
+    Default = {"None"},
+    Multi = true,
+    Callback = function(val)
+        Config.SellRarities = handleDropdownChange(val, sellRarityDropdown)
+    end
+})
+
+-- ============================================================
+-- AUTO SELL EGG SECTION
+-- ============================================================
+local SellEggSection = AutoTab:AddSection("Auto Sell Egg")
+
+local autoSellEggToggle
+autoSellEggToggle = SellEggSection:AddToggle({
+    Title = "Auto Sell Egg",
+    Content = "Automatically sells eggs that match the Rarity filter",
+    Default = false,
+    Callback = function(val)
+        Config.AutoSellEgg = val
+        if val and UI_LOADED then
+            startAutoSellEggLoop()
+        end
+    end
+})
+
+local sellEggRarityDropdown
+sellEggRarityDropdown = SellEggSection:AddDropdown({
+    Title = "Filter By Rarity (Sell Egg)",
+    Content = "Select which egg rarities to Auto Sell",
+    Options = {
+        "None",
+        "All",
+        "Common", 
+        "Uncommon", 
+        "Rare", 
+        "Epic", 
+        "Legendary", 
+        "Mythic",
+        "Secret",
+        "Divine",
+        "Cosmic",
+        "Eternal",
+        "Prismatic",
+        "Transcendent"
+    },
+    Default = {"None"},
+    Multi = true,
+    Callback = function(val)
+        Config.SellEggRarities = handleDropdownChange(val, sellEggRarityDropdown)
+    end
+})
+
+-- ============================================================
+-- AUTO TRADE / GIFT SECTION (Di AutoTab)
+-- ============================================================
+local TradeSection = AutoTab:AddSection("Auto Trade / Gift")
+
+-- State untuk Auto Gift
+local AutoGiftEnabled = false
+local AutoAcceptGift = false
+local AutoGiftTarget = nil -- Nama player (string)
+local AutoGiftItemName = "" -- Nama item/telur (string)
+local AutoGiftRarity = nil
+
+-- Helper: Ambil rarity dari Tool via Assets Directory
+local function GetItemRarity(tool)
+    if not tool:IsA("Tool") then return "Unknown" end
+    local category = tool:GetAttribute("Category")
+    local ok, assetsDir = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Directory.Assets)
+    end)
+    if ok and assetsDir and assetsDir.Directory and assetsDir.Directory[category] and assetsDir.Directory[category].Rarity then
+        local rarityObj = assetsDir.Directory[category].Rarity
+        return rarityObj.DisplayName or rarityObj._id or rarityObj.Name or "Unknown"
+    end
+    return "Unknown"
+end
+
+-- Helper: Ambil nama item asli dari Tool via Assets Directory (Biar cocok sama Dropdown)
+local function GetItemName(tool)
+    if not tool:IsA("Tool") then return tool.Name end
+    local category = tool:GetAttribute("Category")
+    if not category then return tool.Name end
+    local ok, assetsDir = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Directory.Assets)
+    end)
+    if ok and assetsDir and assetsDir.Directory and assetsDir.Directory[category] then
+        local data = assetsDir.Directory[category]
+        return data.DisplayName or data._id or data.Name or category
+    end
+    return tool.Name
+end
+
+-- Dropdown: Target Player
+local giftPlayerDropdown
+giftPlayerDropdown = TradeSection:AddDropdown({
+    Title = "Target Player",
+    Content = "Choose which player receives the gift",
+    Options = {"None"},
+    Default = "None",
+    Multi = false,
+    Callback = function(val)
+        AutoGiftTarget = (type(val) == "table" and val[1]) or val
+    end
+})
+
+-- Helper: Update daftar player di dropdown
+local function UpdateGiftPlayerList()
+    local pList = {"None"}
+    for _, p in pairs(game:GetService("Players"):GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(pList, p.Name)
+        end
+    end
+    if giftPlayerDropdown and giftPlayerDropdown.SetValues then
+        pcall(function() giftPlayerDropdown:SetValues(pList, pList[1] or "None") end)
+    end
+end
+
+-- Listener otomatis kalau ada player join/leave
+game:GetService("Players").PlayerAdded:Connect(UpdateGiftPlayerList)
+game:GetService("Players").PlayerRemoving:Connect(UpdateGiftPlayerList)
+UpdateGiftPlayerList()
+
+-- Button: Manual Refresh
+TradeSection:AddButton({
+    Title = "Refresh Player List",
+    Content = "Update the list of players in this server",
+    Callback = function()
+        UpdateGiftPlayerList()
+        print("[AutoGift] Player list refreshed!")
+    end
+})
+
+-- Membangun daftar semua item dari Assets.Directory
+local allItemNames = {"None"}
+local itemAdded = {["None"] = true}
+pcall(function()
+    local ok, assetsDir = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Directory.Assets)
+    end)
+    if ok and assetsDir and assetsDir.Directory then
+        for category, data in pairs(assetsDir.Directory) do
+            if type(data) == "table" and data.Rarity then
+                local itemName = data.DisplayName or data._id or data.Name or category
+                if itemName and not itemAdded[itemName] then
+                    itemAdded[itemName] = true
+                    table.insert(allItemNames, itemName)
+                end
+            end
+        end
+    end
+end)
+table.sort(allItemNames, function(a, b)
+    if a == "None" then return true end
+    if b == "None" then return false end
+    return a < b
+end)
+
+-- Dropdown: Target Item Name
+local giftItemDropdown = TradeSection:AddDropdown({
+    Title = "Target Item Name",
+    Content = "Choose the item/egg name to gift",
+    Options = allItemNames,
+    Default = "None",
+    Multi = false,
+    Callback = function(val)
+        AutoGiftItemName = (type(val) == "table" and val[1]) or val
+        if AutoGiftItemName == "None" then AutoGiftItemName = "" end
+        print("[AutoGift] Target Item Name:", AutoGiftItemName == "" and "Any" or AutoGiftItemName)
+    end
+})
+
+-- Dropdown: Rarity yang mau di-gift
+TradeSection:AddDropdown({
+    Title = "Rarity to Gift",
+    Content = "Choose the egg rarity to send to the target",
+    Options = {"None", "All", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Cosmic", "Secret", "Eternal", "Divine", "Prismatic", "Transcendent"},
+    Default = "None",
+    Multi = false,
+    Callback = function(val)
+        AutoGiftRarity = (type(val) == "table" and val[1]) or val
+    end
+})
+
+-- Toggle: Auto Gift
+TradeSection:AddToggle({
+    Title = "Auto Gift",
+    Content = "Automatically sends eggs to the target player by rarity",
+    Default = false,
+    Callback = function(val)
+        AutoGiftEnabled = val
+        print("[AutoGift]", val and "ON - Kirim ke: " .. tostring(AutoGiftTarget) or "OFF")
+    end
+})
+
+-- Loop Auto Gift
+task.spawn(function()
+    while task.wait(0.3) do
+        if AutoGiftEnabled
+            and AutoGiftTarget and AutoGiftTarget ~= ""
+            and ((AutoGiftRarity and AutoGiftRarity ~= "None") or AutoGiftItemName ~= "")
+        then
+            local targetPlayer = game:GetService("Players"):FindFirstChild(AutoGiftTarget)
+            if targetPlayer then
+                local toolToGift = nil
+
+                local function isValidTool(tool)
+                    if not tool:IsA("Tool") then return false end
+                    
+                    local matchName = true
+                    if AutoGiftItemName ~= "" then
+                        local realName = GetItemName(tool)
+                        local safeRealName = string.gsub(string.lower(realName), "[^%w]", "")
+                        local safeTargetName = string.gsub(string.lower(AutoGiftItemName), "[^%w]", "")
+                        matchName = string.match(safeRealName, safeTargetName) ~= nil
+                    end
+                    
+                    local matchRarity = true
+                    if AutoGiftRarity and AutoGiftRarity ~= "None" and AutoGiftRarity ~= "All" then
+                        matchRarity = (GetItemRarity(tool) == AutoGiftRarity)
+                    end
+                    
+                    return matchName and matchRarity
+                end
+
+                local function findValidTool()
+                    if LocalPlayer:FindFirstChild("Backpack") then
+                        for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+                            if isValidTool(tool) then return tool end
+                        end
+                    end
+                    if LocalPlayer.Character then
+                        for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+                            if isValidTool(tool) then return tool end
+                        end
+                    end
+                    return nil
+                end
+
+                toolToGift = findValidTool()
+
+                if toolToGift then
+                    -- Equip item ke character
+                    pcall(function()
+                        if toolToGift.Parent ~= LocalPlayer.Character then
+                            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                            if humanoid then
+                                humanoid:EquipTool(toolToGift)
+                            else
+                                toolToGift.Parent = LocalPlayer.Character
+                            end
+                            task.wait(0.3)
+                        end
+                    end)
+
+                    -- Fire remote
+                    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Network")
+                        and game:GetService("ReplicatedStorage").Network:FindFirstChild("Gifting: Send Request")
+                    if remote and remote:IsA("RemoteFunction") then
+                        print("[AutoGift] Send Request ke:", targetPlayer.Name, "(", targetPlayer.UserId, ")")
+                        pcall(function() remote:InvokeServer(targetPlayer.UserId) end)
+
+                        -- Tunggu sampai item hilang dari inventory (max 15 detik)
+                        local waited = 0
+                        while waited < 15 do
+                            task.wait(0.5)
+                            waited = waited + 0.5
+                            -- Cek apakah item masih ada
+                            local stillHere = false
+                            if toolToGift and toolToGift.Parent then
+                                stillHere = true
+                            end
+                            if not stillHere then
+                                print("[AutoGift] Item diterima! Lanjut item berikutnya...")
+                                break
+                            end
+                            -- Kalau udah lama dan item masih ada, coba fire ulang
+                            if waited >= 5 and waited % 5 < 0.6 then
+                                print("[AutoGift] Retry send request...")
+                                pcall(function() remote:InvokeServer(targetPlayer.UserId) end)
+                            end
+                        end
+                        if waited >= 15 then
+                            print("[AutoGift] Timeout! Target mungkin nolak atau offline.")
+                        end
+                    end
+                end
+            else
+                print("[AutoGift] Player '" .. tostring(AutoGiftTarget) .. "' tidak ditemukan!")
+            end
+        end
+    end
+end)
+
+-- Toggle: Auto Accept Gift
+TradeSection:AddToggle({
+    Title = "Auto Accept Gift",
+    Content = "Automatically accepts all incoming gifts",
+    Default = false,
+    Callback = function(val)
+        AutoAcceptGift = val
+        print("[AutoAccept]", val and "ON" or "OFF")
+    end
+})
+
+-- Listener Auto Accept Gift
+task.spawn(function()
+    pcall(function()
+        local networkFolder = game:GetService("ReplicatedStorage"):WaitForChild("Network", 10)
+        if not networkFolder then return end
+        
+        local giftRequestEvent = networkFolder:WaitForChild("Gifting: Request", 10)
+        if not giftRequestEvent then return end
+
+        giftRequestEvent.OnClientEvent:Connect(function(senderName, senderId, message, uuid)
+            if AutoAcceptGift then
+                task.spawn(function()
+                    pcall(function()
+                        local responseRemote = networkFolder:FindFirstChild("Gifting: Response")
+                        if responseRemote and responseRemote:IsA("RemoteFunction") then
+                            responseRemote:InvokeServer(senderId, uuid, true)
+                            print("[AutoAccept] Gift dari", senderName, "diterima!")
+                        end
+                    end)
+                end)
+            end
+        end)
+    end)
+end)
+
+-- ============================================================
+-- WEBHOOK TAB
+-- ============================================================
+local WebhookTab = Tabs:AddTab({ Name = "Webhook", Icon = "rbxassetid://10734950309" })
+local WebhookSection = WebhookTab:AddSection("Webhook")
+
+WebhookSection:AddToggle({
+    Title = "Webhook Logs",
+    Content = "Sends a log to your Discord webhook each time an egg is claimed",
+    Default = false,
+    Callback = function(val)
+        Config.WebhookEnabled = val
+        if UI_LOADED then print("Webhook Logs:", val) end
+    end
+})
+
+WebhookSection:AddInput({
+    Title = "Webhook URL",
+    Content = "Paste your Discord webhook URL here",
+    Default = "",
+    Callback = function(val)
+        Config.WebhookURL = tostring(val or "")
+    end
+})
+
+-- HttpService:PostAsync itu native Roblox API, tapi Roblox BLOKIR itu dari LocalScript
+-- ("Http requests can only be executed by game server") -- beda sama game:HttpGet yang
+-- kepake buat load UI, itu fungsi override khusus bikinan executor. Buat POST kita butuh
+-- fungsi request/http_request/syn.request bawaan executor yang bypass batasan itu.
+local function httpPostJson(url, jsonBody)
+    local requestFn = (syn and syn.request) or request or http_request or (http and http.request) or (fluxus and fluxus.request)
+    if requestFn then
+        local response = requestFn({
+            Url = url,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = jsonBody
+        })
+        local statusCode = response and (response.StatusCode or response.status_code)
+        if statusCode and (statusCode < 200 or statusCode >= 300) then
+            warn("[Webhook] Discord balas status", statusCode, "-", response and (response.Body or response.body))
+        end
+        return
+    end
+
+    -- Fallback terakhir kalau executor gak punya request/http_request sama sekali
+    game:GetService("HttpService"):PostAsync(url, jsonBody, Enum.HttpContentType.ApplicationJson)
+end
+
+-- GET biasa lewat request/http_request juga -- ternyata game:HttpGet di executor ini
+-- nolak domain thumbnails.roblox.com (kena "not a valid member of DataModel"), padahal
+-- API-nya sendiri kalau dicoba langsung 100% jalan & balikin data valid.
+local function httpGetText(url)
+    local requestFn = (syn and syn.request) or request or http_request or (http and http.request) or (fluxus and fluxus.request)
+    if requestFn then
+        local response = requestFn({ Url = url, Method = "GET" })
+        return response and (response.Body or response.body)
+    end
+    return game:HttpGet(url)
+end
+
+-- AreaEggClaimFeedback gak bawa UID atau AssetScale sama sekali, jadi Kg-nya gak bisa
+-- diambil langsung dari payload. Trik-nya: simpen UID egg yang UDAH kita punya, terus pas
+-- claim feedback masuk, bandingin sama inventory sekarang -- UID yang BELUM ada di daftar
+-- lama tapi AssetCategory-nya cocok = egg yang baru aja diklaim. Dari situ baru kita hitung
+-- berat aslinya lewat EggItemUtil.GetWeightKg (fungsi resmi game, formula berdasarkan AssetScale).
+local knownEggUids = {}
+pcall(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+    local myEggs = EggCmds.GetOwnerRuntimeRecords(LocalPlayer.UserId)
+    if type(myEggs) == "table" then
+        for uid in pairs(myEggs) do knownEggUids[uid] = true end
+    end
+end)
+
+local function getClaimedEggWeightKg(feedback)
+    local ok, result = pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+        local EggItemUtil = require(ReplicatedStorage.Library.Util.EggItemUtil)
+
+        for attempt = 1, 10 do
+            local myEggs = EggCmds.GetOwnerRuntimeRecords(LocalPlayer.UserId)
+            if type(myEggs) == "table" then
+                for uid, record in pairs(myEggs) do
+                    if not knownEggUids[uid] and record.AssetCategory == feedback.AssetCategory then
+                        for uid2 in pairs(myEggs) do knownEggUids[uid2] = true end
+                        return EggItemUtil.GetWeightKg(record)
+                    end
+                end
+            end
+            task.wait(0.15) -- Inventory kadang telat beberapa frame buat update
+        end
+
+        return nil
+    end)
+    if ok then return result end
+    return nil
+end
+
+-- Avatar player buat dipasang di "author" embed (biar username-nya nongol jelas di paling
+-- atas card, bukan kecil-kecil di footer). Di-cache karena avatar-nya sama terus tiap claim.
+local cachedAvatarUrl = nil
+local function getLocalPlayerAvatarUrl()
+    if cachedAvatarUrl then return cachedAvatarUrl end
+    local ok, result = pcall(function()
+        local HttpService = game:GetService("HttpService")
+        local resp = httpGetText("https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" .. LocalPlayer.UserId .. "&size=150x150&format=Png&isCircular=false")
+        local decoded = HttpService:JSONDecode(resp)
+        local entry = decoded and decoded.data and decoded.data[1]
+        if entry and entry.state == "Completed" and entry.imageUrl then
+            return entry.imageUrl
+        end
+        return nil
+    end)
+    if ok and result then
+        cachedAvatarUrl = result
+    end
+    return cachedAvatarUrl
+end
+
+-- Kirim satu embed Discord tiap kali server ngasih feedback "berhasil claim egg" ke kita.
+-- Payload event-nya persis kayak yang ditemukan lewat Cobalt:
+-- Rarity, Position (Vector3), Color (Color3), AssetCategory (nama pet di dalam egg), DisplayName.
+local function sendEggClaimWebhook(feedback)
+    if not Config.WebhookEnabled then return end
+    if type(Config.WebhookURL) ~= "string" or Config.WebhookURL == "" then return end
+    if type(feedback) ~= "table" then return end
+
+    task.spawn(function()
+        local ok, err = pcall(function()
+            local HttpService = game:GetService("HttpService")
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local Assets = require(ReplicatedStorage.Directory.Assets)
+
+            local rarity = feedback.Rarity or "Unknown"
+            local assetCategory = feedback.AssetCategory
+            local displayName = feedback.DisplayName or (tostring(assetCategory or "Egg") .. " Egg")
+
+            -- Icon egg-nya ada di Assets.Directory[AssetCategory].Egg.Icon (rbxassetid://...)
+            local iconId = nil
+            local assetOk, assetData = pcall(function()
+                return assetCategory and Assets.Directory[assetCategory]
+            end)
+            if assetOk and assetData and assetData.Egg and assetData.Egg.Icon then
+                iconId = tostring(assetData.Egg.Icon):gsub("rbxassetid://", "")
+            end
+
+            print("[Webhook] assetCategory:", tostring(assetCategory), "| iconId:", tostring(iconId))
+
+            -- Resolve assetId -> URL CDN asli (rbxcdn.com) lewat Thumbnails API resmi Roblox.
+            -- Endpoint lama (roblox.com/asset-thumbnail/image) sudah dimatiin Roblox (404),
+            -- jadi jangan dipakai lagi sebagai fallback.
+            local thumbnailUrl = nil
+            if iconId then
+                local thumbOk, thumbResult = pcall(function()
+                    local resp = httpGetText("https://thumbnails.roblox.com/v1/assets?assetIds=" .. iconId .. "&size=420x420&format=Png&isCircular=false")
+                    print("[Webhook] Thumbnails API raw response:", resp)
+                    local decoded = HttpService:JSONDecode(resp)
+                    local entry = decoded and decoded.data and decoded.data[1]
+                    if entry and entry.state == "Completed" and entry.imageUrl then
+                        return entry.imageUrl
+                    end
+                    return nil
+                end)
+                print("[Webhook] Thumbnails API -> ok:", thumbOk, "result:", tostring(thumbResult))
+                if thumbOk and thumbResult then
+                    thumbnailUrl = thumbResult
+                end
+            end
+            print("[Webhook] Final thumbnailUrl:", tostring(thumbnailUrl))
+
+            local colorDecimal = 0
+            if typeof(feedback.Color) == "Color3" then
+                local c = feedback.Color
+                colorDecimal = math.floor(c.R * 255) * 65536 + math.floor(c.G * 255) * 256 + math.floor(c.B * 255)
+            end
+
+            local weightKg = getClaimedEggWeightKg(feedback)
+            local weightText = "Unknown"
+            if type(weightKg) == "number" then
+                weightText = string.format("%s Kg", tostring(math.floor(weightKg * 100 + 0.5) / 100))
+            end
+            print("[Webhook] weightKg:", tostring(weightKg))
+
+            local embed = {
+                author = { name = LocalPlayer.Name, icon_url = getLocalPlayerAvatarUrl() },
+                description = "### " .. tostring(displayName),
+                color = colorDecimal,
+                fields = {
+                    { name = "Rarity", value = tostring(rarity), inline = true },
+                    { name = "Pet Species", value = tostring(assetCategory or "Unknown"), inline = true },
+                    { name = "Weight", value = weightText, inline = true }
+                },
+                footer = { text = "Napoleon - Steal An Egg" },
+                timestamp = DateTime.now():ToIsoDate()
+            }
+            if thumbnailUrl then
+                embed.thumbnail = { url = thumbnailUrl }
+            end
+
+            local payload = {
+                username = "Napoleon - Steal An Egg",
+                embeds = { embed }
+            }
+
+            httpPostJson(Config.WebhookURL, HttpService:JSONEncode(payload))
+        end)
+        if not ok then
+            warn("[Webhook] Gagal kirim webhook:", err)
+        end
+    end)
+end
+
+pcall(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local EggCmds = require(ReplicatedStorage.Library.Client.EggCmds)
+    EggCmds.AreaEggClaimed:Connect(function(feedback)
+        sendEggClaimWebhook(feedback)
+    end)
+end)
+
+-- ============================================================
+-- MISC TAB & ANTI AFK
+-- ============================================================
+local MiscTab = Tabs:AddTab({ Name = "Misc", Icon = "rbxassetid://10734950309" })
+local PerformanceSection = MiscTab:AddSection("Performance")
+
+PerformanceSection:AddButton({
+    Title = "Boost FPS",
+    Content = "Flattens graphics to full gray, deletes other players' plots/treadmills, hides ALL pets (yours too), keeps eggs visible",
+    Callback = function()
+        ApplyFPSBoost()
+    end
+})
+
+local MiscSection = MiscTab:AddSection("Player Settings")
+
+
+
+MiscSection:AddToggle({
+    Title = "Anti AFK",
+    Content = "Prevents you from getting kicked for being idle (20 mins)",
+    Default = true,
+    Callback = function(val)
+        Config.AntiAFK = val
+        print("Anti AFK:", val)
+    end
+})
+
+MiscSection:AddToggle({
+    Title = "Anti Treadmill Mount",
+    Content = "Auto-unequips if you accidentally get mounted on your treadmill (e.g. Auto Place walking over it). Turn off if you want to use the treadmill yourself.",
+    Default = true,
+    Callback = function(val)
+        Config.AntiTreadmillMount = val
+        print("Anti Treadmill Mount:", val)
+    end
+})
+
+-- ============================================================
+-- EGG PREDICTOR -- adaptasi dari "Seed Predictor" di Gag2.lua (UI window + pola
+-- forward-scan-nya persis sama), tapi rumusnya BUKAN brute-force kayak Gag2 punya
+-- gear predictor -- di sini kita pakai fungsi seed yang KONFIRMASI ada di source
+-- game (AreaEggResetTimeUtil.GetSlotSeed), gak perlu nebak-nebak formula.
+--
+-- CATATAN PENTING (jangan dihapus): fungsi seed-nya ADA dan bahan-bahannya (DropTable,
+-- LotteryCustom) COCOK, tapi GetSlotSeed gak kepanggil di manapun di client dump --
+-- artinya kita gak punya bukti LANGSUNG server beneran makenya persis gini. Anggap
+-- prediksi ini "kemungkinan besar akurat", bukan pasti -- validasi sendiri dengan
+-- bandingin ke EggCmds.GetAreaEggSnapshot() beneran kalau mau yakin 100%.
+local function simulateSlotEgg(periodIndex, areaName, slotName, areasDir, assetsDir, lotteryFn, resetTimeUtil)
+    local areaConfig = areasDir[areaName]
+    if not areaConfig or not areaConfig.DropTable then return nil end
+
+    local seed = resetTimeUtil.GetSlotSeed(periodIndex, areaName, slotName)
+    local rng = Random.new(seed)
+    local petName = lotteryFn(rng, areaConfig.DropTable)
+    if not petName then return nil end
+
+    local assetData = assetsDir[petName]
+    local rarityObj = assetData and assetData.Rarity
+    local rarityId = (rarityObj and rarityObj._id) or (rarityObj and rarityObj.DisplayName) or "Common"
+    local rarityNumber = (rarityObj and rarityObj.RarityNumber) or 1
+
+    return {
+        petName = petName,
+        area = areaName,
+        slot = slotName,
+        rarity = rarityId,
+        rarityNumber = rarityNumber
+    }
+end
+
+local function formatPredictDuration(totalSeconds)
+    totalSeconds = math.max(0, math.floor(totalSeconds))
+    local days = math.floor(totalSeconds / 86400)
+    local hours = math.floor((totalSeconds % 86400) / 3600)
+    local mins = math.floor((totalSeconds % 3600) / 60)
+    if days > 0 then
+        return string.format("%dd %dh %dm", days, hours, mins)
+    elseif hours > 0 then
+        return string.format("%dh %dm", hours, mins)
+    else
+        return string.format("%dm %02ds", mins, totalSeconds % 60)
+    end
+end
+
+local EggPredictScreenGui = nil
+local EggPredictTextLabel = nil
+
+local function makeEggPredictWindow()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "NapoleonEggPredictUI"
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.ResetOnSpawn = false
+    -- CoreGui ditolak nulis property di executor/versi Roblox ini ("lacking capability
+    -- Plugin") walau proses parenting-nya sendiri gak langsung error -- baru ketauan pas
+    -- .Text di-update belakangan, bikin loop crash diam-diam. PlayerGui udah kebukti jalan
+    -- normal di UI utama script ini, jadi langsung situ aja, gak usah coba CoreGui lagi.
+    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 0)
+    frame.Position = UDim2.new(1, -320, 0.5, -130)
+    frame.AutomaticSize = Enum.AutomaticSize.Y
+    frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    frame.BackgroundTransparency = 0.1
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Parent = gui
+
+    local uiPadding = Instance.new("UIPadding")
+    uiPadding.PaddingBottom = UDim.new(0, 16)
+    uiPadding.Parent = frame
+
+    local UserInputService = game:GetService("UserInputService")
+    local dragging, dragInput, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then dragging = false end
+            end)
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 25)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 12, 15))
+    })
+    gradient.Rotation = 90
+    gradient.Parent = frame
+
+    local accentColor = Color3.fromRGB(81, 66, 255) -- samain sama warna UI utama Napoleon
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = accentColor
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.2
+    stroke.Parent = frame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+
+    local topBar = Instance.new("Frame")
+    topBar.Size = UDim2.new(1, 0, 0, 40)
+    topBar.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    topBar.BackgroundTransparency = 0.5
+    topBar.BorderSizePixel = 0
+    topBar.Parent = frame
+
+    local topCorner = Instance.new("UICorner")
+    topCorner.CornerRadius = UDim.new(0, 8)
+    topCorner.Parent = topBar
+
+    local hideBottomCorner = Instance.new("Frame")
+    hideBottomCorner.Size = UDim2.new(1, 0, 0, 10)
+    hideBottomCorner.Position = UDim2.new(0, 0, 1, -10)
+    hideBottomCorner.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    hideBottomCorner.BackgroundTransparency = 0.5
+    hideBottomCorner.BorderSizePixel = 0
+    hideBottomCorner.Parent = topBar
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 1, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "EGG PREDICTOR"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 13
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.Parent = topBar
+
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, 0, 0, 1)
+    line.Position = UDim2.new(0, 0, 1, 0)
+    line.BackgroundColor3 = accentColor
+    line.BorderSizePixel = 0
+    line.Parent = topBar
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, -24, 0, 0)
+    textLabel.Position = UDim2.new(0, 12, 0, 52)
+    textLabel.AutomaticSize = Enum.AutomaticSize.Y
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.Text = "Fetching..."
+    textLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    textLabel.Font = Enum.Font.GothamMedium
+    textLabel.TextSize = 12
+    textLabel.LineHeight = 1.15
+    textLabel.RichText = true
+    textLabel.Parent = frame
+
+    return gui, textLabel
+end
+
+local function toggleEggPredictUI(state)
+    if state then
+        if not EggPredictScreenGui then
+            EggPredictScreenGui, EggPredictTextLabel = makeEggPredictWindow()
+        end
+        EggPredictScreenGui.Enabled = true
+    else
+        if EggPredictScreenGui then EggPredictScreenGui.Enabled = false end
+    end
+end
+
+local eggPredictActive = false
+local function startEggPredictLoop()
+    if eggPredictActive then return end
+    eggPredictActive = true
+    task.spawn(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Workspace = game:GetService("Workspace")
+        local AreaEggResetTimeUtil = require(ReplicatedStorage.Library.Util.AreaEggResetTimeUtil)
+        local PredictAreas = require(ReplicatedStorage.Directory.Areas).Directory
+        local PredictAssets = require(ReplicatedStorage.Directory.Assets).Directory
+        local PredictLotteryCustom = require(ReplicatedStorage.Library.Functions.LotteryCustom)
+
+        local PREDICT_AREAS = {
+            "Forest", "Lake", "Desert", "Jungle", "Snow", "Volcano", "Abyss Ocean", "Prehistoric", "Cosmic"
+        }
+        -- Jumlah slot per area ini ASUMSI (5), gak ada di script manapun -- jumlah nest
+        -- ASLI ditentuin dari model fisik di Workspace tiap area, gak bisa diverifikasi
+        -- dari script dump doang. Kalau ada area yang nest-nya != 5, slot itu ke-skip.
+        local PREDICT_SLOTS = { "Slot_001", "Slot_002", "Slot_003", "Slot_004", "Slot_005" }
+        local MAX_PREDICT_PERIODS_AHEAD = 2016 -- 2016 x 300 detik = 7 hari ke depan
+
+        local function simulatePeriodEggs(periodIndex)
+            local eggs = {}
+            for _, areaName in ipairs(PREDICT_AREAS) do
+                for _, slotName in ipairs(PREDICT_SLOTS) do
+                    local egg = simulateSlotEgg(periodIndex, areaName, slotName, PredictAreas, PredictAssets, PredictLotteryCustom, AreaEggResetTimeUtil)
+                    if egg then table.insert(eggs, egg) end
+                end
+            end
+            return eggs
+        end
+
+        -- Scan maju period demi period nyari kemunculan PERTAMA rarity target, di area/
+        -- slot manapun. Di-yield tiap 50 period biar gak nge-freeze game pas scan jauh.
+        local function findNextRarityAppearance(rarityId, startPeriod)
+            for i = 1, MAX_PREDICT_PERIODS_AHEAD do
+                if i % 50 == 0 then task.wait() end
+                local period = startPeriod + i
+                for _, areaName in ipairs(PREDICT_AREAS) do
+                    for _, slotName in ipairs(PREDICT_SLOTS) do
+                        local egg = simulateSlotEgg(period, areaName, slotName, PredictAreas, PredictAssets, PredictLotteryCustom, AreaEggResetTimeUtil)
+                        if egg and egg.rarity == rarityId then
+                            return {
+                                periodsAhead = i,
+                                periodIndex = period,
+                                releaseAt = AreaEggResetTimeUtil.GetPeriodStartsAt(period),
+                                area = areaName,
+                                slot = slotName,
+                                petName = egg.petName
+                            }
+                        end
+                    end
+                end
+            end
+            return nil
+        end
+
+        local cachedPeriod = -1
+        local cachedTargetRarity = nil
+        local cachedNightPreviewStr = ""
+        -- Data MENTAH hasil scan (petName/area/releaseAt), BUKAN teks "dlm X" yang udah
+        -- jadi -- soalnya kalau teksnya di-cache duluan, ETA-nya kebekukan sampai period
+        -- berikutnya (5 menit) dan gak keliatan ngitung turun tiap detik kayak yang
+        -- dilaporkan. false = "None" dipilih, nil = udah discan tapi gak ketemu.
+        local cachedTargetFound = false
+
+        while Config.EggPredictUI do
+            -- Dibungkus pcall -- sebelumnya satu error di tengah loop (misal nulis
+            -- property ke Instance yang ternyata kena batasan capability) bikin SELURUH
+            -- coroutine mati diam-diam, macet permanen di teks "Fetching..." tanpa ada
+            -- tanda apa pun kenapa. Sekarang errornya ke-log dan loop tetep lanjut coba lagi.
+            local tickOk, tickErr = pcall(function()
+            local now = Workspace:GetServerTimeNow()
+            local currentPeriod = AreaEggResetTimeUtil.GetPeriodIndex(now)
+            local nextResetAt = AreaEggResetTimeUtil.GetNextResetAt(now)
+            local timeUntilReset = math.max(0, nextResetAt - now)
+
+            if currentPeriod ~= cachedPeriod or Config.EggPredictTargetRarity ~= cachedTargetRarity then
+                cachedPeriod = currentPeriod
+                cachedTargetRarity = Config.EggPredictTargetRarity
+
+                -- Reset berikutnya ("next night"): filter RarityNumber 7 (Cosmic) s/d 10
+                -- (Divine/Superior) -- range murni angka, jadi ANGGOTA ganda kayak Exotic
+                -- (sama-sama 8 kayak Secret) atau Limited (sama-sama 9 kayak Eternal) ikut
+                -- kebawa, itu memang sesuai permintaan "range Cosmic sampai Divine".
+                local nextEggs = simulatePeriodEggs(currentPeriod + 1)
+                local rareEggs = {}
+                for _, egg in ipairs(nextEggs) do
+                    if egg.rarityNumber >= 7 and egg.rarityNumber <= 10 then
+                        table.insert(rareEggs, egg)
+                    end
+                end
+                table.sort(rareEggs, function(a, b) return a.rarityNumber > b.rarityNumber end)
+
+                if #rareEggs == 0 then
+                    cachedNightPreviewStr = "<font color='rgb(120,120,120)'><i>Gak ada egg Cosmic~Divine di reset berikutnya.</i></font>"
+                else
+                    local lines = {}
+                    for _, egg in ipairs(rareEggs) do
+                        table.insert(lines, string.format(
+                            "<font color='rgb(160,148,255)'>\226\128\162 [%s] %s</font> <font color='rgb(150,150,150)'>- %s</font>",
+                            egg.rarity, egg.petName, egg.area
+                        ))
+                    end
+                    cachedNightPreviewStr = table.concat(lines, "\n")
+                end
+
+                -- Target tracker: match nama rarity PERSIS (bukan RarityNumber >= X --
+                -- itu bug lama, Exotic/Limited numpang lolos gara-gara angkanya ketuker
+                -- sama Secret/Eternal), jadi hasilnya gak bisa salah pilih rarity. Slot
+                -- gak ditampilin -- cuma bikin panjang, gak kepake user. Cuma scan-nya
+                -- (mahal) yang di-cache di sini -- teks ETA-nya dibangun ulang di bawah.
+                if cachedTargetRarity and cachedTargetRarity ~= "None" then
+                    cachedTargetFound = findNextRarityAppearance(cachedTargetRarity, currentPeriod)
+                else
+                    cachedTargetFound = false
+                end
+            end
+
+            -- Teks Target Tracker dibangun ULANG tiap tick (bukan di dalem blok cache
+            -- di atas), pakai `now` yang fresh -- ini yang bikin "dlm X" beneran ngitung
+            -- turun tiap detik, bukan kebekukan sampai period berikutnya.
+            local targetStr
+            if not cachedTargetRarity or cachedTargetRarity == "None" then
+                targetStr = "<font color='rgb(150,150,150)'><i>Pilih rarity dulu di dropdown.</i></font>"
+            elseif cachedTargetFound then
+                local eta = math.max(0, cachedTargetFound.releaseAt - now)
+                targetStr = string.format(
+                    "<font color='rgb(0,255,150)'><b>%s</b></font>\n<font color='rgb(220,220,220)'>%s di %s, dlm %s</font>",
+                    cachedTargetRarity, cachedTargetFound.petName, cachedTargetFound.area, formatPredictDuration(eta)
+                )
+            else
+                targetStr = string.format(
+                    "<font color='rgb(255,255,255)'><b>%s</b></font>\n<font color='rgb(150,150,150)'><i>Gak ketemu dalam 7 hari ke depan.</i></font>",
+                    cachedTargetRarity
+                )
+            end
+
+            if EggPredictTextLabel then
+                local displayStr = string.format(
+                    "<font color='rgb(160,148,255)'><b>NEXT RESET IN %s</b></font>\n\n",
+                    formatPredictDuration(timeUntilReset)
+                )
+                displayStr = displayStr .. "<font color='rgb(160,148,255)'><b>\240\159\140\153 NEXT RESET - RARE EGGS:</b></font>\n"
+                displayStr = displayStr .. cachedNightPreviewStr .. "\n\n"
+                displayStr = displayStr .. "<font color='rgb(160,148,255)'><b>\240\159\142\175 TARGET TRACKER:</b></font>\n"
+                displayStr = displayStr .. targetStr
+                EggPredictTextLabel.Text = displayStr
+            end
+            end)
+
+            if not tickOk then
+                warn("[EggPredictor] Error di tick loop:", tickErr)
+                if EggPredictTextLabel then
+                    EggPredictTextLabel.Text = "<font color='rgb(255,80,80)'>Error: " .. tostring(tickErr) .. "</font>"
+                end
+            end
+
+            task.wait(1)
+        end
+        eggPredictActive = false
+        toggleEggPredictUI(false)
+    end)
+end
+
+local EggPredictSection = MiscTab:AddSection("Egg Predictor")
+
+EggPredictSection:AddToggle({
+    Title = "Show Egg Predictor",
+    Content = "Estimasi egg langka reset berikutnya + kapan rarity pilihan bakal muncul. BELUM terbukti 100% akurat, cross-check ke egg beneran dulu sebelum dipercaya penuh.",
+    Default = false,
+    Callback = function(val)
+        Config.EggPredictUI = val
+        if val and UI_LOADED then
+            toggleEggPredictUI(true)
+            startEggPredictLoop()
+        elseif not val then
+            toggleEggPredictUI(false)
+        end
+    end
+})
+
+local eggTargetRarityDropdown
+eggTargetRarityDropdown = EggPredictSection:AddDropdown({
+    Title = "Track Rarity",
+    Content = "Rarity yang mau dilacak -- muncul berapa jam/hari lagi, di area & slot mana",
+    Options = {
+        "None",
+        "Cosmic",
+        "Exotic",
+        "Secret",
+        "Eternal",
+        "Limited",
+        "Divine",
+        "Superior",
+        "Prismatic",
+        "Transcendent"
+    },
+    Default = "Secret",
+    Multi = false,
+    Callback = function(val)
+        Config.EggPredictTargetRarity = val
+    end
+})
+
+-- Anti AFK Logic -- TANPA VirtualUser / VirtualInputManager sama sekali.
+-- ==========================================================================
+-- KONFIRMASI LANGSUNG dari testing: VirtualUser di game INI ke-detect anti-cheat
+-- (nyebabin ke-reconnect/kick) -- ternyata bukan aman kayak dugaan awal (VirtualUser
+-- itu emang API resmi Roblox buat AFK-prevention, tapi anti-cheat spesifik game ini
+-- kayaknya tetep ngawasin pemanggilan Virtual* apa pun). Makanya SEKARANG DAN
+-- SETERUSNYA: jangan pakai VirtualUser atau VirtualInputManager lagi buat Anti AFK.
+--
+-- ROOT CAUSE DIKONFIRMASI dari source asli game (StarterPlayer/AntiAFK.client.lua):
+--     LocalPlayer.Idled:Connect(function(idleSeconds)
+--         if idleSeconds > 1080 and not Constants.IS_STUDIO then
+--             Network.Invoke(REQUEST_AFK_TELEPORT_FLUSH)
+--             TeleportService:Teleport(game.PlaceId, LocalPlayer)  -- INI biang "rejoin-rejoin"-nya
+--         end
+--     end)
+-- `Player.Idled` itu signal NATIVE Roblox, dipicu MURNI dari UserInputService (mouse/
+-- keyboard/touch/gamepad asli) -- gak ada hubungannya sama sekali sama gerakan
+-- karakter/CFrame/Humanoid:MoveTo(). Ini kenapa lapis "gerakin karakter dikit-dikit"
+-- di bawah TERBUKTI gak akan pernah bisa nyegah timer ini jalan, walau dari luar
+-- kelihatan masuk akal -- root cause-nya emang beda kategori total.
+--
+-- LAPIS 0 (BARU, PALING KUAT, root-cause fix): daripada coba matiin koneksi Idled
+-- (rapuh -- getconnections/Disable() pada signal NATIVE kayak gini sering gak
+-- beneran ngefek di banyak executor, beda sama custom Lua Signal), kita HOOK
+-- LANGSUNG fungsi TeleportService.Teleport dan blokir spesifik panggilan yang
+-- placeId-nya SAMA dengan PlaceId sekarang + player-nya LocalPlayer (persis pola
+-- soft-kick di atas). Apa pun jalur yang micu-nya (Idled, atau kalau ternyata ada
+-- mekanisme lain juga manggil TeleportService.Teleport dengan pola sama), teleport-
+-- nya dicegat di TITIK PALING AKHIR sebelum benar-benar kejadian -- gak gantung ke
+-- apakah kita berhasil nyegah si TRIGGER-nya duluan atau enggak.
+--
+-- Sisanya tetap dipertahankan sebagai lapis cadangan (jaga-jaga kalau executor gak
+-- dukung hookfunction):
+--
+-- LAPIS 1 (diadaptasi dari SlimeRNG.lua "Method 1"): getconnections/get_signal_cons
+-- buat matiin koneksi Idled bawaan game. Sekarang cuma backup -- Lapis 0 udah cukup
+-- buat nyegah efek akhirnya (teleport) sekalipun Lapis 1 ini gagal diam-diam.
+--
+-- LAPIS 2: laporin status "aktif" ke server lewat remote YANG SAMA yang dipanggil
+-- game sendiri pas ada input asli (Analytics.REPORT_AFK_STATE) -- remote call biasa,
+-- bukan simulasi input.
+--
+-- LAPIS 3: kalau semua di atas gagal dan beneran ke-teleport, queue_on_teleport
+-- (queueSelfForTeleport, dibantu selfInstallAutoExec + fallback baca autoexec)
+-- mastiin script ini auto-lanjut sendiri di server baru.
+-- Semua kejadian di sini dicatat ke Napoleon_AntiAFK_Log.txt (bukan cuma print/warn ke
+-- console) -- soalnya kalau ini kejadian PAS lagi AFK/gak di depan layar (ya itu emang
+-- inti masalahnya), gak bakal ada yang lihat console live. Cek file log-nya abis balik
+-- buat tau PERSIS apa yang kejadian: hook aktif atau enggak, ke-blokir atau lolos.
+local function hookAntiAfkTeleport()
+    local ok, err = pcall(function()
+        if typeof(hookfunction) ~= "function" then
+            warn("[AntiAFK] Executor gak punya hookfunction, skip Lapis 0 (masih ada Lapis 1/2/3).")
+            logSelfTeleportAttempt("Lapis 0 SKIP: executor gak punya hookfunction.")
+            return
+        end
+
+        local TeleportService = game:GetService("TeleportService")
+        local currentPlaceId = game.PlaceId
+        local originalTeleport
+
+        local function safeTeleport(self, placeId, player, ...)
+            if self == TeleportService and placeId == currentPlaceId and player == LocalPlayer then
+                warn("[AntiAFK] Lapis 0: blokir TeleportService:Teleport ke PlaceId yang sama (soft-kick AFK bawaan game) -- gak jadi rejoin.")
+                logSelfTeleportAttempt("Lapis 0 BLOKIR: TeleportService:Teleport(" .. tostring(placeId) .. ", LocalPlayer) dicegat, gak jadi rejoin.")
+                return
+            end
+
+            -- Teleport LAIN yang LOLOS (placeId beda / bukan LocalPlayer) -- kemungkinan
+            -- besar teleport LEGIT (bukan soft-kick AFK), tapi dicatat juga jaga-jaga kalau
+            -- ternyata INI yang jadi penyebab "masih ke-rejoin" (pola beda dari yang dikira).
+            logSelfTeleportAttempt("Lapis 0 LOLOS (bukan pola soft-kick): TeleportService:Teleport(" .. tostring(placeId) .. ", " .. tostring(player) .. ") dibiarkan jalan.")
+            return originalTeleport(self, placeId, player, ...)
+        end
+
+        originalTeleport = hookfunction(TeleportService.Teleport, safeTeleport)
+        print("[AntiAFK] Lapis 0: TeleportService.Teleport berhasil di-hook, soft-kick AFK bakal diblokir langsung di sumbernya.")
+        logSelfTeleportAttempt("Lapis 0 AKTIF: TeleportService.Teleport berhasil di-hook.")
+    end)
+    if not ok then
+        warn("[AntiAFK] Lapis 0 gagal:", err)
+        logSelfTeleportAttempt("Lapis 0 GAGAL total: " .. tostring(err))
+    end
+end
+task.spawn(hookAntiAfkTeleport)
+
+-- LAPIS -1 (tambahan, di luar dugaan awal): ternyata BUKAN cuma AntiAFK.client.lua yang
+-- bisa nyebabin "reconnect". Ketemu jalur LAIN yang beda total di ReplicatedStorage/Library/
+-- Client/Save.lua -- kalau fetch data save si LOCAL PLAYER balik dengan tipe yang gak sesuai
+-- (result bukan table), langsung dipanggil:
+--     LocalPlayer:Kick("Something went wrong fetching save. Please rejoin!")
+-- Ini kick LANGSUNG (bukan teleport), jadi Lapis 0 di atas (yang nyegat TeleportService.
+-- Teleport) SAMA SEKALI GAK NGARUH ke jalur ini -- beda fungsi yang dipanggil. Kemungkinan
+-- ini yang sebenarnya kejadian selama ini (bukan soal AFK/Idled sama sekali), apalagi bot
+-- kita ngirim request server jauh lebih rapat/sering daripada player normal (Auto Steal/
+-- Auto Place nonstop), yang bisa aja bikin response "Get Stats" dari server jadi gak normal.
+--
+-- Sama kayak Lapis 0: HOOK langsung Player.Kick, blokir kalau target-nya LocalPlayer --
+-- gak peduli dipanggil dari mana/alasan apa, dan dicatat ke log (termasuk PESAN kick-nya)
+-- biar ketauan penyebab aslinya kalau ini yang selama ini bikin "reconnect".
+local function hookLocalPlayerKick()
+    local ok, err = pcall(function()
+        if typeof(hookfunction) ~= "function" then
+            warn("[AntiAFK] Executor gak punya hookfunction, skip hook Player:Kick.")
+            logSelfTeleportAttempt("Hook Kick SKIP: executor gak punya hookfunction.")
+            return
+        end
+
+        local originalKick
+
+        local function safeKick(self, message, ...)
+            if self == LocalPlayer then
+                warn("[AntiAFK] Blokir LocalPlayer:Kick(\"" .. tostring(message) .. "\") -- gak jadi ke-disconnect.")
+                logSelfTeleportAttempt("Hook Kick BLOKIR: pesan = \"" .. tostring(message) .. "\"")
+                return
+            end
+            return originalKick(self, message, ...)
+        end
+
+        originalKick = hookfunction(LocalPlayer.Kick, safeKick)
+        print("[AntiAFK] LocalPlayer.Kick berhasil di-hook -- semua percobaan kick ke diri sendiri bakal diblokir & dicatat ke log.")
+        logSelfTeleportAttempt("Hook Kick AKTIF.")
+    end)
+    if not ok then
+        warn("[AntiAFK] Hook Kick gagal:", err)
+        logSelfTeleportAttempt("Hook Kick GAGAL total: " .. tostring(err))
+    end
+end
+task.spawn(hookLocalPlayerKick)
+
+local function tryDisableGameIdledConnections()
+    local ok, err = pcall(function()
+        local getconns = getconnections or get_signal_cons
+        if not getconns then
+            warn("[AntiAFK] Executor gak punya getconnections/get_signal_cons, skip Lapis 1 (masih ada Lapis 2 & 3).")
+            return
+        end
+
+        local disabledCount = 0
+        for _, conn in pairs(getconns(LocalPlayer.Idled)) do
+            pcall(function()
+                if type(conn) == "table" and conn.Disable then
+                    conn:Disable()
+                    disabledCount = disabledCount + 1
+                elseif type(conn) == "table" and conn.Disconnect then
+                    conn:Disconnect()
+                    disabledCount = disabledCount + 1
+                end
+            end)
+        end
+        print("[AntiAFK] Lapis 1: " .. disabledCount .. " koneksi Idled bawaan game berhasil dimatiin.")
+    end)
+    if not ok then
+        warn("[AntiAFK] Lapis 1 gagal:", err)
+    end
+end
+task.spawn(tryDisableGameIdledConnections)
+
+local afkQueuedForRejoin = false
+local lastAfkReportAt = 0
+
+LocalPlayer.Idled:Connect(function(idleSeconds)
+    if not Config.AntiAFK then
+        afkQueuedForRejoin = false
+        return
+    end
+
+    -- Laporin "aktif" ke server, di-throttle biar gak spam remote tiap Idled numpuk
+    if os.clock() - lastAfkReportAt > 15 then
+        lastAfkReportAt = os.clock()
+        pcall(function()
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local Network = require(ReplicatedStorage.Library.Client.Network)
+            local Analytics = require(ReplicatedStorage.Library.Globals.Constants).NETWORK_MAP.Analytics
+            Network.Fire(Analytics.REPORT_AFK_STATE, false)
+        end)
+    end
+
+    -- Sekali per periode idle: titipkan script ini ke queue_on_teleport, jaga-jaga
+    -- kalau nanti beneran ke-rejoin otomatis abis 18 menit -- biar lanjut sendiri.
+    if not afkQueuedForRejoin then
+        afkQueuedForRejoin = true
+        queueSelfForTeleport()
+        print("[AntiAFK] Idle " .. tostring(idleSeconds) .. "s -- udah dititipkan buat auto-lanjut kalau nanti ke-rejoin.")
+    end
+end)
+
+-- Begitu ada input FISIK asli lagi, reset flag-nya biar periode idle berikutnya
+-- dititipkan ulang (bukan simulasi -- ini cuma DENGERIN, bukan ngirim input).
+game:GetService("UserInputService").InputBegan:Connect(function()
+    afkQueuedForRejoin = false
+end)
+
+-- LAPIS TAMBAHAN (saran temen user): gerakin karakter DIKIT-DIKIT terus-menerus
+-- pakai Humanoid:MoveTo() biasa -- jalan beneran (trigger animasi Walk asli, bukan
+-- CFrame teleport-tween), BUKAN simulasi input, jadi beda kategori total dari
+-- VirtualUser/VirtualInputManager. Jaga-jaga kalau ternyata ada mekanisme AFK/
+-- inactivity-detection LAIN (server-side atau di luar Idled bawaan Roblox) yang
+-- berdasarkan pergerakan/perubahan posisi karakter, bukan cuma input device mentah.
+-- Di-skip kalau Auto Steal lagi megang kendali posisi sendiri (Config.IsStealing),
+-- biar gak tabrakan/gangguin tween yang lagi jalan.
+task.spawn(function()
+    while true do
+        task.wait(20)
+        pcall(function()
+            if not Config.AntiAFK then return end
+            if Config.IsStealing then return end
+
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not hrp or not hum then return end
+
+            -- Dikit BANGET (nilai pecahan, bukan math.random integer) -- cukup buat
+            -- geser posisi dikit, gak sampe keliatan karakternya jalan jauh.
+            local offsetX = (math.random() - 0.5) * 0.4 -- kira-kira -0.2 s/d 0.2 stud
+            local offsetZ = (math.random() - 0.5) * 0.4
+            hum:MoveTo(hrp.Position + Vector3.new(offsetX, 0, offsetZ))
+        end)
+    end
+end)
+
+-- ============================================================
+-- SEMUA ELEMENT SELESAI DIBUAT (& DI-RESTORE OTOMATIS OLEH LIBRARY-NYA SENDIRI)
+-- ============================================================
+-- Setiap AddToggle/AddDropdown di atas otomatis restore state terakhir dari
+-- Napoleon/Config/Napoleon_<gameId>.json lalu langsung nembak Callback-nya saat
+-- dibuat (lihat NPLN-UIv4.lua). Karena semua Callback loop-starter di atas kita
+-- gate pakai `UI_LOADED`, gak ada loop yang kepancing jalan sebelum semua filter
+-- (dropdown yang didefinisikan belakangan) ikut ke-restore. Sekarang, setelah
+-- SEMUA element (termasuk yang paling bawah) selesai dibuat & di-restore, baru
+-- kita nyalain gate-nya dan kick-off manual loop mana aja yang Config-nya
+-- ternyata udah true dari hasil restore tadi.
+UI_LOADED = true
+
+if Config.AutoSteal then
+    print("[UI_LOADED] Lanjutin Auto Steal -> Area:", table.concat(Config.StealAreas, ", "), "| Rarity:", table.concat(Config.StealRarities, ", "))
+    task.spawn(AutoStealLoop)
+end
+
+if Config.AutoPlace then
+    print("[UI_LOADED] Lanjutin Auto Place -> Rarity:", table.concat(Config.PlaceRarities, ", "))
+    task.spawn(AutoPlaceLoop)
+end
+
+if Config.AutoSell or Config.SellAll then
+    print("[UI_LOADED] Lanjutin Auto Sell Pet")
+    startAutoSellLoop()
+end
+
+if Config.AutoSellEgg then
+    print("[UI_LOADED] Lanjutin Auto Sell Egg -> Rarity:", table.concat(Config.SellEggRarities, ", "))
+    startAutoSellEggLoop()
+end
+
+if Config.EggPredictUI then
+    print("[UI_LOADED] Lanjutin Egg Predictor -> Track:", tostring(Config.EggPredictTargetRarity))
+    toggleEggPredictUI(true)
+    startEggPredictLoop()
+end
+
+print("UI Steal An Egg loaded successfully!")

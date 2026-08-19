@@ -1,0 +1,19 @@
+-- Decompiled with Potassium's decompiler.
+
+return table.freeze({
+    GEAR_NAME = "Wind Staff",
+    COOLDOWN = 600,
+    TORNADO_SAFETY_DELAY = 5,
+    ANIM_ID = "rbxassetid://106056373730791",
+    ANIM_NUMERIC_ID = "106056373730791",
+    STRIKE_MARKER = "Strike",
+    STRIKE_FALLBACK = 1.5,
+    STAFF_REMOVE_DELAY = 0.2,
+    MAX_CAST_LIFETIME = 12,
+    ORBIT_RADIUS = 150,
+    ORBIT_VERTICAL = 20,
+    ORBIT_ANGULAR_SPEED = 1.5707963267948966,
+    ORBIT_VERTICAL_SPEED = 1.5,
+    ORBIT_MAX_FORCE = 1000000,
+    ORBIT_RESPONSIVENESS = 40
+});

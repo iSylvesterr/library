@@ -1,0 +1,42 @@
+-- Decompiled with Potassium's decompiler.
+
+return {
+    SFX = {
+        Music = "rbxassetid://99492847313085",
+        Notification = "rbxassetid://123429276638524",
+        Click = "rbxassetid://1673280232",
+        Hover = "rbxassetid://139619888558400",
+        Tick = "rbxassetid://9055474333",
+        ["Robux Prompt"] = "rbxassetid://126352078594502",
+        ["Robux Purchase"] = "rbxassetid://96121546453185",
+        Error = "rbxassetid://88383711780506",
+        Pop = "rbxassetid://77120543307812",
+        ["Purchase Success"] = "rbxassetid://123658578911886",
+        ["Global Message"] = "rbxassetid://118053569713526",
+        RevealFinish = "rbxassetid://10128760939",
+        RevealLift = "rbxassetid://10128766965",
+        RevealPop = "rbxassetid://72264591133889",
+        RevealDiscovered = "rbxassetid://112485797063762",
+        RevealDing = "rbxassetid://116995696565929",
+        RevealMint = "rbxassetid://135165335432475",
+        RevealLandLow = "rbxassetid://10066947742",
+        RevealLandMid = "rbxassetid://99980076888596",
+        RevealLandHigh = "rbxassetid://7381724959",
+        ShovelImpact1 = "rbxassetid://9117738766",
+        ShovelImpact2 = "rbxassetid://9117739153",
+        ShovelImpact3 = "rbxassetid://9117739443",
+        DirtThrow1 = "rbxassetid://9114083260",
+        DirtThrow2 = "rbxassetid://9114116788",
+        DirtThrow3 = "rbxassetid://9114116826",
+        ["Money Collect"] = "rbxassetid://70874825398839",
+        BeamGreen = "rbxassetid://77514335942212",
+        BeamBlue = "rbxassetid://80928313251291",
+        BeamPurple = "rbxassetid://86955413331354",
+        BeamGold = "rbxassetid://98845784587308",
+        BeamMythic = "rbxassetid://98845784587308",
+        BeamDivine = "rbxassetid://108030423619179",
+        BeamEternal = "rbxassetid://108030423619179",
+        BeamTranscendent = "rbxassetid://108030423619179",
+        DetectorBeep = "rbxassetid://71662048028121"
+    }
+};

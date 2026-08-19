@@ -671,8 +671,8 @@ function Napoleon:Window(GuiConfig)
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
     local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = GuiConfig.Color
-    MainStroke.Transparency = 0.5
+    MainStroke.Color = Color3.fromRGB(120, 120, 120) -- Outline abu-abu terang
+    MainStroke.Transparency = 0
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
@@ -3622,7 +3622,7 @@ function Napoleon:Window(GuiConfig)
         end
 
         -- Update border stroke & DecideFrame
-        TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
+        -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
 
         -- Update window background (Color2)
