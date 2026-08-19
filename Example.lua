@@ -20,7 +20,7 @@ local MainTab = Window:AddTab({
 })
 
 -- Membuat Section (AlwaysOpen = true)
-local ExampleSection = MainTab:AddSection("Example Features", true)
+local ExampleSection = MainTab:AddSection("Example Features")
 
 ExampleSection:AddParagraph({
     Title = "Welcome!",

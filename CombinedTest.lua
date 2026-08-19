@@ -357,7 +357,7 @@ function Napoleon:MakeNotify(NotifyConfig)
     NotifyConfig.Description = NotifyConfig.Description or "Notification"
     NotifyConfig.Content = NotifyConfig.Content or "Content"
     NotifyConfig.Icon = NotifyConfig.Icon or "108203634075572"
-    NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(81, 66, 255)
+    NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(150, 150, 150)
     NotifyConfig.Time = NotifyConfig.Time or 0.5
     NotifyConfig.Delay = NotifyConfig.Delay or 5
     local NotifyFunction = {}
@@ -569,7 +569,7 @@ function notif(msg, delay, color, title, desc)
         Title = title or "Napoleon",
         Description = desc or "Notification",
         Content = msg or "Content",
-        Color = color or Color3.fromRGB(81, 66, 255),
+        Color = color or Color3.fromRGB(150, 150, 150),
         Delay = delay or 4
     })
 end
@@ -578,7 +578,7 @@ function Napoleon:Window(GuiConfig)
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "Napoleon"
     GuiConfig.Footer       = GuiConfig.Footer or "Napoleon >:D"
-    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(81, 66, 255)
+    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(150, 150, 150)
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
 
@@ -636,7 +636,7 @@ function Napoleon:Window(GuiConfig)
     DropShadowHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
     DropShadow.Image = "rbxassetid://6015897843"
     DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    DropShadow.ImageTransparency = 1
+    DropShadow.ImageTransparency = 0.6
     DropShadow.ScaleType = Enum.ScaleType.Slice
     DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
     DropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -668,12 +668,21 @@ function Napoleon:Window(GuiConfig)
     Main.Name = "Main"
     Main.Parent = DropShadow
 
+    local MainGradient = Instance.new("UIGradient")
+    MainGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 80))
+    }
+    MainGradient.Rotation = 90
+    MainGradient.Parent = Main
+
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
     local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = GuiConfig.Color
-    MainStroke.Transparency = 0.5
+    MainStroke.Color = Color3.fromRGB(115, 115, 115) -- Outline abu-abu agak terang
+    MainStroke.Transparency = 0
+    MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
@@ -792,37 +801,6 @@ function Napoleon:Window(GuiConfig)
     ExecutorTextLabel.AutomaticSize = Enum.AutomaticSize.X
     ExecutorTextLabel.Parent = Executor
 
-    local ServiceProvider = Instance.new("Frame")
-    ServiceProvider.Name = "ServiceProvider"
-    ServiceProvider.LayoutOrder = 3
-    ServiceProvider.Size = UDim2.new(0, 0, 0.6, 0)
-    ServiceProvider.BackgroundColor3 = GuiConfig.Color
-    ServiceProvider.BackgroundTransparency = 0
-    ServiceProvider.BorderSizePixel = 0
-    ServiceProvider.AutomaticSize = Enum.AutomaticSize.X
-    ServiceProvider.Parent = RightContainer
-
-    local SPPadding = Instance.new("UIPadding")
-    SPPadding.PaddingLeft = UDim.new(0, 10)
-    SPPadding.PaddingRight = UDim.new(0, 10)
-    SPPadding.Parent = ServiceProvider
-
-    local SPUICorner = Instance.new("UICorner")
-    SPUICorner.CornerRadius = UDim.new(0, 4)
-    SPUICorner.Parent = ServiceProvider
-
-    local SPTextLabel = Instance.new("TextLabel")
-    SPTextLabel.Name = "TextLabel"
-    SPTextLabel.Size = UDim2.new(0, 0, 1, 0)
-    SPTextLabel.Position = UDim2.new(0, 0, 0, 0)
-    SPTextLabel.BackgroundTransparency = 1
-    SPTextLabel.Font = Enum.Font.GothamBold
-    SPTextLabel.Text = "Service Provider"
-    SPTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SPTextLabel.TextSize = 12
-    SPTextLabel.TextXAlignment = Enum.TextXAlignment.Center
-    SPTextLabel.AutomaticSize = Enum.AutomaticSize.X
-    SPTextLabel.Parent = ServiceProvider
 
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
@@ -1022,8 +1000,8 @@ function Napoleon:Window(GuiConfig)
     UICorner2.Parent = LayersTab
 
     DecideFrame.AnchorPoint = Vector2.new(0.5, 0)
-    DecideFrame.BackgroundColor3 = GuiConfig.Color
-    DecideFrame.BackgroundTransparency = 0.5
+    DecideFrame.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+    DecideFrame.BackgroundTransparency = 0
     DecideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     DecideFrame.BorderSizePixel = 0
     DecideFrame.Position = UDim2.new(0.5, 0, 0, 38)
@@ -1067,7 +1045,7 @@ function Napoleon:Window(GuiConfig)
 	WindowImg2.Name = "WindowImg2"
 	WindowImg2.ZIndex = 0
 	WindowImg2.Parent = Layers
-    WindowImg2.Visible = false
+    WindowImg2.Visible = true
 
     -- NameTab.Font = Enum.Font.GothamBold
     -- NameTab.Text = ""
@@ -1811,7 +1789,7 @@ function Napoleon:Window(GuiConfig)
                         end
                     end
                     TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
-                    TweenService:Create(SectionTitle, TweenInfo.new(0.5), { TextColor3 = GuiConfig.Color }):Play()
+                    TweenService:Create(SectionTitle, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
                     TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
                         :Play()
                     TweenService:Create(SectionAdd, TweenInfo.new(0.5),
@@ -1859,7 +1837,7 @@ function Napoleon:Window(GuiConfig)
                     end
                 end
                 FeatureFrame.Rotation = 90
-                SectionTitle.TextColor3 = GuiConfig.Color
+                SectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
                 Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
                 SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
                 UpdateSizeScroll()
@@ -2580,13 +2558,13 @@ function Napoleon:Window(GuiConfig)
                     ConfigData[configKey] = Value
                     SaveConfig()
                     if Value then
-                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
+                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
                         TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(46, 46, 46) })
                             :Play()
-                        TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 })
+                        TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0 })
                             :Play()
                         TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
-                            { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
+                            { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0 }):Play()
                     else
                         TweenService:Create(ToggleTitle, TweenInfo.new(0.2),
                             { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
@@ -3574,7 +3552,7 @@ function Napoleon:Window(GuiConfig)
             local ThemeSection = SettingsTab:AddSection("Theme")
 
             local themePresets = {
-                ["Blue"]  = { color = Color3.fromRGB(81, 66, 255),  color2 = Color3.fromRGB(0, 0, 14) },
+                ["Blue"]  = { color = Color3.fromRGB(150, 150, 150),  color2 = Color3.fromRGB(0, 0, 14) },
                 ["Red"] = { color = Color3.fromRGB(255, 66, 66),  color2 = Color3.fromRGB(14, 0, 0) },
                 ["Purple"]  = { color = Color3.fromRGB(160, 30, 255), color2 = Color3.fromRGB(10, 0, 14) },
             }
@@ -3602,7 +3580,7 @@ function Napoleon:Window(GuiConfig)
         decideFrm   = DecideFrame,
         mainBG      = Main,
         executorFrm = Executor,
-        spFrm       = ServiceProvider,
+
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
 
@@ -3618,12 +3596,10 @@ function Napoleon:Window(GuiConfig)
         if _themeColorElements.executorFrm then
             TweenService:Create(_themeColorElements.executorFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
         end
-        if _themeColorElements.spFrm then
-            TweenService:Create(_themeColorElements.spFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
-        end
+
 
         -- Update border stroke & DecideFrame
-        TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
+        -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
 
         -- Update window background (Color2)
@@ -3651,7 +3627,7 @@ function Napoleon:Window(GuiConfig)
                     local featureFrame = sectionReal:FindFirstChild("FeatureFrame")
                     -- Jika FeatureFrame tidak ada (AlwaysOpen=true) atau rotasinya 90 (terbuka)
                     if not featureFrame or featureFrame.Rotation > 45 then
-                        TweenService:Create(gui, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+                        TweenService:Create(gui, TweenInfo.new(0.4), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
                     end
                 end
             end
@@ -3737,7 +3713,7 @@ end
 -- local Window = Napoleon:Window({
 --     Title    = "Napoleon",
 --     Footer   = GameName,
---     Color    = Color3.fromRGB(81, 66, 255),
+--     Color    = Color3.fromRGB(150, 150, 150),
 --     Color2   = Color3.fromRGB(0, 0, 14),
 --     ["Tab Width"] = 130,
 --     Image      = "76157300179532",
@@ -3906,6 +3882,7 @@ end
 -- Tabs:AddConfigTab()
 
 return Napoleon
+
 end
 local Napoleon = InitUI()
 -- Membuat Window Utama seperti di Steal An Egg.lua
@@ -3913,7 +3890,7 @@ local Window = Napoleon:Window({
     Title = "Napoleon",
     Footer = "Steal An Egg",
     Color = Color3.fromRGB(50, 50, 50), -- Warna abu-abu elegan/metalik seperti logo
-    Color2 = Color3.fromRGB(0, 0, 14),
+    Color2 = Color3.fromRGB(20, 20, 20), -- Background abu-abu gelap (tidak ungu)
     ["Tab Width"] = 130,
     Image = "111895858615511",
     WindowIMG = "91334002283698",
@@ -3942,7 +3919,7 @@ ExampleSection:AddButton({
         Napoleon:MakeNotify({
             Title = "Sukses",
             Content = "Berhasil klik tombol!",
-            Color = Color3.fromRGB(81, 66, 255),
+            Color = Color3.fromRGB(150, 150, 150),
             Delay = 3
         })
     end
@@ -3956,4 +3933,12 @@ ExampleSection:AddToggle({
         print("Toggle diubah menjadi:", Value)
     end
 })
+
+Napoleon:MakeNotify({
+    Title = "Welcome",
+    Content = "Test notifikasi abu-abu!",
+    Color = Color3.fromRGB(150, 150, 150),
+    Delay = 10
+})
+
 

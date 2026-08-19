@@ -1,4 +1,4 @@
-ï»¿-- -- -- -- -- -- -- KEY SISTEM DI BAWAH INI BANG
+-- -- -- -- -- -- -- KEY SISTEM DI BAWAH INI BANG
 
 local function showWarningUI(message)
     local ScreenGui = Instance.new("ScreenGui")
@@ -124,7 +124,7 @@ local key = getgenv().Key or _G.Key
 local privateKey = getgenv().PrivateKey or _G.PrivateKey
 local serverUrl = "https://napoleonn.net"
 
--- ===== SERVER PUBLIC KEY â€” hardcoded, never changes =====
+-- ===== SERVER PUBLIC KEY — hardcoded, never changes =====
 -- Get from .env SERVER_PUBLIC_KEY (shown in server console on startup)
 local SERVER_PUBLIC_KEY = "75dce92b8fcda87aa2e50eadd3c264f153d2f9953eb37b2870047daa0a42637f"
 
@@ -146,7 +146,7 @@ local function jsonDecode(str)
     return ok and val or nil
 end
 
--- ===== RESPONSE VERIFIER (fixed â€” 3 methods + fallback) =====
+-- ===== RESPONSE VERIFIER (fixed — 3 methods + fallback) =====
 local function decodeBase64(str)
     local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
     str = string.gsub(str, '[^'..b..'=]', '')

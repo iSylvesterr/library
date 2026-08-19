@@ -1,4 +1,4 @@
-﻿
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -147,7 +147,7 @@ local function AutoStealLoop()
     -- ============================================================
     local function setupInvincibility(hum)
         pcall(function()
-            -- Disable state Dead — karakter tidak bisa mati secara fisik
+            -- Disable state Dead � karakter tidak bisa mati secara fisik
             hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
             hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
             hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
@@ -248,7 +248,7 @@ local function AutoStealLoop()
                     -- ==========================================
                     -- 1. LOOP CFrame KE TELUR (TANPA anchor)
                     -- Anchor di sini justru blokir server baca posisi kita
-                    -- untuk proximity check → carry gagal. Pakai loop biasa.
+                    -- untuk proximity check ? carry gagal. Pakai loop biasa.
                     -- ==========================================
                     local loopConn = game:GetService("RunService").Heartbeat:Connect(function()
                         hrp.CFrame = eggCF
