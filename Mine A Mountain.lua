@@ -528,7 +528,7 @@ print("Success!!")
 -- UI SETUP (Napoleon Library)
 -- ============================================================
 local function LoadNapoleonUI()
-    local url = "https://raw.githubusercontent.com/Fdhlnn23/NapoleonUI/refs/heads/main/NPLN-UIv4.lua"
+    local url = "https://raw.githubusercontent.com/iSylvesterr/library/refs/heads/main/NewUI.lua"
     local cacheName = "NPLN-UIv4_cached.lua"
     
     local result = nil
@@ -599,12 +599,12 @@ end
 local Window = Library:Window({
     Title = "Napoleon",
     Footer = "Mine Mountain",
-    Color = Color3.fromRGB(81, 66, 255),
-    Color2 = Color3.fromRGB(0, 0, 14),
+    Color = Color3.fromRGB(50, 50, 50),
+    Color2 = Color3.fromRGB(20, 20, 20),
     ["Tab Width"] = 130,
     Image = "111895858615511",
     WindowIMG = "91334002283698",
-    LogoHUB = "136289055140268"
+    LogoHUB = "119958938217417"
 })
 local Tabs = Window
 
