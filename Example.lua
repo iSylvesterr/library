@@ -50,10 +50,3 @@ ExampleSection:AddToggle({
     end
 })
 
-Napoleon:MakeNotify({
-    Title = "Welcome",
-    Content = "Test notifikasi abu-abu!",
-    Color = Color3.fromRGB(150, 150, 150),
-    Delay = 10
-})
-
