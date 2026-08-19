@@ -1111,7 +1111,7 @@ local RarityWeights = {
 -- LOAD NAPOLEON UI LIBRARY
 -- ============================================================
 local function LoadNapoleonUI()
-    local url = "https://pastebin.com/raw/GvJe6AE9"
+    local url = "https://raw.githubusercontent.com/iSylvesterr/library/refs/heads/main/NewUI.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
@@ -1723,12 +1723,12 @@ end
 local Window = Library:Window({
     Title = "Napoleon",
     Footer = "Steal An Egg",
-    Color = Color3.fromRGB(150, 150, 150),
-    Color2 = Color3.fromRGB(0, 0, 14),
+    Color = Color3.fromRGB(50, 50, 50),
+    Color2 = Color3.fromRGB(20, 20, 20),
     ["Tab Width"] = 130,
     Image = "111895858615511",
     WindowIMG = "91334002283698",
-    LogoHUB = "136289055140268"
+    LogoHUB = "119958938217417"
 })
 
 local Tabs = Window
