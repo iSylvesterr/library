@@ -1810,7 +1810,7 @@ function Napoleon:Window(GuiConfig)
                         end
                     end
                     TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
-                    TweenService:Create(SectionTitle, TweenInfo.new(0.5), { TextColor3 = GuiConfig.Color }):Play()
+                    TweenService:Create(SectionTitle, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
                     TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
                         :Play()
                     TweenService:Create(SectionAdd, TweenInfo.new(0.5),
@@ -1858,7 +1858,7 @@ function Napoleon:Window(GuiConfig)
                     end
                 end
                 FeatureFrame.Rotation = 90
-                SectionTitle.TextColor3 = GuiConfig.Color
+                SectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
                 Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
                 SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
                 UpdateSizeScroll()
@@ -3650,7 +3650,7 @@ function Napoleon:Window(GuiConfig)
                     local featureFrame = sectionReal:FindFirstChild("FeatureFrame")
                     -- Jika FeatureFrame tidak ada (AlwaysOpen=true) atau rotasinya 90 (terbuka)
                     if not featureFrame or featureFrame.Rotation > 45 then
-                        TweenService:Create(gui, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+                        TweenService:Create(gui, TweenInfo.new(0.4), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
                     end
                 end
             end
