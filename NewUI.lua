@@ -635,7 +635,7 @@ function Napoleon:Window(GuiConfig)
     DropShadowHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
     DropShadow.Image = "rbxassetid://6015897843"
     DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-    DropShadow.ImageTransparency = 1
+    DropShadow.ImageTransparency = 0.6
     DropShadow.ScaleType = Enum.ScaleType.Slice
     DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
     DropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -671,10 +671,10 @@ function Napoleon:Window(GuiConfig)
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
     local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Color3.fromRGB(180, 180, 180) -- Outline abu-abu lebih terang
+    MainStroke.Color = Color3.fromRGB(90, 90, 90) -- Outline abu-abu agak gelap
     MainStroke.Transparency = 0
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    MainStroke.Thickness = 1.5
+    MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
