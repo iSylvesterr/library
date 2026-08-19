@@ -1,17 +1,20 @@
 local HttpService = game:GetService("HttpService")
 
-if not isfolder("Napoleon") then
-    makefolder("Napoleon")
-end
-if not isfolder("Napoleon/Config") then
-    makefolder("Napoleon/Config")
+pcall(function()
+    if not isfolder("Napoleon") then
+        makefolder("Napoleon")
+    end
+    if not isfolder("Napoleon/Config") then
+        makefolder("Napoleon/Config")
+    end
+end)
+
+local univId = tostring(game.GameId)
+if univId == "0" or univId == "" then
+    univId = tostring(game.PlaceId)
 end
 
-local gameName   = tostring(game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name)
-gameName         = gameName:gsub("[^%w_ ]", "")
-gameName         = gameName:gsub("%s+", "_")
-
-local ConfigFile = "Napoleon/Config/Napoleon_" .. gameName .. ".json"
+local ConfigFile = "Napoleon/Config/Napoleon_" .. univId .. ".json"
 
 ConfigData       = {}
 Elements         = {}
@@ -20,13 +23,21 @@ CURRENT_VERSION  = nil
 function SaveConfig()
     if writefile then
         ConfigData._version = CURRENT_VERSION
-        writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
+        pcall(function()
+            writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
+        end)
     end
 end
 
 function LoadConfigFromFile()
     if not CURRENT_VERSION then return end
-    if isfile and isfile(ConfigFile) then
+    
+    local isFileSuccess, isFileResult = false, false
+    if isfile then
+        isFileSuccess, isFileResult = pcall(function() return isfile(ConfigFile) end)
+    end
+
+    if isFileSuccess and isFileResult then
         local success, result = pcall(function()
             return HttpService:JSONDecode(readfile(ConfigFile))
         end)
@@ -71,9 +82,10 @@ function GetProfileList()
         EnsureProfileFolder()
         local files = listfiles(PROFILE_FOLDER)
         for _, filePath in ipairs(files) do
-            local fileName = filePath:match("([^/\\]+)$")
-            if fileName and fileName:match("%.json$") then
-                table.insert(profiles, fileName:gsub("%.json$", ""))
+            local normalized = tostring(filePath):gsub("\\", "/")
+            local fileName = normalized:match("([^/]+)$") or ""
+            if fileName:match("%.json$") then
+                table.insert(profiles, (fileName:gsub("%.json$", "")))
             end
         end
     end)
@@ -93,7 +105,9 @@ end
 function LoadProfile(name)
     if not name or name == "" then return false end
     local path = PROFILE_FOLDER .. "/" .. name .. ".json"
-    if not isfile or not isfile(path) then return false end
+    if not isfile then return false end
+    local isFileSuccess, isFileResult = pcall(function() return isfile(path) end)
+    if not isFileSuccess or not isFileResult then return false end
     local ok, data = pcall(function()
         return HttpService:JSONDecode(readfile(path))
     end)
@@ -160,6 +174,8 @@ local Icons = {
     rod       = "rbxassetid://103247953194129",
     fish      = "rbxassetid://97167558235554",
     enviicon  = "rbxassetid://101669656973003",
+    nplnicon  = "rbxassetid://111895858615511",
+    nplnv4    = "rbxassetid://87167468756710",
 }
 
 local UserInputService = game:GetService("UserInputService")
@@ -242,7 +258,7 @@ local function MakeDraggable(topbarobject, object)
             defSizeX, defSizeY = 470, 270
         else
             minSizeX, minSizeY = 100, 100
-            defSizeX, defSizeY = 640, 400
+            defSizeX, defSizeY = 586, 364
         end
 
         object.Size = UDim2.new(0, defSizeX, 0, defSizeY)
@@ -339,8 +355,8 @@ function Napoleon:MakeNotify(NotifyConfig)
     NotifyConfig.Title = NotifyConfig.Title or "Napoleon"
     NotifyConfig.Description = NotifyConfig.Description or "Notification"
     NotifyConfig.Content = NotifyConfig.Content or "Content"
-    NotifyConfig.Icon = NotifyConfig.Icon or "96531489912535"
-    NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(255, 0, 255)
+    NotifyConfig.Icon = NotifyConfig.Icon or "108203634075572"
+    NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(81, 66, 255)
     NotifyConfig.Time = NotifyConfig.Time or 0.5
     NotifyConfig.Delay = NotifyConfig.Delay or 5
     local NotifyFunction = {}
@@ -353,12 +369,12 @@ function Napoleon:MakeNotify(NotifyConfig)
         end
         if not CoreGui.NotifyGui:FindFirstChild("NotifyLayout") then
             local NotifyLayout = Instance.new("Frame");
-            NotifyLayout.AnchorPoint = Vector2.new(1, 1)
+            NotifyLayout.AnchorPoint = Vector2.new(1, 0)
             NotifyLayout.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             NotifyLayout.BackgroundTransparency = 0.9990000128746033
             NotifyLayout.BorderColor3 = Color3.fromRGB(0, 0, 0)
             NotifyLayout.BorderSizePixel = 0
-            NotifyLayout.Position = UDim2.new(1, -30, 1, -30)
+            NotifyLayout.Position = UDim2.new(1, -30, 0, 30)
             NotifyLayout.Size = UDim2.new(0, 320, 1, 0)
             NotifyLayout.Name = "NotifyLayout"
             NotifyLayout.Parent = CoreGui.NotifyGui
@@ -369,7 +385,7 @@ function Napoleon:MakeNotify(NotifyConfig)
                     TweenService:Create(
                         v,
                         TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                        { Position = UDim2.new(0, 0, 1, -((v.Size.Y.Offset + 12) * Count)) }
+                        { Position = UDim2.new(0, 0, 0, ((v.Size.Y.Offset + 12) * Count)) }
                     ):Play()
                     Count = Count + 1
                 end
@@ -377,7 +393,7 @@ function Napoleon:MakeNotify(NotifyConfig)
         end
         local NotifyPosHeigh = 0
         for i, v in CoreGui.NotifyGui.NotifyLayout:GetChildren() do
-            NotifyPosHeigh = -(v.Position.Y.Offset) + v.Size.Y.Offset + 12
+            NotifyPosHeigh = v.Position.Y.Offset + v.Size.Y.Offset + 12
         end
         local NotifyFrame = Instance.new("Frame");
         local NotifyFrameReal = Instance.new("Frame");
@@ -399,8 +415,8 @@ function Napoleon:MakeNotify(NotifyConfig)
         NotifyFrame.Name = "NotifyFrame"
         NotifyFrame.BackgroundTransparency = 1
         NotifyFrame.Parent = CoreGui.NotifyGui.NotifyLayout
-        NotifyFrame.AnchorPoint = Vector2.new(0, 1)
-        NotifyFrame.Position = UDim2.new(0, 0, 1, -(NotifyPosHeigh))
+        NotifyFrame.AnchorPoint = Vector2.new(0, 0)
+        NotifyFrame.Position = UDim2.new(0, 0, 0, NotifyPosHeigh)
 
         NotifyFrameReal.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         NotifyFrameReal.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -421,7 +437,7 @@ function Napoleon:MakeNotify(NotifyConfig)
         DropShadowHolder.Parent = NotifyFrameReal
 
         local NotifIcon = Instance.new("ImageLabel")
-        NotifIcon.Image = "rbxassetid://" .. NotifyConfig.Icon
+        NotifIcon.Image = "rbxassetid://108203634075572" --.. NotifyConfig.Icon
         NotifIcon.BackgroundTransparency = 1
         NotifIcon.ImageTransparency = 0
         NotifIcon.BorderSizePixel = 0
@@ -462,8 +478,9 @@ function Napoleon:MakeNotify(NotifyConfig)
         TextLabel1.TextColor3 = NotifyConfig.Color
         TextLabel1.TextSize = 14
         TextLabel1.TextXAlignment = Enum.TextXAlignment.Left
-        TextLabel1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TextLabel1.BackgroundColor3 = Color3.fromRGB(255, 130, 130)
         TextLabel1.BackgroundTransparency = 0.9990000128746033
+        TextLabel1.TextTransparency = 0.3
         TextLabel1.BorderColor3 = Color3.fromRGB(0, 0, 0)
         TextLabel1.BorderSizePixel = 0
         TextLabel1.Size = UDim2.new(1, 0, 1, 0)
@@ -551,7 +568,7 @@ function notif(msg, delay, color, title, desc)
         Title = title or "Napoleon",
         Description = desc or "Notification",
         Content = msg or "Content",
-        Color = color or Color3.fromRGB(232, 145, 234),
+        Color = color or Color3.fromRGB(81, 66, 255),
         Delay = delay or 4
     })
 end
@@ -560,7 +577,7 @@ function Napoleon:Window(GuiConfig)
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "Napoleon"
     GuiConfig.Footer       = GuiConfig.Footer or "Napoleon >:D"
-    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(255, 0, 255)
+    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(81, 66, 255)
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
 
@@ -607,16 +624,15 @@ function Napoleon:Window(GuiConfig)
     DropShadowHolder.AnchorPoint = Vector2.new(0.5, 0.5)
     DropShadowHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
     if isMobile then
-        DropShadowHolder.Size = safeSize(470, 270)
+        DropShadowHolder.Size = UDim2.new(0, 470, 0, 270)
     else
-        DropShadowHolder.Size = safeSize(640, 400)
+        DropShadowHolder.Size = UDim2.new(0, 586, 0, 364)
     end
     DropShadowHolder.ZIndex = 0
     DropShadowHolder.Name = "DropShadowHolder"
     DropShadowHolder.Parent = NapoleonOnTop
 
-    DropShadowHolder.Position = UDim2.new(0, (NapoleonOnTop.AbsoluteSize.X // 2 - DropShadowHolder.Size.X.Offset // 2), 0,
-        (NapoleonOnTop.AbsoluteSize.Y // 2 - DropShadowHolder.Size.Y.Offset // 2))
+    DropShadowHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
     DropShadow.Image = "rbxassetid://6015897843"
     DropShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
     DropShadow.ImageTransparency = 1
@@ -636,11 +652,11 @@ function Napoleon:Window(GuiConfig)
         Main = Instance.new("ImageLabel")
         Main.Image = "rbxassetid://" .. GuiConfig.Theme
         Main.ScaleType = Enum.ScaleType.Crop
-        Main.BackgroundTransparency = 1
+        Main.BackgroundTransparency = 0.15
         Main.ImageTransparency = GuiConfig.ThemeTransparency or 0.15
     else
-        Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Latar Warna Window
-        Main.BackgroundTransparency = 0.1
+        Main.BackgroundColor3 = GuiConfig.Color2 -- Latar Warna Window
+        Main.BackgroundTransparency = 0.15
     end
 
     Main.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -653,6 +669,12 @@ function Napoleon:Window(GuiConfig)
 
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
+
+    local MainStroke = Instance.new("UIStroke")
+    MainStroke.Color = GuiConfig.Color
+    MainStroke.Transparency = 0.5
+    MainStroke.Thickness = 1.2
+    MainStroke.Parent = Main
 
     Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     Top.BackgroundTransparency = 0.9990000128746033
@@ -676,7 +698,7 @@ function Napoleon:Window(GuiConfig)
     TextLabel.Parent = Top
 
     local LogoImg = Instance.new("ImageLabel")
-	LogoImg.Image = "rbxassetid://136289055140268"
+    LogoImg.Image = GuiConfig.LogoHUB and ("rbxassetid://" .. GuiConfig.LogoHUB) or ""
 	LogoImg.BackgroundTransparency = 1
 	LogoImg.BorderSizePixel = 0
 	LogoImg.Size = UDim2.new(0, 22, 0, 22)
@@ -687,18 +709,87 @@ function Napoleon:Window(GuiConfig)
 
     UICorner1.Parent = Top
 
+    local RightContainer = Instance.new("Frame")
+    RightContainer.Name = "RightContainer"
+    RightContainer.BackgroundTransparency = 1
+    RightContainer.Size = UDim2.new(0.6, 0, 1, 0)
+    RightContainer.Position = UDim2.new(1, -110, 0, 0)
+    RightContainer.AnchorPoint = Vector2.new(1, 0)
+    RightContainer.Parent = Top
+
+    local TopListLayout = Instance.new("UIListLayout")
+    TopListLayout.FillDirection = Enum.FillDirection.Horizontal
+    TopListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+    TopListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    TopListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    TopListLayout.Padding = UDim.new(0, 8)
+    TopListLayout.Parent = RightContainer
+
+    local FooterFrame = Instance.new("Frame")
+    FooterFrame.Name = "FooterFrame"
+    FooterFrame.LayoutOrder = 1
+    FooterFrame.Size = UDim2.new(0, 0, 0.6, 0)
+    FooterFrame.BackgroundColor3 = GuiConfig.Color
+    FooterFrame.BackgroundTransparency = 0
+    FooterFrame.BorderSizePixel = 0
+    FooterFrame.AutomaticSize = Enum.AutomaticSize.X
+    FooterFrame.Parent = RightContainer
+
+    local FooterPadding = Instance.new("UIPadding")
+    FooterPadding.PaddingLeft = UDim.new(0, 10)
+    FooterPadding.PaddingRight = UDim.new(0, 10)
+    FooterPadding.Parent = FooterFrame
+
+    local FooterCorner = Instance.new("UICorner")
+    FooterCorner.CornerRadius = UDim.new(1, 0)
+    FooterCorner.Parent = FooterFrame
+
+    TextLabel1.Name = "FooterText"
+    TextLabel1.Size = UDim2.new(0, 0, 1, 0)
+    TextLabel1.Position = UDim2.new(0, 0, 0, 0)
+    TextLabel1.BackgroundTransparency = 1
     TextLabel1.Font = Enum.Font.GothamBold
-    TextLabel1.Text = "| " .. GuiConfig.Footer
-    TextLabel1.TextColor3 = GuiConfig.Color2
-    TextLabel1.TextSize = 14
-    TextLabel1.TextXAlignment = Enum.TextXAlignment.Left
-    TextLabel1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabel1.BackgroundTransparency = 0.9990000128746033
-    TextLabel1.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    TextLabel1.BorderSizePixel = 0
-    TextLabel1.Size = UDim2.new(1, -(TextLabel.TextBounds.X + 104), 1, 0)
-    TextLabel1.Position = UDim2.new(0, TextLabel.TextBounds.X + 40, 0, 0)
-    TextLabel1.Parent = Top
+    TextLabel1.Text = GuiConfig.Footer
+    TextLabel1.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextLabel1.TextSize = 12
+    TextLabel1.TextXAlignment = Enum.TextXAlignment.Center
+    TextLabel1.AutomaticSize = Enum.AutomaticSize.X
+    TextLabel1.Parent = FooterFrame
+
+    local execName = (identifyexecutor and identifyexecutor()) or "Unknown"
+    local execText = "Executor: " .. tostring(execName)
+
+    local Executor = Instance.new("Frame")
+    Executor.Name = "Executor"
+    Executor.LayoutOrder = 2
+    Executor.Size = UDim2.new(0, 0, 0.6, 0)
+    Executor.BackgroundColor3 = GuiConfig.Color
+    Executor.BackgroundTransparency = 0
+    Executor.BorderSizePixel = 0
+    Executor.AutomaticSize = Enum.AutomaticSize.X
+    Executor.Parent = RightContainer
+
+    local UIPadding = Instance.new("UIPadding")
+    UIPadding.PaddingLeft = UDim.new(0, 10)
+    UIPadding.PaddingRight = UDim.new(0, 10)
+    UIPadding.Parent = Executor
+
+    local ExecutorUICorner = Instance.new("UICorner")
+    ExecutorUICorner.CornerRadius = UDim.new(1, 0)
+    ExecutorUICorner.Parent = Executor
+
+    local ExecutorTextLabel = Instance.new("TextLabel")
+    ExecutorTextLabel.Name = "TextLabel"
+    ExecutorTextLabel.Size = UDim2.new(0, 0, 1, 0)
+    ExecutorTextLabel.Position = UDim2.new(0, 0, 0, 0)
+    ExecutorTextLabel.BackgroundTransparency = 1
+    ExecutorTextLabel.Font = Enum.Font.GothamBold
+    ExecutorTextLabel.Text = execText
+    ExecutorTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ExecutorTextLabel.TextSize = 12
+    ExecutorTextLabel.TextXAlignment = Enum.TextXAlignment.Center
+    ExecutorTextLabel.AutomaticSize = Enum.AutomaticSize.X
+    ExecutorTextLabel.Parent = Executor
 
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
@@ -783,6 +874,49 @@ function Napoleon:Window(GuiConfig)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
+    local SearchBarFrame = Instance.new("Frame")
+    SearchBarFrame.Name = "SearchBarFrame"
+    SearchBarFrame.Size = UDim2.new(1, 0, 0, 26)
+    SearchBarFrame.Position = UDim2.new(0, 0, 0, 0)
+    SearchBarFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    SearchBarFrame.BackgroundTransparency = 0.93
+    SearchBarFrame.Parent = LayersTab
+
+    local SearchBarCorner = Instance.new("UICorner")
+    SearchBarCorner.CornerRadius = UDim.new(0, 6)
+    SearchBarCorner.Parent = SearchBarFrame
+
+    local SearchBarStroke = Instance.new("UIStroke")
+    SearchBarStroke.Thickness = 1
+    SearchBarStroke.Transparency = 0.7
+    SearchBarStroke.Color = GuiConfig.Color
+    SearchBarStroke.Parent = SearchBarFrame
+
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Name = "SearchBox"
+    SearchBox.BackgroundTransparency = 1
+    SearchBox.Size = UDim2.new(1, -30, 1, 0)
+    SearchBox.Position = UDim2.new(0, 24, 0, 0)
+    SearchBox.TextSize = 11
+    SearchBox.Font = Enum.Font.Gotham
+    SearchBox.Text = ""
+    SearchBox.PlaceholderText = "Search..."
+    SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SearchBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+    SearchBox.TextXAlignment = Enum.TextXAlignment.Left
+    SearchBox.Parent = SearchBarFrame
+
+    local SearchIcon = Instance.new("ImageLabel")
+    SearchIcon.Name = "SearchIcon"
+    SearchIcon.BackgroundTransparency = 1
+    SearchIcon.Image = "rbxassetid://109869955247116"
+    SearchIcon.AnchorPoint = Vector2.new(0, 0.5)
+    SearchIcon.Position = UDim2.new(0, 7, 0.5, 0)
+    SearchIcon.Size = UDim2.new(0, 13, 0, 13)
+    SearchIcon.Parent = SearchBarFrame
+
+
+
 	AccountTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     AccountTab.BackgroundTransparency = 0.9350000023841858
     AccountTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -831,11 +965,10 @@ function Napoleon:Window(GuiConfig)
 
     local playerName = game:GetService("Players").LocalPlayer.Name
 
-    local visible = string.sub(playerName, 1, 4)
-    local hiddenLength = #playerName - 4
-
-    if hiddenLength > 0 then
-        AccountName.Text = visible .. string.rep("*", hiddenLength)
+    if #playerName > 3 then
+        local hiddenLength = #playerName - 3
+        local visible = string.sub(playerName, -3)
+        AccountName.Text = string.rep("*", hiddenLength) .. visible
     else
         AccountName.Text = playerName
     end
@@ -856,8 +989,8 @@ function Napoleon:Window(GuiConfig)
     UICorner2.Parent = LayersTab
 
     DecideFrame.AnchorPoint = Vector2.new(0.5, 0)
-    DecideFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    DecideFrame.BackgroundTransparency = 0.85
+    DecideFrame.BackgroundColor3 = GuiConfig.Color
+    DecideFrame.BackgroundTransparency = 0.5
     DecideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     DecideFrame.BorderSizePixel = 0
     DecideFrame.Position = UDim2.new(0.5, 0, 0, 38)
@@ -888,6 +1021,7 @@ function Napoleon:Window(GuiConfig)
 	WindowImg1.Name = "WindowImg1"
 	WindowImg1.ZIndex = -1
 	WindowImg1.Parent = Layers
+    WindowImg1.Visible = false
 
 	local WindowImg2 = Instance.new("ImageLabel")
 	WindowImg2.Image = "rbxassetid://" .. GuiConfig.WindowIMG
@@ -900,6 +1034,7 @@ function Napoleon:Window(GuiConfig)
 	WindowImg2.Name = "WindowImg2"
 	WindowImg2.ZIndex = 0
 	WindowImg2.Parent = Layers
+    WindowImg2.Visible = false
 
     -- NameTab.Font = Enum.Font.GothamBold
     -- NameTab.Text = ""
@@ -947,7 +1082,8 @@ function Napoleon:Window(GuiConfig)
     ScrollTab.BackgroundTransparency = 0.9990000128746033
     ScrollTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     ScrollTab.BorderSizePixel = 0
-    ScrollTab.Size = UDim2.new(1, 0, 1, 0)
+    ScrollTab.Size = UDim2.new(1, 0, 0.88, 0)
+	ScrollTab.Position = UDim2.new(0, 0, 0.11, 0)
     ScrollTab.Name = "ScrollTab"
     ScrollTab.Parent = LayersTab
 
@@ -966,6 +1102,56 @@ function Napoleon:Window(GuiConfig)
     end
     ScrollTab.ChildAdded:Connect(UpdateSize1)
     ScrollTab.ChildRemoved:Connect(UpdateSize1)
+
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        local query = string.lower(SearchBox.Text)
+        local jumpedToTab = false
+        for _, scrolLayers in pairs(LayersFolder:GetChildren()) do
+            if scrolLayers:IsA("ScrollingFrame") and scrolLayers.Name == "ScrolLayers" then
+                for _, section in pairs(scrolLayers:GetChildren()) do
+                    if section.Name == "Section" then
+                        local sectionAdd = section:FindFirstChild("SectionAdd")
+                        local sectionReal = section:FindFirstChild("SectionReal")
+                        if sectionAdd and sectionReal then
+                            local sectionVisible = false
+                            for _, item in pairs(sectionAdd:GetChildren()) do
+                                if item.Name ~= "UIListLayout" and item.Name ~= "UICorner" then
+                                    local match = false
+                                    for _, desc in pairs(item:GetDescendants()) do
+                                        if desc:IsA("TextLabel") and (string.find(desc.Name, "Title") or string.find(desc.Name, "Text")) then
+                                            local txt = string.lower(desc.Text)
+                                            if string.find(txt, query) then
+                                                match = true
+                                                if query ~= "" and not jumpedToTab then
+                                                    jumpedToTab = true
+                                                    for _, sideTab in pairs(ScrollTab:GetChildren()) do
+                                                        if sideTab.Name == "Tab" and sideTab.LayoutOrder == scrolLayers.LayoutOrder then
+                                                            local selectEvt = sideTab:FindFirstChild("SelectEvent")
+                                                            if selectEvt then selectEvt:Fire() end
+                                                            break
+                                                        end
+                                                    end
+                                                end
+                                                break
+                                            end
+                                        end
+                                    end
+                                    if query == "" then match = true end
+                                    item.Visible = match
+                                    if match then sectionVisible = true end
+                                end
+                            end
+                            if query ~= "" then
+                                section.Visible = sectionVisible
+                            else
+                                section.Visible = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
 
     function GuiFunc:DestroyGui()
         if CoreGui:FindFirstChild("NapoleonOnTop") then
@@ -1076,8 +1262,8 @@ function Napoleon:Window(GuiConfig)
 
         Yes.MouseButton1Click:Connect(function()
             if NapoleonOnTop then NapoleonOnTop:Destroy() end
-            if game.CoreGui:FindFirstChild("ToggleUIButton") then
-                game.CoreGui.ToggleUIButton:Destroy()
+            if game.CoreGui:FindFirstChild("ToggleUINapoleon") then
+                game.CoreGui.ToggleUINapoleon:Destroy()
             end
         end)
 
@@ -1100,15 +1286,21 @@ function Napoleon:Window(GuiConfig)
         local ScreenGui = Instance.new("ScreenGui")
         ScreenGui.Parent = game:GetService("CoreGui")
         ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        ScreenGui.Name = "ToggleUIButton"
+        ScreenGui.Name = "ToggleUINapoleon"
 
         local MainButton = Instance.new("ImageLabel")
         MainButton.Parent = ScreenGui
         MainButton.Size = UDim2.new(0, 40, 0, 40)
-        MainButton.Position = UDim2.new(0, 20, 0, 100)
+        MainButton.Position = UDim2.new(0, 20, 0, 150)
         MainButton.BackgroundTransparency = 1
-        MainButton.Image = GuiConfig.Image and ("rbxassetid://" .. GuiConfig.Image) or "rbxassetid://136289055140268"
+        MainButton.Image = "rbxassetid://119958938217417" --.. GuiConfig.Image
         MainButton.ScaleType = Enum.ScaleType.Fit
+
+        local ToggleUIStroke = Instance.new("UIStroke")
+        ToggleUIStroke.Color = Color3.fromRGB(255, 255, 255)
+        ToggleUIStroke.Thickness = 1.2
+        ToggleUIStroke.Transparency = 0.5
+        ToggleUIStroke.Parent = MainButton
 
         local UICorner = Instance.new("UICorner")
         UICorner.CornerRadius = UDim.new(0, 6)
@@ -1394,8 +1586,16 @@ function Napoleon:Window(GuiConfig)
             UICorner4.Parent = ChooseFrame
         end
 
+        local SelectEvent = Instance.new("BindableEvent")
+        SelectEvent.Name = "SelectEvent"
+        SelectEvent.Parent = Tab
+
         TabButton.Activated:Connect(function()
             CircleClick(TabButton, Mouse.X, Mouse.Y)
+            SelectEvent:Fire()
+        end)
+
+        SelectEvent.Event:Connect(function()
             local FrameChoose
             for a, s in ScrollTab:GetChildren() do
                 for i, v in s:GetChildren() do
@@ -1573,11 +1773,12 @@ function Napoleon:Window(GuiConfig)
                 if OpenSection then
                     local SectionSizeYWitdh = 38
                     for _, v in SectionAdd:GetChildren() do
-                        if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" then
+                        if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" and v.Visible then
                             SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                         end
                     end
                     TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
+                    TweenService:Create(SectionTitle, TweenInfo.new(0.5), { TextColor3 = GuiConfig.Color }):Play()
                     TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
                         :Play()
                     TweenService:Create(SectionAdd, TweenInfo.new(0.5),
@@ -1604,6 +1805,7 @@ function Napoleon:Window(GuiConfig)
                     CircleClick(SectionButton, Mouse.X, Mouse.Y)
                     if OpenSection then
                         TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
+                        TweenService:Create(SectionTitle, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(231, 231, 231) }):Play()
                         TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
                         OpenSection = false
                         task.wait(0.5)
@@ -1619,17 +1821,23 @@ function Napoleon:Window(GuiConfig)
                 OpenSection = true
                 local SectionSizeYWitdh = 38
                 for _, v in SectionAdd:GetChildren() do
-                    if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" then
+                    if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" and v.Visible then
                         SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                     end
                 end
                 FeatureFrame.Rotation = 90
+                SectionTitle.TextColor3 = GuiConfig.Color
                 Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
                 SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
                 UpdateSizeScroll()
             end
 
-            SectionAdd.ChildAdded:Connect(UpdateSizeSection)
+            SectionAdd.ChildAdded:Connect(function(child)
+                if child:IsA("GuiObject") then
+                    child:GetPropertyChangedSignal("Visible"):Connect(UpdateSizeSection)
+                end
+                UpdateSizeSection()
+            end)
             SectionAdd.ChildRemoved:Connect(UpdateSizeSection)
 
             local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
@@ -1653,8 +1861,8 @@ function Napoleon:Window(GuiConfig)
                 local ParagraphTitle = Instance.new("TextLabel")
                 local ParagraphContent = Instance.new("TextLabel")
 
-                Paragraph.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                Paragraph.BackgroundTransparency = 0.2
+                Paragraph.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Paragraph.BackgroundTransparency = 0.935
                 Paragraph.BorderSizePixel = 0
                 Paragraph.LayoutOrder = CountItem
                 Paragraph.Size = UDim2.new(1, 0, 0, 46)
@@ -1748,6 +1956,10 @@ function Napoleon:Window(GuiConfig)
                     content = content or "Content"
                     ParagraphContent.Text = content
                     UpdateSize()
+                end
+
+                function ParagraphFunc:SetTitle(title)
+                    ParagraphTitle.Text = title or "Title"
                 end
 
                 ParagraphFunc.Frame = Paragraph
@@ -1922,7 +2134,7 @@ function Napoleon:Window(GuiConfig)
                 ButtonConfig.SubCallback = ButtonConfig.SubCallback or function() end
 
                 local Button = Instance.new("Frame")
-                Button.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
+                Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Button.BackgroundTransparency = 1
                 Button.Size = UDim2.new(1, 0, 0, 40)
                 Button.LayoutOrder = CountItem
@@ -1942,8 +2154,8 @@ function Napoleon:Window(GuiConfig)
                 MainButton.TextSize = 12
                 MainButton.TextColor3 = Color3.fromRGB(255, 255, 255)
                 MainButton.TextTransparency = 0.3
-                MainButton.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                MainButton.BackgroundTransparency = 0.2
+                MainButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                MainButton.BackgroundTransparency = 0.935
                 MainButton.AutoButtonColor = false
                 MainButton.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -1963,20 +2175,21 @@ function Napoleon:Window(GuiConfig)
                 ButtonIcon.ImageTransparency = 0.3 -- Biar estetik (cocok dengan teksmu yang transparan 0.3)
                 ButtonIcon.ScaleType = Enum.ScaleType.Fit -- Agar gambar tidak gepeng
                 
-                local mainNormalSize = ButtonConfig.SubTitle and UDim2.new(0.5, -8, 1, -10) or UDim2.new(1, 0, 1, 0)
-                local mainShrinkSize = UDim2.new(mainNormalSize.X.Scale, mainNormalSize.X.Offset - 4, mainNormalSize.Y.Scale, mainNormalSize.Y.Offset - 4)
-                
-                MainButton.Size = mainNormalSize
+                local mainNormalSize = ButtonConfig.SubTitle
+                    and UDim2.new(0.5, -4, 1, 0)
+                    or  UDim2.new(1, 0, 1, 0)
+                local mainShrinkSize = UDim2.new(
+                    mainNormalSize.X.Scale,
+                    mainNormalSize.X.Offset - 2,
+                    mainNormalSize.Y.Scale,
+                    mainNormalSize.Y.Offset - 2
+                )
+
+                MainButton.Size     = mainNormalSize
                 MainButton.Position = UDim2.new(0, 0, 0, 0)
-                -- Agar mengecilnya ke tengah, kita atur AnchorPoint (opsional tapi disarankan)
-                MainButton.AnchorPoint = Vector2.new(0.5, 0.5)
-                MainButton.Position = UDim2.new(0, 6 + (mainNormalSize.X.Offset/2) + (mainNormalSize.X.Scale * Button.AbsoluteSize.X / 2), 0.5, 0)
-                
-                -- Catatan: Jika AnchorPoint merusak layout-mu, gunakan Position awal saja tanpa AnchorPoint. 
-                -- Di kode ini saya menggunakan pendekatan sederhana tanpa mengubah AnchorPoint agar layout-mu tetap aman.
                 MainButton.AnchorPoint = Vector2.new(0, 0)
-                MainButton.Position = UDim2.new(0, 0, 0, 0)
                 MainButton.Parent = Button
+
 
                 local mainCorner = Instance.new("UICorner")
                 mainCorner.CornerRadius = UDim.new(0, 4)
@@ -2003,8 +2216,8 @@ function Napoleon:Window(GuiConfig)
                     SubButton.TextSize = 12
                     SubButton.TextTransparency = 0.3
                     SubButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    SubButton.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                    SubButton.BackgroundTransparency = 0.2
+                    SubButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                    SubButton.BackgroundTransparency = 0.935
                     SubButton.AutoButtonColor = false
                     SubButton.TextXAlignment = Enum.TextXAlignment.Left
                     
@@ -2020,12 +2233,19 @@ function Napoleon:Window(GuiConfig)
                     SubButtonIcon.ImageTransparency = 0.3
                     SubButtonIcon.ScaleType = Enum.ScaleType.Fit
 
-                    local subNormalSize = UDim2.new(0.5, -8, 1, -10)
-                    local subShrinkSize = UDim2.new(subNormalSize.X.Scale, subNormalSize.X.Offset - 4, subNormalSize.Y.Scale, subNormalSize.Y.Offset - 4)
+                    local subNormalSize = UDim2.new(0.5, -4, 1, 0)
+                    local subShrinkSize = UDim2.new(
+                        subNormalSize.X.Scale,
+                        subNormalSize.X.Offset - 2,
+                        subNormalSize.Y.Scale,
+                        subNormalSize.Y.Offset - 2
+                    )
 
-                    SubButton.Size = subNormalSize
-                    SubButton.Position = UDim2.new(0.5, 2, 0, 5)
+                    SubButton.Size     = subNormalSize
+                    SubButton.Position = UDim2.new(0.5, 4, 0, 0)
+                    SubButton.AnchorPoint = Vector2.new(0, 0)
                     SubButton.Parent = Button
+
 
                     local subCorner = Instance.new("UICorner")
                     subCorner.CornerRadius = UDim.new(0, 4)
@@ -2055,10 +2275,18 @@ function Napoleon:Window(GuiConfig)
                 ToggleConfig.Content = ToggleConfig.Content or ""
                 ToggleConfig.Default = ToggleConfig.Default or false
                 ToggleConfig.Callback = ToggleConfig.Callback or function() end
+                ToggleConfig.Keybind = ToggleConfig.Keybind or false
 
                 local configKey = "Toggle_" .. ToggleConfig.Title
+                local keybindConfigKey = configKey .. "_Keybind"
+
                 if ConfigData[configKey] ~= nil then
                     ToggleConfig.Default = ConfigData[configKey]
+                end
+
+                local currentKeybind = nil
+                if ConfigData[keybindConfigKey] ~= nil then
+                    currentKeybind = ConfigData[keybindConfigKey]
                 end
 
                 local ToggleFunc = { Value = ToggleConfig.Default }
@@ -2069,13 +2297,16 @@ function Napoleon:Window(GuiConfig)
                 local ToggleContent = Instance.new("TextLabel")
                 local ToggleButton = Instance.new("TextButton")
                 local FeatureFrame2 = Instance.new("Frame")
+                local KeybindFrame = Instance.new("Frame")
                 local UICorner22 = Instance.new("UICorner")
                 local UIStroke8 = Instance.new("UIStroke")
                 local ToggleCircle = Instance.new("Frame")
                 local UICorner23 = Instance.new("UICorner")
+                local UICorner24 = Instance.new("UICorner")
+                local KeybindButton = Instance.new("TextButton")
 
-                Toggle.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                Toggle.BackgroundTransparency = 0.2
+                Toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Toggle.BackgroundTransparency = 0.935
                 Toggle.BorderSizePixel = 0
                 Toggle.LayoutOrder = CountItem
                 Toggle.Name = "Toggle"
@@ -2184,6 +2415,123 @@ function Napoleon:Window(GuiConfig)
                 UICorner23.CornerRadius = UDim.new(0, 15)
                 UICorner23.Parent = ToggleCircle
 
+                KeybindFrame.AnchorPoint = Vector2.new(1, 0.5)
+                KeybindFrame.BackgroundTransparency = 0.92
+                KeybindFrame.BorderSizePixel = 0
+                KeybindFrame.Position = UDim2.new(0.9, -20, 0.5, 0)
+                KeybindFrame.Size = UDim2.new(0, 70, 0, 20)
+                KeybindFrame.Name = "KeybindFrame"
+                KeybindFrame.Parent = Toggle
+
+                UICorner24.Parent = KeybindFrame
+
+                KeybindButton.Font = Enum.Font.GothamBold
+                KeybindButton.Text = "Keybind"
+                KeybindButton.BackgroundTransparency = 1
+                KeybindButton.Size = UDim2.new(1, 0, 1, 0)
+                KeybindButton.Position = UDim2.new(0, 0, 0, 0)
+                KeybindButton.TextXAlignment = Enum.TextXAlignment.Center
+                KeybindButton.TextYAlignment = Enum.TextYAlignment.Center
+                KeybindButton.Name = "KeybindButton"
+                KeybindButton.TextColor3 = Color3.fromRGB(225, 225, 225)
+                KeybindButton.TextSize = 12
+                KeybindButton.Parent = KeybindFrame
+
+                local isRecording = false
+                local lastRecordCancel = 0
+
+                local ignoredKeys = {
+                    [Enum.KeyCode.LeftControl] = true, [Enum.KeyCode.RightControl] = true,
+                    [Enum.KeyCode.LeftAlt] = true, [Enum.KeyCode.RightAlt] = true,
+                    [Enum.KeyCode.LeftShift] = true, [Enum.KeyCode.RightShift] = true,
+                    [Enum.KeyCode.Unknown] = true
+                }
+
+                local function GetModifiersString(excludeKey)
+                    local keys = ""
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) and excludeKey ~= Enum.KeyCode.LeftControl then keys = keys .. "LeftControl + " end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) and excludeKey ~= Enum.KeyCode.RightControl then keys = keys .. "RightControl + " end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) and excludeKey ~= Enum.KeyCode.LeftAlt then keys = keys .. "LeftAlt + " end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.RightAlt) and excludeKey ~= Enum.KeyCode.RightAlt then keys = keys .. "RightAlt + " end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) and excludeKey ~= Enum.KeyCode.LeftShift then keys = keys .. "LeftShift + " end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.RightShift) and excludeKey ~= Enum.KeyCode.RightShift then keys = keys .. "RightShift + " end
+                    return keys
+                end
+
+                KeybindButton:GetPropertyChangedSignal("TextBounds"):Connect(function()
+                    KeybindFrame.Size = UDim2.new(0, KeybindButton.TextBounds.X + 20, 0, 20)
+                end)
+
+                if not ToggleConfig.Keybind or isMobile then
+                    KeybindFrame.Visible = false
+                else
+                    if currentKeybind then
+                        KeybindButton.Text = "[ " .. currentKeybind .. " ]"
+                    else
+                        KeybindButton.Text = "Keybind"
+                    end
+
+                    KeybindButton.MouseButton1Click:Connect(function()
+                        if not isRecording and tick() - lastRecordCancel > 0.1 then
+                            isRecording = true
+                            KeybindButton.Text = "[ ... ]"
+                        end
+                    end)
+
+                    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                        if isRecording then
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                                isRecording = false
+                                lastRecordCancel = tick()
+                                currentKeybind = nil
+                                KeybindButton.Text = "Keybind"
+                                ConfigData[keybindConfigKey] = nil
+                                SaveConfig()
+                            elseif input.UserInputType == Enum.UserInputType.Keyboard then
+                                local key = input.KeyCode
+                                if key == Enum.KeyCode.Escape or key == Enum.KeyCode.Backspace then
+                                    isRecording = false
+                                    currentKeybind = nil
+                                    KeybindButton.Text = "Keybind"
+                                    ConfigData[keybindConfigKey] = nil
+                                    SaveConfig()
+                                elseif ignoredKeys[key] then
+                                    if key ~= Enum.KeyCode.Unknown then
+                                        KeybindButton.Text = "[ " .. GetModifiersString() .. "... ]"
+                                    end
+                                else
+                                    local finalBind = GetModifiersString() .. key.Name
+                                    currentKeybind = finalBind
+                                    KeybindButton.Text = "[ " .. finalBind .. " ]"
+                                    isRecording = false
+                                    ConfigData[keybindConfigKey] = currentKeybind
+                                    SaveConfig()
+                                end
+                            end
+                        else
+                            if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+                                if currentKeybind then
+                                    local checkStr = GetModifiersString(input.KeyCode) .. input.KeyCode.Name
+                                    if checkStr == currentKeybind then
+                                        ToggleFunc.Value = not ToggleFunc.Value
+                                        ToggleFunc:Set(ToggleFunc.Value)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+
+                    UserInputService.InputEnded:Connect(function(input, gameProcessed)
+                        if isRecording and ignoredKeys[input.KeyCode] and input.KeyCode ~= Enum.KeyCode.Unknown then
+                            currentKeybind = input.KeyCode.Name
+                            KeybindButton.Text = "[ " .. currentKeybind .. " ]"
+                            isRecording = false
+                            ConfigData[keybindConfigKey] = currentKeybind
+                            SaveConfig()
+                        end
+                    end)
+                end
+
                 ToggleButton.Activated:Connect(function()
                     ToggleFunc.Value = not ToggleFunc.Value
                     ToggleFunc:Set(ToggleFunc.Value)
@@ -2257,8 +2605,8 @@ function Napoleon:Window(GuiConfig)
                 local UIStroke6 = Instance.new("UIStroke");
                 local UIStroke7 = Instance.new("UIStroke");
 
-                Slider.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                Slider.BackgroundTransparency = 0.2
+                Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Slider.BackgroundTransparency = 0.935
                 Slider.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Slider.BorderSizePixel = 0
                 Slider.LayoutOrder = CountItem
@@ -2441,11 +2789,11 @@ function Napoleon:Window(GuiConfig)
                 end)
 
                 TextBox:GetPropertyChangedSignal("Text"):Connect(function()
-                    local Valid = TextBox.Text:gsub("[^%d]", "")
-                    if Valid ~= "" then
+                    local Valid = TextBox.Text:gsub("[^%d%.]", "")
+                    if Valid ~= "" and tonumber(Valid) then
                         local ValidNumber = math.clamp(tonumber(Valid), SliderConfig.Min, SliderConfig.Max)
                         SliderFunc:Set(ValidNumber)
-                    else
+                    elseif Valid == "" then
                         SliderFunc:Set(SliderConfig.Min)
                     end
                 end)
@@ -2477,8 +2825,8 @@ function Napoleon:Window(GuiConfig)
                 local UICorner13 = Instance.new("UICorner");
                 local InputTextBox = Instance.new("TextBox");
 
-                Input.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                Input.BackgroundTransparency = 0.2
+                Input.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Input.BackgroundTransparency = 0.935
                 Input.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Input.BorderSizePixel = 0
                 Input.LayoutOrder = CountItem
@@ -2500,7 +2848,7 @@ function Napoleon:Window(GuiConfig)
                 InputTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 InputTitle.BorderSizePixel = 0
                 InputTitle.Position = UDim2.new(0, 10, 0, 10)
-                InputTitle.Size = UDim2.new(1, -180, 0, 13)
+                InputTitle.Size = UDim2.new(1, -20, 0, 13)
                 InputTitle.Name = "InputTitle"
                 InputTitle.Parent = Input
 
@@ -2517,32 +2865,45 @@ function Napoleon:Window(GuiConfig)
                 InputContent.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 InputContent.BorderSizePixel = 0
                 InputContent.Position = UDim2.new(0, 10, 0, 25)
-                InputContent.Size = UDim2.new(1, -180, 0, 12)
+                InputContent.Size = UDim2.new(1, -20, 0, 12)
                 InputContent.Name = "InputContent"
                 InputContent.Parent = Input
 
-                InputContent.Size = UDim2.new(1, -180, 0,
-                    12 + (12 * (InputContent.TextBounds.X // InputContent.AbsoluteSize.X)))
-                InputContent.TextWrapped = true
-                Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 33)
+                if InputConfig.Content == "" then
+                    InputContent.Visible = false
+                    InputContent.Size = UDim2.new(1, -20, 0, 0)
+                    Input.Size = UDim2.new(1, 0, 0, 73)
+                else
+                    InputContent.Size = UDim2.new(1, -20, 0,
+                        12 + (12 * (InputContent.TextBounds.X // math.max(1, InputContent.AbsoluteSize.X))))
+                    InputContent.TextWrapped = true
+                    Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 75)
+                end
 
                 InputContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                    InputContent.TextWrapped = false
-                    InputContent.Size = UDim2.new(1, -180, 0,
-                        12 + (12 * (InputContent.TextBounds.X // InputContent.AbsoluteSize.X)))
-                    Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 33)
-                    InputContent.TextWrapped = true
-                    UpdateSizeSection()
+                    if InputConfig.Content ~= "" then
+                        InputContent.TextWrapped = false
+                        InputContent.Size = UDim2.new(1, -20, 0,
+                            12 + (12 * (InputContent.TextBounds.X // math.max(1, InputContent.AbsoluteSize.X))))
+                        Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 75)
+                        InputFrame.Position = UDim2.new(0.5, 0, 0, InputContent.Position.Y.Offset + InputContent.AbsoluteSize.Y + 10)
+                        InputContent.TextWrapped = true
+                        UpdateSizeSection()
+                    end
                 end)
 
-                InputFrame.AnchorPoint = Vector2.new(1, 0.5)
+                InputFrame.AnchorPoint = Vector2.new(0.5, 0)
                 InputFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 InputFrame.BackgroundTransparency = 0.949999988079071
                 InputFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 InputFrame.BorderSizePixel = 0
                 InputFrame.ClipsDescendants = true
-                InputFrame.Position = UDim2.new(1, -7, 0.5, 0)
-                InputFrame.Size = UDim2.new(0, 148, 0, 30)
+                if InputConfig.Content == "" then
+                    InputFrame.Position = UDim2.new(0.5, 0, 0, 33)
+                else
+                    InputFrame.Position = UDim2.new(0.5, 0, 0, InputContent.Position.Y.Offset + InputContent.AbsoluteSize.Y + 10)
+                end
+                InputFrame.Size = UDim2.new(1, -20, 0, 30)
                 InputFrame.Name = "InputFrame"
                 InputFrame.Parent = Input
 
@@ -2553,7 +2914,7 @@ function Napoleon:Window(GuiConfig)
                 InputTextBox.Font = Enum.Font.GothamBold
                 InputTextBox.PlaceholderColor3 = Color3.fromRGB(120.00000044703484, 120.00000044703484,
                     120.00000044703484)
-                InputTextBox.PlaceholderText = "Input Here"
+                InputTextBox.PlaceholderText = "Write ur input here!"
                 InputTextBox.Text = InputConfig.Default
                 InputTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
                 InputTextBox.TextSize = 12
@@ -2611,8 +2972,8 @@ function Napoleon:Window(GuiConfig)
                 local OptionSelecting = Instance.new("TextLabel")
                 local OptionImg = Instance.new("ImageLabel")
 
-                Dropdown.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                Dropdown.BackgroundTransparency = 0.2
+                Dropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Dropdown.BackgroundTransparency = 0.935
                 Dropdown.BorderSizePixel = 0
                 Dropdown.LayoutOrder = CountItem
                 Dropdown.Size = UDim2.new(1, 0, 0, 46)
@@ -2954,7 +3315,7 @@ function Napoleon:Window(GuiConfig)
                 Background.Parent = SubSection
                 Background.Size = UDim2.new(1, 0, 1, 0)
                 Background.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                Background.BackgroundTransparency = 0.935
+                Background.BackgroundTransparency = 1
                 Background.BorderSizePixel = 0
                 Instance.new("UICorner", Background).CornerRadius = UDim.new(0, 6)
 
@@ -2965,8 +3326,8 @@ function Napoleon:Window(GuiConfig)
                 Label.Size = UDim2.new(1, -20, 1, 0)
                 Label.BackgroundTransparency = 1
                 Label.Font = Enum.Font.GothamBold
-                Label.Text = "── [ " .. title .. " ] ──"
-                Label.TextColor3 = Color3.fromRGB(230, 230, 230)
+                Label.Text = title
+                Label.TextColor3 = GuiConfig.Color
                 Label.TextSize = 12
                 Label.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -2985,122 +3346,526 @@ function Napoleon:Window(GuiConfig)
     end
 
     -- ═══════════════════════════════════════════════════
-    -- AUTO-CREATE SETTINGS TAB (Config Profile System)
+    -- SETTINGS TAB (Config Profile System)
     -- ═══════════════════════════════════════════════════
-    -- task.defer(function()
-    --     pcall(function()
-    --         -- CountTab sudah = jumlah tab user, jadi Settings otomatis dapat LayoutOrder paling tinggi
-    --         local SettingsTab = Tabs:AddTab({ Name = "Config", Icon = "settings" })
-    --         local ConfigSection = SettingsTab:AddSection("Config Profile", false)
+    function Tabs:AddConfigTab()
+        pcall(function()
+            local SettingsTab = Tabs:AddTab({ Name = "Config", Icon = "settings" })
 
-    --         local profileDropdown
-    --         local selectedProfile = "None"
-    --         local profiles = GetProfileList()
-    --         if #profiles == 0 then table.insert(profiles, "None") end
+            -- helper notif dengan title "Config" (global notif: msg, delay, color, title)
+            local function cnotif(msg, delay)
+                notif(msg, delay, GuiConfig.Color, "Config")
+            end
 
-    --         profileDropdown = ConfigSection:AddDropdown({
-    --             Title = "Select Profile",
-    --             Content = "Select the saved config profile",
-    --             Options = profiles,
-    --             Default = profiles[1] or "None",
-    --             Multi = false,
-    --             Callback = function(val)
-    --                 selectedProfile = val
-    --             end
-    --         })
+            -- ═══ INFO SECTION ═══
+            -- local InfoSection = SettingsTab:AddSection("Informasi", true)
+            -- InfoSection:AddParagraph({
+            --     Title   = "Auto-Save Aktif",
+            --     Content = "Semua perubahan (toggle, slider, dropdown) otomatis tersimpan ke file saat kamu ubah. Saat relog, setting kamu akan otomatis ter-load kembali.\n\nGunakan Profile untuk menyimpan beberapa preset yang berbeda."
+            -- })
 
-    --         local profileNameInput = ConfigSection:AddInput({
-    --             Title = "Profile Name",
-    --             Content = "Name for new config profile",
-    --             Default = "",
-    --             Callback = function(val) end
-    --         })
+            -- ═══ AUTO-LOAD SAAT STARTUP ═══
+            -- Panggil LoadConfigElements setelah semua element dibuat
+            task.defer(function()
+                pcall(function()
+                    LoadConfigElements()
+                end)
+            end)
 
-    --         ConfigSection:AddButton({
-    --             Title = "Save Profile",
-    --             SubTitle = "Load Profile",
-    --             Callback = function()
-    --                 local name = profileNameInput.Value
-    --                 if not name or name == "" or name == "None" then
-    --                     notif("Masukkan nama profile dulu!", 3)
-    --                     return
-    --                 end
-    --                 name = name:gsub("[^%w_%-]", "_")
-    --                 local ok = SaveProfile(name)
-    --                 if ok then
-    --                     notif("Profile '" .. name .. "' berhasil disimpan!", 4)
-    --                     task.wait(0.2) -- Beri waktu filesystem flush
-    --                     local newList = GetProfileList()
-    --                     -- Fallback: jika file belum terdeteksi, tambah manual
-    --                     if not table.find(newList, name) then
-    --                         table.insert(newList, name)
-    --                         table.sort(newList)
-    --                     end
-    --                     -- Hapus "None" jika ada profile asli
-    --                     if #newList > 1 then
-    --                         for i = #newList, 1, -1 do
-    --                             if newList[i] == "None" then
-    --                                 table.remove(newList, i)
-    --                             end
-    --                         end
-    --                     end
-    --                     if profileDropdown and profileDropdown.SetValues then
-    --                         profileDropdown:SetValues(newList, name)
-    --                     end
-    --                     selectedProfile = name
-    --                 else
-    --                     notif("Gagal menyimpan profile!", 3)
-    --                 end
-    --             end,
-    --             SubCallback = function()
-    --                 if not selectedProfile or selectedProfile == "" or selectedProfile == "None" then
-    --                     notif("Pilih profile dari dropdown dulu!", 3)
-    --                     return
-    --                 end
-    --                 notif("Loading profile '" .. selectedProfile .. "'...", 3)
-    --                 task.spawn(function()
-    --                     local ok = LoadProfile(selectedProfile)
-    --                     if ok then
-    --                         notif("Profile '" .. selectedProfile .. "' berhasil di-load!", 4)
-    --                     else
-    --                         notif("Gagal load profile!", 3)
-    --                     end
-    --                 end)
-    --             end
-    --         })
+            -- ═══ PROFILE SECTION ═══
+            local ConfigSection = SettingsTab:AddSection("Config Profile")
 
-    --         ConfigSection:AddButton({
-    --             Title = "Delete Config",
-    --             Callback = function()
-    --                 if not selectedProfile or selectedProfile == "" or selectedProfile == "None" then
-    --                     notif("Pilih profile yang ingin dihapus!", 3)
-    --                     return
-    --                 end
-    --                 local ok = DeleteProfile(selectedProfile)
-    --                 if ok then
-    --                     notif("Profile '" .. selectedProfile .. "' dihapus!", 3)
-    --                     selectedProfile = "None"
-    --                     local newList = GetProfileList()
-    --                     if #newList == 0 then table.insert(newList, "None") end
-    --                     if profileDropdown and profileDropdown.SetValues then
-    --                         profileDropdown:SetValues(newList, newList[1])
-    --                     end
-    --                 else
-    --                     notif("Gagal menghapus profile!", 3)
-    --                 end
-    --             end
-    --         })
+            local profileDropdown
+            local selectedProfile = "None"
 
-    --         -- ConfigSection:AddDivider()
+            local function RefreshProfileDropdown()
+                local fresh = GetProfileList()
+                if #fresh == 0 then table.insert(fresh, "None") end
+                if profileDropdown and profileDropdown.SetValues then
+                    profileDropdown:SetValues(fresh, fresh[1] or "None")
+                end
+                selectedProfile = fresh[1] or "None"
+                return fresh
+            end
 
-    --         -- ConfigSection:AddParagraph({
-    --         --     Title = "📌 Tips",
-    --         --     Content = "• Save: Simpan semua toggle, dropdown, slider, input\n• Load: Restore semua setting dari profile\n• Profile berlaku untuk semua script yang pakai Napoleon UI"
-    --         -- })
-    --     end)
-    -- end)
+            local profiles = GetProfileList()
+            if #profiles == 0 then table.insert(profiles, "None") end
+
+            profileDropdown = ConfigSection:AddDropdown({
+                Title   = "Select Profile",
+                Content = "Select the profile you want to load or delete",
+                Options = profiles,
+                Default = profiles[1] or "None",
+                Multi   = false,
+                Callback = function(val)
+                    selectedProfile = val
+                end
+            })
+
+            ConfigSection:AddButton({
+                Title = "Refresh",
+                Callback = function()
+                    local fresh = RefreshProfileDropdown()
+                    cnotif("Found " .. tostring(#fresh) .. " profiles", 3)
+                end
+            })
+
+            local profileNameInput = ConfigSection:AddInput({
+                Title   = "New Profile Name",
+                Content = "Type a name to save new profile",
+                Default = "",
+                Callback = function(val) end
+            })
+
+
+            ConfigSection:AddButton({
+                Title    = "Save Profile",
+                SubTitle = "Load Profile",
+                Callback = function()
+                    local name = profileNameInput.Value
+                    if not name or name == "" or name == "None" then
+                        cnotif("Type a profile name first!", 3)
+                        return
+                    end
+                    name = name:gsub("[^%w_%-]", "_")
+                    local ok = SaveProfile(name)
+                    if ok then
+                        cnotif("Profile '" .. name .. "' saved successfully!", 4)
+                        task.wait(0.2)
+                        local newList = GetProfileList()
+                        if not table.find(newList, name) then
+                            table.insert(newList, name)
+                            table.sort(newList)
+                        end
+                        if #newList > 1 then
+                            for i = #newList, 1, -1 do
+                                if newList[i] == "None" then table.remove(newList, i) end
+                            end
+                        end
+                        if profileDropdown and profileDropdown.SetValues then
+                            profileDropdown:SetValues(newList, name)
+                        end
+                        selectedProfile = name
+                    else
+                        cnotif("Failed to save profile!", 3)
+                    end
+                end,
+                SubCallback = function()
+                    if not selectedProfile or selectedProfile == "" or selectedProfile == "None" then
+                        cnotif("Select a profile from the dropdown first!", 3)
+                        return
+                    end
+                    cnotif("Loading '" .. selectedProfile .. "'...", 2)
+                    task.spawn(function()
+                        local ok = LoadProfile(selectedProfile)
+                        if ok then
+                            cnotif("Profile '" .. selectedProfile .. "' loaded successfully!", 4)
+                        else
+                            cnotif("Failed to load profile!", 3)
+                        end
+                    end)
+                end
+            })
+
+            ConfigSection:AddButton({
+                Title    = "Delete Profile",
+                SubTitle = "Copy Config",
+                Callback = function()
+                    if not selectedProfile or selectedProfile == "" or selectedProfile == "None" then
+                        cnotif("Select the profile you want to delete!", 3)
+                        return
+                    end
+                    local ok = DeleteProfile(selectedProfile)
+                    if ok then
+                        cnotif("Profile '" .. selectedProfile .. "' dihapus!", 3)
+                        selectedProfile = "None"
+                        local newList = GetProfileList()
+                        if #newList == 0 then table.insert(newList, "None") end
+                        if profileDropdown and profileDropdown.SetValues then
+                            profileDropdown:SetValues(newList, newList[1])
+                        end
+                    else
+                        cnotif("Failed to delete profile!", 3)
+                    end
+                end,
+                SubCallback = function()
+                    -- Copy current ConfigData as JSON to clipboard
+                    if setclipboard then
+                        local json = HttpService:JSONEncode(ConfigData)
+                        setclipboard(json)
+                        cnotif("Config copied to clipboard successfully!", 3)
+                    else
+                        cnotif("Executor does not support clipboard!", 3)
+                    end
+                end
+            })
+
+            -- ═══ IMPORT CONFIG ═══
+            local ImportSection = SettingsTab:AddSection("Import Config")
+
+            local importInput = ImportSection:AddPanel({
+                Title       = "Paste JSON Config",
+                Placeholder = "Paste JSON Config here...",
+                ButtonText  = "Import & Load",
+                Callback    = function(val)
+                    if not val or val == "" then
+                        cnotif("JSON Input is empty!", 3)
+                        return
+                    end
+                    local ok, data = pcall(function()
+                        return HttpService:JSONDecode(val)
+                    end)
+                    if not ok or type(data) ~= "table" then
+                        cnotif("Invalid JSON!", 3)
+                        return
+                    end
+                    -- Apply ke ConfigData dan semua elemen
+                    for key, v in pairs(data) do
+                        ConfigData[key] = v
+                    end
+                    SaveConfig()
+                    for key, element in pairs(Elements) do
+                        if ConfigData[key] ~= nil and element.Set then
+                            pcall(function()
+                                element:Set(ConfigData[key])
+                            end)
+                            task.wait(0.02)
+                        end
+                    end
+                    cnotif("Config imported successfully!", 4)
+                end
+            })
+
+
+            -- ═══ THEME SECTION ═══
+            local ThemeSection = SettingsTab:AddSection("Theme")
+
+            local themePresets = {
+                ["Blue"]  = { color = Color3.fromRGB(81, 66, 255),  color2 = Color3.fromRGB(0, 0, 14) },
+                ["Red"] = { color = Color3.fromRGB(255, 66, 66),  color2 = Color3.fromRGB(14, 0, 0) },
+                ["Purple"]  = { color = Color3.fromRGB(160, 30, 255), color2 = Color3.fromRGB(10, 0, 14) },
+            }
+
+            ThemeSection:AddDropdown({
+                Title   = "Theme",
+                Options = { "Blue", "Red", "Purple" },
+                Default = "Blue",
+                Callback = function(value)
+                    local preset = themePresets[value]
+                    if preset then
+                        Tabs:SetTheme(preset.color, preset.color2)
+                    end
+                end
+            })
+        end)
+    end
+
+
+    -- Kumpulkan referensi elemen warna yang bisa diubah secara dinamis
+    local _themeColorElements = {
+        titleLabel  = TextLabel,
+        footerFrm   = FooterFrame,
+        mainStroke  = MainStroke,
+        decideFrm   = DecideFrame,
+        mainBG      = Main,
+        executorFrm = Executor,
+    }
+    local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
+
+    function Tabs:SetTheme(newColor, newColor2)
+        GuiConfig.Color  = newColor
+        GuiConfig.Color2 = newColor2 or newColor
+
+        -- Update topbar (Title & Footer text)
+        TweenService:Create(_themeColorElements.titleLabel, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+        if _themeColorElements.footerFrm then
+            TweenService:Create(_themeColorElements.footerFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+        end
+        if _themeColorElements.executorFrm then
+            TweenService:Create(_themeColorElements.executorFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+        end
+
+        -- Update border stroke & DecideFrame
+        TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
+        TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+
+        -- Update window background (Color2)
+        TweenService:Create(_themeColorElements.mainBG, TweenInfo.new(0.4), { BackgroundColor3 = GuiConfig.Color2 }):Play()
+
+        -- Update ChooseFrame & UIStroke di semua tab
+        for _, tab in ScrollTab:GetChildren() do
+            if tab.Name == "Tab" then
+                local cf = tab:FindFirstChild("ChooseFrame")
+                if cf then
+                    TweenService:Create(cf, TweenInfo.new(0.3), { BackgroundColor3 = newColor }):Play()
+                    local stk = cf:FindFirstChildOfClass("UIStroke")
+                    if stk then
+                        TweenService:Create(stk, TweenInfo.new(0.3), { Color = newColor }):Play()
+                    end
+                end
+            end
+        end
+
+        -- Update semua elemen di dalam NapoleonOnTop secara langsung
+        for _, gui in NapoleonOnTop:GetDescendants() do
+            if gui.Name == "SectionTitle" and gui:IsA("TextLabel") then
+                local sectionReal = gui.Parent
+                if sectionReal and sectionReal.Name == "SectionReal" then
+                    local featureFrame = sectionReal:FindFirstChild("FeatureFrame")
+                    -- Jika FeatureFrame tidak ada (AlwaysOpen=true) atau rotasinya 90 (terbuka)
+                    if not featureFrame or featureFrame.Rotation > 45 then
+                        TweenService:Create(gui, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+                    end
+                end
+            end
+
+            -- SubSection label
+            if gui.Name == "SubSection" and gui:IsA("Frame") then
+                local lbl = gui:FindFirstChildOfClass("TextLabel")
+                if lbl then
+                    TweenService:Create(lbl, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+                end
+            end
+
+            -- Divider gradient
+            if gui.Name == "Divider" and gui:IsA("Frame") then
+                local grad = gui:FindFirstChildOfClass("UIGradient")
+                if grad then
+                    grad.Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
+                        ColorSequenceKeypoint.new(0.5, newColor),
+                        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+                    })
+                end
+            end
+
+            -- Dropdown ChooseFrame option
+            if gui.Name == "ChooseFrame" and gui:IsA("Frame") and gui.Parent and gui.Parent.Name == "Option" then
+                TweenService:Create(gui, TweenInfo.new(0.3), { BackgroundColor3 = newColor }):Play()
+                local stk = gui:FindFirstChildOfClass("UIStroke")
+                if stk then
+                    TweenService:Create(stk, TweenInfo.new(0.3), { Color = newColor }):Play()
+                end
+            end
+
+            -- Toggle yang sedang ON (FeatureFrame.BackgroundTransparency ≈ 0)
+            if gui.Name == "FeatureFrame" and gui:IsA("Frame") and gui.Parent and gui.Parent.Name == "Toggle" then
+                if gui.BackgroundTransparency < 0.1 then
+                    -- toggle ini ON, update warnanya langsung
+                    TweenService:Create(gui, TweenInfo.new(0.3), { BackgroundColor3 = newColor }):Play()
+                    local stk = gui:FindFirstChildOfClass("UIStroke")
+                    if stk then
+                        TweenService:Create(stk, TweenInfo.new(0.3), { Color = newColor }):Play()
+                    end
+                    -- update juga teks judul toggle yang ON
+                    local toggleParent = gui.Parent
+                    if toggleParent then
+                        local ttl = toggleParent:FindFirstChild("ToggleTitle")
+                        if ttl then
+                            TweenService:Create(ttl, TweenInfo.new(0.3), { TextColor3 = newColor }):Play()
+                        end
+                    end
+                end
+            end
+
+        end
+    end
 
     return Tabs
 end
+
+-- -- ============================================================
+-- -- UI TESTING / EXECUTION
+-- -- ============================================================
+-- local ICON_ID = "108203634075572"
+-- local function notif(content, duration, title)
+--     if Napoleon and Napoleon.MakeNotify then
+--         Napoleon:MakeNotify({
+--             Title   = title or "Napoleon",
+--             Content = content,
+--             Delay   = duration or 4,
+--             Icon    = ICON_ID
+--         })
+--     end
+-- end
+
+-- local MarketplaceService = game:GetService("MarketplaceService")
+
+-- local GameName = "Unknown"
+
+-- pcall(function()
+--     GameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+-- end)
+
+-- local Window = Napoleon:Window({
+--     Title    = "Napoleon",
+--     Footer   = GameName,
+--     Color    = Color3.fromRGB(81, 66, 255),
+--     Color2   = Color3.fromRGB(0, 0, 14),
+--     ["Tab Width"] = 130,
+--     Image      = "76157300179532",
+--     WindowIMG  = "91334002283698",
+--     LogoHUB    = "122210019620425"
+-- })
+-- local Tabs = Window
+
+-- local function LoadInfoTab()
+--     local InfoTab = Tabs:AddTab({ Name = "About", Icon = "info" })
+--     local InfoSection = InfoTab:AddSection("About Napoleon", true)
+
+--     local inviteCode = "napoleonontop"
+--     local discordLink = "https://discord.gg/" .. inviteCode
+
+--     local DiscordParagraph = InfoSection:AddParagraph({
+--         Title          = "Loading...",
+--         Icon           = "nplnv4",
+--         Content        = "Members: Loading... | Online: Loading...",
+--         ButtonText     = "Copy Link",
+--         ButtonCallback = function()
+--             if setclipboard then
+--                 setclipboard(discordLink)
+--                 notif("Successfully copied the link!", 3, "Napoleon")
+--             end
+--         end
+--     })
+
+--     task.spawn(function()
+--         pcall(function()
+--             local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+--             local res
+--             if req then
+--                 res = req({
+--                     Url = "https://discord.com/api/v9/invites/" .. inviteCode .. "?with_counts=true",
+--                     Method = "GET"
+--                 })
+--                 res = res.Body
+--             else
+--                 res = game:HttpGet("https://discord.com/api/v9/invites/" .. inviteCode .. "?with_counts=true")
+--             end
+            
+--             local decoded = game:GetService("HttpService"):JSONDecode(res)
+--             if decoded and decoded.guild then
+--                 DiscordParagraph:SetTitle(decoded.guild.name)
+--                 DiscordParagraph:SetContent("Members: " .. tostring(decoded.approximate_member_count) .. " | Online: " .. tostring(decoded.approximate_presence_count))
+--             end
+--         end)
+--     end)
+
+-- 	InfoSection:AddButton({ Title = "Tes", Callback = function(value) end })
+-- end
+
+-- local function LoadMainTab()
+--     local MainTab = Tabs:AddTab({ Name = "Main", Icon = "home" })
+    
+--     local DemoSection = MainTab:AddSection("Elements Showcase")
+
+--     -- DemoSection:AddParagraph({
+--     --     Title          = "Paragraph Demo",
+--     --     Content        = "This is a paragraph example.\nYou can write multiline descriptions here.",
+--     --     ButtonText     = "Click Me",
+--     --     ButtonCallback = function()
+--     --         notif("Paragraph button clicked!", 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddButton({
+--     --     Title = "Normal Button",
+--     --     Callback = function()
+--     --         notif("Normal button clicked!", 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddButton({
+--     --     Title       = "Dual Button",
+--     --     SubTitle    = "Second Button",
+--     --     Callback    = function()
+--     --         notif("Main button clicked!", 2)
+--     --     end,
+--     --     SubCallback = function()
+--     --         notif("Sub button clicked!", 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddDivider()
+
+--     -- DemoSection:AddSubSection("Toggles & Sliders")
+
+--     DemoSection:AddToggle({
+--         Title    = "Example Toggle",
+--         Default  = false,
+--         Keybind  = true,
+--         Callback = function(value)
+--             notif("Toggle is now: " .. tostring(value), 2)
+--         end
+--     })
+
+--     -- DemoSection:AddSlider({
+--     --     Title     = "Example Slider",
+--     --     Increment = 1,
+--     --     Min       = 1,
+--     --     Max       = 100,
+--     --     Default   = 50,
+--     --     Callback  = function(value)
+--     --         -- notif("Slider value: " .. tostring(value), 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddDivider()
+
+--     -- DemoSection:AddSubSection("Inputs & Dropdowns")
+
+--     -- DemoSection:AddInput({
+--     --     Title    = "Example Input",
+--     --     Content  = "Type something and press enter",
+--     --     Default  = "",
+--     --     Callback = function(val)
+--     --         notif("Input submitted: " .. tostring(val), 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddInput({
+--     --     Title    = "Example Input 2",
+--     --     Callback = function(val)
+--     --         notif("Input submitted: " .. tostring(val), 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddPanel({
+--     --     Title       = "Example Panel",
+--     --     Placeholder = "Enter text here...",
+--     --     ButtonText  = "Submit Panel",
+--     --     Callback    = function(val)
+--     --         notif("Panel submitted: " .. tostring(val), 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddDropdown({
+--     --     Title    = "Single Dropdown",
+--     --     Content  = "Select one option",
+--     --     Options  = { "Option 1", "Option 2", "Option 3" },
+--     --     Default  = "Option 1",
+--     --     Multi    = false,
+--     --     Callback = function(val)
+--     --         notif("Selected: " .. tostring(val), 2)
+--     --     end
+--     -- })
+
+--     -- DemoSection:AddDropdown({
+--     --     Title    = "Multi Dropdown",
+--     --     Content  = "Select multiple options",
+--     --     Options  = { "Apple", "Banana", "Orange" },
+--     --     Default  = {"Apple"},
+--     --     Multi    = true,
+--     --     Callback = function(val)
+--     --         -- val is a table of selected items
+--     --     end
+--     -- })
+-- end
+
+-- LoadInfoTab()
+-- LoadMainTab()
+
+-- -- Panggil fungsi untuk menambahkan tab config di urutan paling akhir
+-- Tabs:AddConfigTab()
 
 return Napoleon
