@@ -2556,23 +2556,57 @@ function Napoleon:Window(GuiConfig)
                     end
                     ConfigData[configKey] = Value
                     SaveConfig()
-                    if Value then
-                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(46, 46, 46) })
-                            :Play()
-                        TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0 })
-                            :Play()
-                        TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
-                            { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0 }):Play()
-                    else
-                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2),
-                            { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                        TweenService:Create(UIStroke8, TweenInfo.new(0.2),
-                            { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
-                        TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
-                            { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
-                    end
+                    -- PENTING: dibungkus pcall. TweenService:Create() di sini kadang gagal
+                    -- ("lacking capability Plugin", ketauan dari testing live) -- kalau gak
+                    -- ditangkep, error-nya PROPAGATE ke pemanggil AddToggle di script user,
+                    -- dan kalau pemanggil itu juga gak pcall, SISA SELURUH SCRIPT USER ikut
+                    -- crash dari titik itu (padahal Callback & Config-nya di atas udah bener
+                    -- ke-set). Animasi visual doang yang gagal -- gak seharusnya bisa numbangin
+                    -- apapun di luar dirinya sendiri.
+                    pcall(function()
+                        if Value then
+                            TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
+                            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(46, 46, 46) })
+                                :Play()
+                            TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0 })
+                                :Play()
+                            TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
+                                { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0 }):Play()
+                        else
+                            TweenService:Create(ToggleTitle, TweenInfo.new(0.2),
+                                { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
+                            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Color3.fromRGB(230, 230, 230) }):Play()
+                            TweenService:Create(UIStroke8, TweenInfo.new(0.2),
+                                { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
+                            TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
+                                { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
+                        end
+                    end)
+                    -- Fallback NON-tween (langsung set property final, gak animasi) --
+                    -- jaga-jaga kalau tween-nya gagal DI TENGAH (misal cuma sebagian
+                    -- property yang sukses ke-set sebelum gagal), circle/warna-nya
+                    -- tetep berakhir di posisi yang BENER sesuai Value, bukan nyangkut
+                    -- di posisi lama. Ini yang nutup bug "toggle keliatan gak sesuai
+                    -- state aslinya" yang sempet kejadian live.
+                    pcall(function()
+                        if Value then
+                            ToggleTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+                            ToggleCircle.Position = UDim2.new(0, 15, 0, 0)
+                            ToggleCircle.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
+                            UIStroke8.Color = Color3.fromRGB(255, 255, 255)
+                            UIStroke8.Transparency = 0
+                            FeatureFrame2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                            FeatureFrame2.BackgroundTransparency = 0
+                        else
+                            ToggleTitle.TextColor3 = Color3.fromRGB(230, 230, 230)
+                            ToggleCircle.Position = UDim2.new(0, 0, 0, 0)
+                            ToggleCircle.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+                            UIStroke8.Color = Color3.fromRGB(255, 255, 255)
+                            UIStroke8.Transparency = 0.9
+                            FeatureFrame2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                            FeatureFrame2.BackgroundTransparency = 0.92
+                        end
+                    end)
                 end
 
                 ToggleFunc:Set(ToggleFunc.Value)

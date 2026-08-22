@@ -1,1 +1,0 @@
-local Save = require(game:GetService('ReplicatedStorage').Library.Client.Save); local inv = Save.Get().Inventory; local count = 0; if inv then for k,v in pairs(inv) do count = count + 1 end end; print('Inventory size:', count)
