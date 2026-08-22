@@ -2489,7 +2489,7 @@ function Napoleon:Window(GuiConfig)
                 end
 
                 KeybindButton:GetPropertyChangedSignal("TextBounds"):Connect(function()
-                    KeybindFrame.Size = UDim2.new(0, KeybindButton.TextBounds.X + 20, 0, 20)
+                    pcall(function() KeybindFrame.Size = UDim2.new(0, KeybindButton.TextBounds.X + 20, 0, 20) end)
                 end)
 
                 if not ToggleConfig.Keybind or isMobile then
