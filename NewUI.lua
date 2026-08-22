@@ -5190,7 +5190,7 @@ local function startEggPanelLoop()
     eggPanelActive = true
     task.spawn(function()
         while Config.EggPredictUI do
-            -- Dibungkus pcall -- sebelumnya satu error di tengah loop (misal nulis
+            -- Dibungkus pcall -- sebelumnya satu error di tengah loop (misal nuliss
             -- property ke Instance yang ternyata kena batasan capability) bikin SELURUH
             -- coroutine mati diam-diam, macet permanen tanpa ada tanda apa pun kenapa.
             local tickOk, tickErr = pcall(function()
