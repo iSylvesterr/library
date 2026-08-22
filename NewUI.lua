@@ -209,15 +209,21 @@ local function MakeDraggable(topbarobject, object)
     local function CustomPos(topbarobject, object)
         local Dragging, DragInput, DragStart, StartPosition
 
+        local function UpdatePos(input)
+            local Delta = input.Position - DragStart
+            local pos = UDim2.new(
+                StartPosition.X.Scale,
+                StartPosition.X.Offset + Delta.X,
+                StartPosition.Y.Scale,
+                StartPosition.Y.Offset + Delta.Y
+            )
+            local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Position = pos })
+            Tween:Play()
+        end
+
         topbarobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
-                -- DragInput diambil dari input PENCETAN-nya, bukan dari event hover di
-                -- topbar. Versi lama nunggu topbarobject.InputChanged buat ngisi ini --
-                -- jadi kalau gak ada hover duluan (window muncul/pindah pas di bawah
-                -- kursor, klik cepat, atau layar sentuh yang emang gak punya hover)
-                -- DragInput tetep nil dan drag-nya mati total.
-                DragInput = input
                 DragStart = input.Position
                 StartPosition = object.Position
                 input.Changed:Connect(function()
@@ -228,25 +234,16 @@ local function MakeDraggable(topbarobject, object)
             end
         end)
 
-        UserInputService.InputChanged:Connect(function(input)
-            if not Dragging then return end
-            -- Mouse: gerakannya InputObject MouseMovement yang beda dari tombolnya.
-            -- Touch: InputObject-nya sama persis sama yang dipencet -- dicocokin biar
-            -- jari kedua gak ikut nyeret window.
-            if input ~= DragInput and input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+        topbarobject.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                DragInput = input
+            end
+        end)
 
-            local Delta = input.Position - DragStart
-            -- Ditulis langsung, bukan TweenService:Create(0.2) kayak sebelumnya: tween
-            -- per-event bikin window ketinggalan di belakang kursor, dan di executor
-            -- Create() kadang lempar "lacking capability Plugin" -- ke-pcall, jadi
-            -- drag-nya berhenti diem-diem. Pola ini sama kayak drag tombol logo di
-            -- GuiFunc:ToggleUI() yang selama ini normal.
-            object.Position = UDim2.new(
-                StartPosition.X.Scale,
-                StartPosition.X.Offset + Delta.X,
-                StartPosition.Y.Scale,
-                StartPosition.Y.Offset + Delta.Y
-            )
+        UserInputService.InputChanged:Connect(function(input)
+            if input == DragInput and Dragging then
+                UpdatePos(input)
+            end
         end)
     end
 
@@ -282,12 +279,8 @@ local function MakeDraggable(topbarobject, object)
             newWidth = math.max(newWidth, minSizeX)
             newHeight = math.max(newHeight, minSizeY)
 
-            -- pcall: sama kayak UpdatePos -- TweenService:Create() kadang gagal
-            -- "lacking capability Plugin". Resize sekali gagal, gak fatal.
-            pcall(function()
-                local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Size = UDim2.new(0, newWidth, 0, newHeight) })
-                Tween:Play()
-            end)
+            local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Size = UDim2.new(0, newWidth, 0, newHeight) })
+            Tween:Play()
         end
 
         changesizeobject.InputBegan:Connect(function(input)
@@ -807,7 +800,6 @@ function Napoleon:Window(GuiConfig)
     ExecutorTextLabel.AutomaticSize = Enum.AutomaticSize.X
     ExecutorTextLabel.Parent = Executor
 
-
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
     Close.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -1115,12 +1107,7 @@ function Napoleon:Window(GuiConfig)
                 OffsetY = OffsetY + 3 + child.Size.Y.Offset
             end
         end
-        -- pcall: sama kayak di AddToggle -- set CanvasSize di sini kadang gagal
-        -- ("lacking capability Plugin"). Gagal cuma bikin tab list gak resize sekali
-        -- kejadian, bukan crash.
-        pcall(function()
-            ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
-        end)
+        ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
     end
     ScrollTab.ChildAdded:Connect(UpdateSize1)
     ScrollTab.ChildRemoved:Connect(UpdateSize1)
@@ -1788,10 +1775,7 @@ function Napoleon:Window(GuiConfig)
                         OffsetY = OffsetY + 3 + child.Size.Y.Offset
                     end
                 end
-                -- pcall: sama kayak di AddToggle -- kadang gagal "lacking capability Plugin".
-                pcall(function()
-                    ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
-                end)
+                ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
             end
 
             local function UpdateSizeSection()
@@ -1868,10 +1852,7 @@ function Napoleon:Window(GuiConfig)
             local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
             if layout then
                 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                    -- pcall: sama kayak di AddToggle -- kadang gagal "lacking capability Plugin".
-                    pcall(function()
-                        ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-                    end)
+                    ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
                 end)
             end
 
@@ -2487,7 +2468,7 @@ function Napoleon:Window(GuiConfig)
                 end
 
                 KeybindButton:GetPropertyChangedSignal("TextBounds"):Connect(function()
-                    pcall(function() KeybindFrame.Size = UDim2.new(0, KeybindButton.TextBounds.X + 20, 0, 20) end)
+                    KeybindFrame.Size = UDim2.new(0, KeybindButton.TextBounds.X + 20, 0, 20)
                 end)
 
                 if not ToggleConfig.Keybind or isMobile then
@@ -2574,57 +2555,23 @@ function Napoleon:Window(GuiConfig)
                     end
                     ConfigData[configKey] = Value
                     SaveConfig()
-                    -- PENTING: dibungkus pcall. TweenService:Create() di sini kadang gagal
-                    -- ("lacking capability Plugin", ketauan dari testing live) -- kalau gak
-                    -- ditangkep, error-nya PROPAGATE ke pemanggil AddToggle di script user,
-                    -- dan kalau pemanggil itu juga gak pcall, SISA SELURUH SCRIPT USER ikut
-                    -- crash dari titik itu (padahal Callback & Config-nya di atas udah bener
-                    -- ke-set). Animasi visual doang yang gagal -- gak seharusnya bisa numbangin
-                    -- apapun di luar dirinya sendiri.
-                    pcall(function()
-                        if Value then
-                            TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
-                            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(46, 46, 46) })
-                                :Play()
-                            TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0 })
-                                :Play()
-                            TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
-                                { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0 }):Play()
-                        else
-                            TweenService:Create(ToggleTitle, TweenInfo.new(0.2),
-                                { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                            TweenService:Create(UIStroke8, TweenInfo.new(0.2),
-                                { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
-                            TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
-                                { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
-                        end
-                    end)
-                    -- Fallback NON-tween (langsung set property final, gak animasi) --
-                    -- jaga-jaga kalau tween-nya gagal DI TENGAH (misal cuma sebagian
-                    -- property yang sukses ke-set sebelum gagal), circle/warna-nya
-                    -- tetep berakhir di posisi yang BENER sesuai Value, bukan nyangkut
-                    -- di posisi lama. Ini yang nutup bug "toggle keliatan gak sesuai
-                    -- state aslinya" yang sempet kejadian live.
-                    pcall(function()
-                        if Value then
-                            ToggleTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-                            ToggleCircle.Position = UDim2.new(0, 15, 0, 0)
-                            ToggleCircle.BackgroundColor3 = Color3.fromRGB(46, 46, 46)
-                            UIStroke8.Color = Color3.fromRGB(255, 255, 255)
-                            UIStroke8.Transparency = 0
-                            FeatureFrame2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                            FeatureFrame2.BackgroundTransparency = 0
-                        else
-                            ToggleTitle.TextColor3 = Color3.fromRGB(230, 230, 230)
-                            ToggleCircle.Position = UDim2.new(0, 0, 0, 0)
-                            ToggleCircle.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-                            UIStroke8.Color = Color3.fromRGB(255, 255, 255)
-                            UIStroke8.Transparency = 0.9
-                            FeatureFrame2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                            FeatureFrame2.BackgroundTransparency = 0.92
-                        end
-                    end)
+                    if Value then
+                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(46, 46, 46) })
+                            :Play()
+                        TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0 })
+                            :Play()
+                        TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
+                            { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0 }):Play()
+                    else
+                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2),
+                            { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Color3.fromRGB(230, 230, 230) }):Play()
+                        TweenService:Create(UIStroke8, TweenInfo.new(0.2),
+                            { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
+                        TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
+                            { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
+                    end
                 end
 
                 ToggleFunc:Set(ToggleFunc.Value)
@@ -3631,7 +3578,6 @@ function Napoleon:Window(GuiConfig)
         decideFrm   = DecideFrame,
         mainBG      = Main,
         executorFrm = Executor,
-
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
 
@@ -3647,7 +3593,6 @@ function Napoleon:Window(GuiConfig)
         if _themeColorElements.executorFrm then
             TweenService:Create(_themeColorElements.executorFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
         end
-
 
         -- Update border stroke & DecideFrame
         -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
