@@ -217,8 +217,13 @@ local function MakeDraggable(topbarobject, object)
                 StartPosition.Y.Scale,
                 StartPosition.Y.Offset + Delta.Y
             )
-            local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Position = pos })
-            Tween:Play()
+            -- pcall: TweenService:Create() di sini kadang gagal ("lacking capability
+            -- Plugin") -- pola sama kayak yang udah ketauan & ditangani di AddToggle.
+            -- Kalau gagal, drag-nya cuma gak animasi smooth sekali frame itu, gak fatal.
+            pcall(function()
+                local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Position = pos })
+                Tween:Play()
+            end)
         end
 
         topbarobject.InputBegan:Connect(function(input)
@@ -279,8 +284,12 @@ local function MakeDraggable(topbarobject, object)
             newWidth = math.max(newWidth, minSizeX)
             newHeight = math.max(newHeight, minSizeY)
 
-            local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Size = UDim2.new(0, newWidth, 0, newHeight) })
-            Tween:Play()
+            -- pcall: sama kayak UpdatePos -- TweenService:Create() kadang gagal
+            -- "lacking capability Plugin". Resize sekali gagal, gak fatal.
+            pcall(function()
+                local Tween = TweenService:Create(object, TweenInfo.new(0.2), { Size = UDim2.new(0, newWidth, 0, newHeight) })
+                Tween:Play()
+            end)
         end
 
         changesizeobject.InputBegan:Connect(function(input)
@@ -1108,7 +1117,12 @@ function Napoleon:Window(GuiConfig)
                 OffsetY = OffsetY + 3 + child.Size.Y.Offset
             end
         end
-        ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+        -- pcall: sama kayak di AddToggle -- set CanvasSize di sini kadang gagal
+        -- ("lacking capability Plugin"). Gagal cuma bikin tab list gak resize sekali
+        -- kejadian, bukan crash.
+        pcall(function()
+            ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+        end)
     end
     ScrollTab.ChildAdded:Connect(UpdateSize1)
     ScrollTab.ChildRemoved:Connect(UpdateSize1)
@@ -1776,7 +1790,10 @@ function Napoleon:Window(GuiConfig)
                         OffsetY = OffsetY + 3 + child.Size.Y.Offset
                     end
                 end
-                ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+                -- pcall: sama kayak di AddToggle -- kadang gagal "lacking capability Plugin".
+                pcall(function()
+                    ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+                end)
             end
 
             local function UpdateSizeSection()
@@ -1853,7 +1870,10 @@ function Napoleon:Window(GuiConfig)
             local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
             if layout then
                 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                    ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+                    -- pcall: sama kayak di AddToggle -- kadang gagal "lacking capability Plugin".
+                    pcall(function()
+                        ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+                    end)
                 end)
             end
 
