@@ -761,68 +761,105 @@ function Napoleon:Window(GuiConfig)
     TopListLayout.Padding = UDim.new(0, 8)
     TopListLayout.Parent = RightContainer
 
+    local function styleStatusChip(frame, order)
+        frame.LayoutOrder = order
+        frame.Size = UDim2.new(0, 0, 0, 20)
+        frame.BackgroundColor3 = Color3.fromRGB(4, 28, 18)
+        frame.BackgroundTransparency = 0.08
+        frame.BorderSizePixel = 0
+        frame.AutomaticSize = Enum.AutomaticSize.X
+        frame.Parent = RightContainer
+
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 7)
+        padding.PaddingRight = UDim.new(0, 7)
+        padding.Parent = frame
+
+        local layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Horizontal
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Center
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 5)
+        layout.Parent = frame
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = frame
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(22, 92, 62)
+        stroke.Transparency = 0.45
+        stroke.Thickness = 1
+        stroke.Parent = frame
+    end
+
+    local function makeChipIcon(parent, image, order)
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.LayoutOrder = order
+        icon.Size = UDim2.fromOffset(12, 12)
+        icon.BackgroundTransparency = 1
+        icon.Image = image
+        icon.ImageColor3 = Color3.fromRGB(151, 218, 184)
+        icon.ImageTransparency = 0.08
+        icon.ScaleType = Enum.ScaleType.Fit
+        icon.Parent = parent
+        return icon
+    end
+
     local FooterFrame = Instance.new("Frame")
     FooterFrame.Name = "FooterFrame"
-    FooterFrame.LayoutOrder = 1
-    FooterFrame.Size = UDim2.new(0, 0, 0.6, 0)
-    FooterFrame.BackgroundColor3 = GuiConfig.Color
-    FooterFrame.BackgroundTransparency = 0
-    FooterFrame.BorderSizePixel = 0
-    FooterFrame.AutomaticSize = Enum.AutomaticSize.X
-    FooterFrame.Parent = RightContainer
-
-    local FooterPadding = Instance.new("UIPadding")
-    FooterPadding.PaddingLeft = UDim.new(0, 10)
-    FooterPadding.PaddingRight = UDim.new(0, 10)
-    FooterPadding.Parent = FooterFrame
-
-    local FooterCorner = Instance.new("UICorner")
-    FooterCorner.CornerRadius = UDim.new(0, 4)
-    FooterCorner.Parent = FooterFrame
+    styleStatusChip(FooterFrame, 1)
+    makeChipIcon(FooterFrame, Icons.stat, 1)
 
     TextLabel1.Name = "FooterText"
+    TextLabel1.LayoutOrder = 2
     TextLabel1.Size = UDim2.new(0, 0, 1, 0)
-    TextLabel1.Position = UDim2.new(0, 0, 0, 0)
     TextLabel1.BackgroundTransparency = 1
-    TextLabel1.Font = Enum.Font.GothamBold
-    TextLabel1.Text = GuiConfig.Footer
-    TextLabel1.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TextLabel1.TextSize = 12
+    TextLabel1.Font = Enum.Font.GothamMedium
+    TextLabel1.Text = "-- FPS"
+    TextLabel1.TextColor3 = Color3.fromRGB(210, 232, 220)
+    TextLabel1.TextSize = 10
     TextLabel1.TextXAlignment = Enum.TextXAlignment.Center
     TextLabel1.AutomaticSize = Enum.AutomaticSize.X
     TextLabel1.Parent = FooterFrame
 
-    local execName = (identifyexecutor and identifyexecutor()) or "Unknown"
-    local execText = "Executor: " .. tostring(execName)
+    local RunService = game:GetService("RunService")
+    local fpsFrames, fpsElapsed, displayedFps = 0, 0, 60
+    local fpsConnection
+    fpsConnection = RunService.RenderStepped:Connect(function(deltaTime)
+        fpsFrames = fpsFrames + 1
+        fpsElapsed = fpsElapsed + deltaTime
+        if fpsElapsed >= 0.5 then
+            local currentFps = fpsFrames / fpsElapsed
+            displayedFps = math.floor((displayedFps * 0.35) + (currentFps * 0.65) + 0.5)
+            TextLabel1.Text = tostring(displayedFps) .. " FPS"
+            fpsFrames, fpsElapsed = 0, 0
+        end
+    end)
+    NapoleonOnTop.Destroying:Connect(function()
+        if fpsConnection then fpsConnection:Disconnect() end
+    end)
+
+    local execName = tostring((identifyexecutor and identifyexecutor()) or "Unknown")
+    execName = execName:gsub("%s*[Vv]ersion.*$", "")
+    if #execName > 12 then execName = execName:sub(1, 11) .. "…" end
 
     local Executor = Instance.new("Frame")
     Executor.Name = "Executor"
-    Executor.LayoutOrder = 2
-    Executor.Size = UDim2.new(0, 0, 0.6, 0)
-    Executor.BackgroundColor3 = GuiConfig.Color
-    Executor.BackgroundTransparency = 0
-    Executor.BorderSizePixel = 0
-    Executor.AutomaticSize = Enum.AutomaticSize.X
-    Executor.Parent = RightContainer
-
-    local UIPadding = Instance.new("UIPadding")
-    UIPadding.PaddingLeft = UDim.new(0, 10)
-    UIPadding.PaddingRight = UDim.new(0, 10)
-    UIPadding.Parent = Executor
-
-    local ExecutorUICorner = Instance.new("UICorner")
-    ExecutorUICorner.CornerRadius = UDim.new(0, 4)
-    ExecutorUICorner.Parent = Executor
+    styleStatusChip(Executor, 2)
+    makeChipIcon(Executor, Icons.plug, 1)
 
     local ExecutorTextLabel = Instance.new("TextLabel")
     ExecutorTextLabel.Name = "TextLabel"
+    ExecutorTextLabel.LayoutOrder = 2
     ExecutorTextLabel.Size = UDim2.new(0, 0, 1, 0)
-    ExecutorTextLabel.Position = UDim2.new(0, 0, 0, 0)
     ExecutorTextLabel.BackgroundTransparency = 1
-    ExecutorTextLabel.Font = Enum.Font.GothamBold
-    ExecutorTextLabel.Text = execText
-    ExecutorTextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ExecutorTextLabel.TextSize = 12
+    ExecutorTextLabel.Font = Enum.Font.GothamMedium
+    ExecutorTextLabel.Text = execName
+    ExecutorTextLabel.TextColor3 = Color3.fromRGB(190, 218, 202)
+    ExecutorTextLabel.TextSize = 10
     ExecutorTextLabel.TextXAlignment = Enum.TextXAlignment.Center
     ExecutorTextLabel.AutomaticSize = Enum.AutomaticSize.X
     ExecutorTextLabel.Parent = Executor
@@ -3615,11 +3652,16 @@ function Napoleon:Window(GuiConfig)
 
         -- Update topbar (Title & Footer text)
         -- TweenService:Create(_themeColorElements.titleLabel, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
+        local chipSurface = newColor:Lerp(Color3.fromRGB(2, 18, 11), 0.92)
         if _themeColorElements.footerFrm then
-            TweenService:Create(_themeColorElements.footerFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+            TweenService:Create(_themeColorElements.footerFrm, TweenInfo.new(0.4), {
+                BackgroundColor3 = chipSurface
+            }):Play()
         end
         if _themeColorElements.executorFrm then
-            TweenService:Create(_themeColorElements.executorFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+            TweenService:Create(_themeColorElements.executorFrm, TweenInfo.new(0.4), {
+                BackgroundColor3 = chipSurface
+            }):Play()
         end
 
         -- Update border stroke & DecideFrame
