@@ -791,6 +791,7 @@ function Zeroin:Window(GuiConfig)
         stroke.Color = Color3.fromRGB(34, 91, 68)
         stroke.Transparency = 0.18
         stroke.Thickness = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
         stroke.Parent = frame
     end
 
