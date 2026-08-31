@@ -187,9 +187,9 @@ local viewport = workspace.CurrentCamera.ViewportSize
 
 -- Zeroin visual identity: sampled from the supplied black/emerald reference.
 local ThemeColors = {
-    BackgroundTop = Color3.fromRGB(5, 8, 7),
-    BackgroundMid = Color3.fromRGB(8, 24, 17),
-    BackgroundBottom = Color3.fromRGB(3, 11, 8),
+    BackgroundTop = Color3.fromRGB(5, 15, 11),
+    BackgroundMid = Color3.fromRGB(7, 29, 19),
+    BackgroundBottom = Color3.fromRGB(3, 14, 9),
     Accent = Color3.fromRGB(0, 205, 122),
     AccentBright = Color3.fromRGB(0, 229, 137),
     Border = Color3.fromRGB(20, 126, 83),
@@ -705,10 +705,11 @@ function Napoleon:Window(GuiConfig)
     local MainGradient = Instance.new("UIGradient")
     MainGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, ThemeColors.BackgroundTop),
-        ColorSequenceKeypoint.new(0.58, ThemeColors.BackgroundMid),
+        ColorSequenceKeypoint.new(0.46, ThemeColors.BackgroundMid),
+        ColorSequenceKeypoint.new(0.76, Color3.fromRGB(5, 23, 15)),
         ColorSequenceKeypoint.new(1, ThemeColors.BackgroundBottom)
     })
-    MainGradient.Rotation = 115
+    MainGradient.Rotation = 108
     MainGradient.Parent = Main
 
     -- A separate low-opacity wash creates an emerald atmosphere without
@@ -734,6 +735,30 @@ function Napoleon:Window(GuiConfig)
     })
     AmbientGradient.Rotation = 145
     AmbientGradient.Parent = AmbientGlow
+
+    -- Counter-light fills the previously flat upper-right corner. It is kept
+    -- weaker than AmbientGlow so the surface remains directional and dark.
+    local CounterGlow = Instance.new("Frame")
+    CounterGlow.Name = "CounterGlow"
+    CounterGlow.BackgroundColor3 = ThemeColors.AccentBright
+    CounterGlow.BackgroundTransparency = 0.84
+    CounterGlow.BorderSizePixel = 0
+    CounterGlow.Position = UDim2.fromScale(0, 0)
+    CounterGlow.Size = UDim2.fromScale(1, 1)
+    CounterGlow.ZIndex = 0
+    CounterGlow.Active = false
+    CounterGlow.Parent = Main
+
+    local CounterGradient = Instance.new("UIGradient")
+    CounterGradient.Color = ColorSequence.new(Color3.new(1, 1, 1))
+    CounterGradient.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.88),
+        NumberSequenceKeypoint.new(0.25, 0.72),
+        NumberSequenceKeypoint.new(0.56, 0.94),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    CounterGradient.Rotation = -35
+    CounterGradient.Parent = CounterGlow
 
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
@@ -3639,6 +3664,7 @@ function Napoleon:Window(GuiConfig)
         mainBG      = Main,
         mainGradient = MainGradient,
         ambientGlow = AmbientGlow,
+        counterGlow = CounterGlow,
         executorFrm = Executor,
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
@@ -3667,14 +3693,20 @@ function Napoleon:Window(GuiConfig)
         }):Play()
         if _themeColorElements.mainGradient then
             _themeColorElements.mainGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 8, 7)),
-                ColorSequenceKeypoint.new(0.58, newColor:Lerp(Color3.fromRGB(8, 24, 17), 0.88)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(3, 11, 8))
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 15, 11)),
+                ColorSequenceKeypoint.new(0.46, newColor:Lerp(Color3.fromRGB(7, 29, 19), 0.9)),
+                ColorSequenceKeypoint.new(0.76, newColor:Lerp(Color3.fromRGB(5, 23, 15), 0.94)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(3, 14, 9))
             })
         end
         if _themeColorElements.ambientGlow then
             TweenService:Create(_themeColorElements.ambientGlow, TweenInfo.new(0.4), {
                 BackgroundColor3 = newColor
+            }):Play()
+        end
+        if _themeColorElements.counterGlow then
+            TweenService:Create(_themeColorElements.counterGlow, TweenInfo.new(0.4), {
+                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(70, 255, 178), 0.18)
             }):Play()
         end
 
