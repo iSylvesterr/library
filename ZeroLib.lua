@@ -951,8 +951,8 @@ function Zeroin:Window(GuiConfig)
     local TabDivider = Instance.new("Frame")
     TabDivider.Name = "TabDivider"
     TabDivider.AnchorPoint = Vector2.new(0, 0)
-    TabDivider.BackgroundColor3 = GuiConfig.Color
-    TabDivider.BackgroundTransparency = 0
+    TabDivider.BackgroundColor3 = ThemeColors.Border
+    TabDivider.BackgroundTransparency = 0.18
     TabDivider.BorderSizePixel = 0
     TabDivider.Position = UDim2.new(0, GuiConfig["Tab Width"] + 13, 0, 38)
     TabDivider.Size = UDim2.new(0, 1, 1, -38)
@@ -1073,8 +1073,8 @@ function Zeroin:Window(GuiConfig)
     UICorner2.Parent = LayersTab
 
     DecideFrame.AnchorPoint = Vector2.new(0.5, 0)
-    DecideFrame.BackgroundColor3 = GuiConfig.Color
-    DecideFrame.BackgroundTransparency = 0
+    DecideFrame.BackgroundColor3 = ThemeColors.Border
+    DecideFrame.BackgroundTransparency = 0.18
     DecideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     DecideFrame.BorderSizePixel = 0
     DecideFrame.Position = UDim2.new(0.5, 0, 0, 38)
@@ -3676,11 +3676,17 @@ function Zeroin:Window(GuiConfig)
             }):Play()
         end
 
-        -- Update border stroke & DecideFrame
-        -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
-        TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+        -- Update border stroke, DecideFrame & TabDivider
+        TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), {
+            Color = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75)
+        }):Play()
+        TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), {
+            BackgroundColor3 = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75)
+        }):Play()
         if _themeColorElements.tabDivider then
-            TweenService:Create(_themeColorElements.tabDivider, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+            TweenService:Create(_themeColorElements.tabDivider, TweenInfo.new(0.4), {
+                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75)
+            }):Play()
         end
 
         -- Solid tinted surfaces eliminate color banding entirely. Lerp keeps
