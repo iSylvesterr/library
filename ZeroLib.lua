@@ -1166,8 +1166,8 @@ function Zeroin:Window(GuiConfig)
     ScrollTab.BackgroundTransparency = 0.9990000128746033
     ScrollTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     ScrollTab.BorderSizePixel = 0
-    ScrollTab.Size = UDim2.new(1, 0, 0.88, 0)
-	ScrollTab.Position = UDim2.new(0, 0, 0.11, 0)
+    ScrollTab.Size = UDim2.new(1, 0, 1, -36)
+	ScrollTab.Position = UDim2.new(0, 0, 0, 36)
     ScrollTab.Name = "ScrollTab"
     ScrollTab.Parent = LayersTab
 
