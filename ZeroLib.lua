@@ -948,6 +948,26 @@ function Zeroin:Window(GuiConfig)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
+    local TabDivider = Instance.new("Frame")
+    TabDivider.Name = "TabDivider"
+    TabDivider.AnchorPoint = Vector2.new(0, 0)
+    TabDivider.BackgroundColor3 = GuiConfig.Color
+    TabDivider.BackgroundTransparency = 0.5
+    TabDivider.BorderSizePixel = 0
+    TabDivider.Position = UDim2.new(0, GuiConfig["Tab Width"] + 13, 0, 38)
+    TabDivider.Size = UDim2.new(0, 1, 1, -38)
+    TabDivider.Parent = Main
+
+    local TabDividerGradient = Instance.new("UIGradient")
+    TabDividerGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+        ColorSequenceKeypoint.new(0.15, GuiConfig.Color),
+        ColorSequenceKeypoint.new(0.85, GuiConfig.Color),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+    })
+    TabDividerGradient.Rotation = 90
+    TabDividerGradient.Parent = TabDivider
+
     local SearchBarFrame = Instance.new("Frame")
     SearchBarFrame.Name = "SearchBarFrame"
     SearchBarFrame.Size = UDim2.new(1, 0, 0, 26)
