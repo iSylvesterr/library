@@ -139,6 +139,8 @@ function DeleteProfile(name)
 end
 
 local Icons = {
+    home      = "rbxassetid://10828236109",
+    info      = "rbxassetid://10828236359",
     player    = "rbxassetid://12120698352",
     web       = "rbxassetid://137601480983962",
     bag       = "rbxassetid://8601111810",
