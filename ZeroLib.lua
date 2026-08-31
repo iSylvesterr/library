@@ -764,8 +764,8 @@ function Napoleon:Window(GuiConfig)
     local function styleStatusChip(frame, order)
         frame.LayoutOrder = order
         frame.Size = UDim2.new(0, 0, 0, 20)
-        frame.BackgroundColor3 = Color3.fromRGB(4, 28, 18)
-        frame.BackgroundTransparency = 0.08
+        frame.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
+        frame.BackgroundTransparency = 0
         frame.BorderSizePixel = 0
         frame.AutomaticSize = Enum.AutomaticSize.X
         frame.Parent = RightContainer
@@ -788,8 +788,8 @@ function Napoleon:Window(GuiConfig)
         corner.Parent = frame
 
         local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(22, 92, 62)
-        stroke.Transparency = 0.45
+        stroke.Color = Color3.fromRGB(34, 91, 68)
+        stroke.Transparency = 0.18
         stroke.Thickness = 1
         stroke.Parent = frame
     end
@@ -3652,7 +3652,7 @@ function Napoleon:Window(GuiConfig)
 
         -- Update topbar (Title & Footer text)
         -- TweenService:Create(_themeColorElements.titleLabel, TweenInfo.new(0.4), { TextColor3 = newColor }):Play()
-        local chipSurface = newColor:Lerp(Color3.fromRGB(2, 18, 11), 0.92)
+        local chipSurface = newColor:Lerp(Color3.fromRGB(9, 34, 25), 0.9)
         if _themeColorElements.footerFrm then
             TweenService:Create(_themeColorElements.footerFrm, TweenInfo.new(0.4), {
                 BackgroundColor3 = chipSurface
