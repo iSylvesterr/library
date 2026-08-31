@@ -187,9 +187,9 @@ local viewport = workspace.CurrentCamera.ViewportSize
 
 -- Zeroin visual identity: sampled from the supplied black/emerald reference.
 local ThemeColors = {
-    BackgroundTop = Color3.fromRGB(4, 10, 8),
-    BackgroundMid = Color3.fromRGB(5, 31, 20),
-    BackgroundBottom = Color3.fromRGB(3, 13, 9),
+    BackgroundTop = Color3.fromRGB(5, 29, 19),
+    BackgroundMid = Color3.fromRGB(6, 53, 32),
+    BackgroundBottom = Color3.fromRGB(4, 31, 20),
     Accent = Color3.fromRGB(0, 205, 122),
     AccentBright = Color3.fromRGB(0, 229, 137),
     Border = Color3.fromRGB(20, 126, 83),
@@ -708,10 +708,10 @@ function Napoleon:Window(GuiConfig)
     -- small color differences so black and emerald blend as one material.
     MainGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, ThemeColors.BackgroundTop),
-        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(4, 17, 12)),
-        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(5, 27, 18)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(5, 37, 23)),
+        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(6, 47, 29)),
         ColorSequenceKeypoint.new(0.62, ThemeColors.BackgroundMid),
-        ColorSequenceKeypoint.new(0.82, Color3.fromRGB(4, 23, 16)),
+        ColorSequenceKeypoint.new(0.82, Color3.fromRGB(5, 42, 26)),
         ColorSequenceKeypoint.new(1, ThemeColors.BackgroundBottom)
     })
     MainGradient.Rotation = 18
@@ -727,13 +727,22 @@ function Napoleon:Window(GuiConfig)
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
-    Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Top.BackgroundTransparency = 0.9990000128746033
+    Top.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Top.BackgroundTransparency = 0.08
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Top.BorderSizePixel = 0
     Top.Size = UDim2.new(1, 0, 0, 38)
     Top.Name = "Top"
     Top.Parent = Main
+
+    local TopGradient = Instance.new("UIGradient")
+    TopGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(4, 30, 20)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(6, 46, 29)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 34, 22))
+    })
+    TopGradient.Rotation = 0
+    TopGradient.Parent = Top
 
     TextLabel.Font = Enum.Font.GothamBold
     TextLabel.Text = GuiConfig.Title
@@ -3620,6 +3629,7 @@ function Napoleon:Window(GuiConfig)
         decideFrm   = DecideFrame,
         mainBG      = Main,
         mainGradient = MainGradient,
+        topGradient = TopGradient,
         executorFrm = Executor,
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
@@ -3648,12 +3658,19 @@ function Napoleon:Window(GuiConfig)
         }):Play()
         if _themeColorElements.mainGradient then
             _themeColorElements.mainGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(4, 10, 8)),
-                ColorSequenceKeypoint.new(0.2, newColor:Lerp(Color3.fromRGB(4, 17, 12), 0.96)),
-                ColorSequenceKeypoint.new(0.42, newColor:Lerp(Color3.fromRGB(5, 27, 18), 0.93)),
-                ColorSequenceKeypoint.new(0.62, newColor:Lerp(Color3.fromRGB(5, 31, 20), 0.92)),
-                ColorSequenceKeypoint.new(0.82, newColor:Lerp(Color3.fromRGB(4, 23, 16), 0.95)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(3, 13, 9))
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 29, 19)),
+                ColorSequenceKeypoint.new(0.2, newColor:Lerp(Color3.fromRGB(5, 37, 23), 0.92)),
+                ColorSequenceKeypoint.new(0.42, newColor:Lerp(Color3.fromRGB(6, 47, 29), 0.88)),
+                ColorSequenceKeypoint.new(0.62, newColor:Lerp(Color3.fromRGB(6, 53, 32), 0.86)),
+                ColorSequenceKeypoint.new(0.82, newColor:Lerp(Color3.fromRGB(5, 42, 26), 0.9)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 31, 20))
+            })
+        end
+        if _themeColorElements.topGradient then
+            _themeColorElements.topGradient.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, newColor:Lerp(Color3.fromRGB(4, 30, 20), 0.92)),
+                ColorSequenceKeypoint.new(0.5, newColor:Lerp(Color3.fromRGB(6, 46, 29), 0.86)),
+                ColorSequenceKeypoint.new(1, newColor:Lerp(Color3.fromRGB(4, 34, 22), 0.9))
             })
         end
 
