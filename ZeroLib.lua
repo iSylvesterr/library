@@ -952,7 +952,7 @@ function Zeroin:Window(GuiConfig)
     TabDivider.Name = "TabDivider"
     TabDivider.AnchorPoint = Vector2.new(0, 0)
     TabDivider.BackgroundColor3 = ThemeColors.Border
-    TabDivider.BackgroundTransparency = 0.18
+    TabDivider.BackgroundTransparency = 0.65
     TabDivider.BorderSizePixel = 0
     TabDivider.Position = UDim2.new(0, GuiConfig["Tab Width"] + 13, 0, 38)
     TabDivider.Size = UDim2.new(0, 1, 1, -38)
@@ -1074,7 +1074,7 @@ function Zeroin:Window(GuiConfig)
 
     DecideFrame.AnchorPoint = Vector2.new(0.5, 0)
     DecideFrame.BackgroundColor3 = ThemeColors.Border
-    DecideFrame.BackgroundTransparency = 0.18
+    DecideFrame.BackgroundTransparency = 0.65
     DecideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     DecideFrame.BorderSizePixel = 0
     DecideFrame.Position = UDim2.new(0.5, 0, 0, 38)
@@ -3681,11 +3681,13 @@ function Zeroin:Window(GuiConfig)
             Color = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75)
         }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), {
-            BackgroundColor3 = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75)
+            BackgroundColor3 = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75),
+            BackgroundTransparency = 0.65
         }):Play()
         if _themeColorElements.tabDivider then
             TweenService:Create(_themeColorElements.tabDivider, TweenInfo.new(0.4), {
-                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75)
+                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(15, 60, 40), 0.75),
+                BackgroundTransparency = 0.65
             }):Play()
         end
 
