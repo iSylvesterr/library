@@ -3641,6 +3641,7 @@ function Zeroin:Window(GuiConfig)
         footerFrm   = FooterFrame,
         mainStroke  = MainStroke,
         decideFrm   = DecideFrame,
+        tabDivider  = TabDivider,
         mainBG      = Main,
         topBar      = Top,
         executorFrm = Executor,
@@ -3668,6 +3669,18 @@ function Zeroin:Window(GuiConfig)
         -- Update border stroke & DecideFrame
         -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+        if _themeColorElements.tabDivider then
+            TweenService:Create(_themeColorElements.tabDivider, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
+            local tGrad = _themeColorElements.tabDivider:FindFirstChildOfClass("UIGradient")
+            if tGrad then
+                tGrad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+                    ColorSequenceKeypoint.new(0.15, newColor),
+                    ColorSequenceKeypoint.new(0.85, newColor),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+                })
+            end
+        end
 
         -- Solid tinted surfaces eliminate color banding entirely. Lerp keeps
         -- alternate themes dark while retaining a visible accent undertone.
