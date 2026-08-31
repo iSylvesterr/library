@@ -712,8 +712,8 @@ function Napoleon:Window(GuiConfig)
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
-    Top.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    Top.BackgroundTransparency = 0
+    Top.BackgroundColor3 = Color3.fromRGB(5, 39, 25)
+    Top.BackgroundTransparency = 0.02
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Top.BorderSizePixel = 0
     Top.Size = UDim2.new(1, 0, 0, 38)
@@ -3633,8 +3633,8 @@ function Napoleon:Window(GuiConfig)
         }):Play()
         if _themeColorElements.topBar then
             TweenService:Create(_themeColorElements.topBar, TweenInfo.new(0.4), {
-                BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-                BackgroundTransparency = 0
+                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(3, 20, 13), 0.88),
+                BackgroundTransparency = 0.02
             }):Play()
         end
 
