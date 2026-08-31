@@ -952,21 +952,11 @@ function Zeroin:Window(GuiConfig)
     TabDivider.Name = "TabDivider"
     TabDivider.AnchorPoint = Vector2.new(0, 0)
     TabDivider.BackgroundColor3 = GuiConfig.Color
-    TabDivider.BackgroundTransparency = 0.5
+    TabDivider.BackgroundTransparency = 0
     TabDivider.BorderSizePixel = 0
     TabDivider.Position = UDim2.new(0, GuiConfig["Tab Width"] + 13, 0, 38)
     TabDivider.Size = UDim2.new(0, 1, 1, -38)
     TabDivider.Parent = Main
-
-    local TabDividerGradient = Instance.new("UIGradient")
-    TabDividerGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
-        ColorSequenceKeypoint.new(0.15, GuiConfig.Color),
-        ColorSequenceKeypoint.new(0.85, GuiConfig.Color),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
-    })
-    TabDividerGradient.Rotation = 90
-    TabDividerGradient.Parent = TabDivider
 
     local SearchBarFrame = Instance.new("Frame")
     SearchBarFrame.Name = "SearchBarFrame"
@@ -3691,15 +3681,6 @@ function Zeroin:Window(GuiConfig)
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
         if _themeColorElements.tabDivider then
             TweenService:Create(_themeColorElements.tabDivider, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
-            local tGrad = _themeColorElements.tabDivider:FindFirstChildOfClass("UIGradient")
-            if tGrad then
-                tGrad.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
-                    ColorSequenceKeypoint.new(0.15, newColor),
-                    ColorSequenceKeypoint.new(0.85, newColor),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
-                })
-            end
         end
 
         -- Solid tinted surfaces eliminate color banding entirely. Lerp keeps
