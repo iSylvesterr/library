@@ -187,9 +187,9 @@ local viewport = workspace.CurrentCamera.ViewportSize
 
 -- Zeroin visual identity: sampled from the supplied black/emerald reference.
 local ThemeColors = {
-    BackgroundTop = Color3.fromRGB(1, 18, 11),
-    BackgroundMid = Color3.fromRGB(0, 48, 30),
-    BackgroundBottom = Color3.fromRGB(0, 7, 4),
+    BackgroundTop = Color3.fromRGB(3, 9, 7),
+    BackgroundMid = Color3.fromRGB(0, 92, 53),
+    BackgroundBottom = Color3.fromRGB(1, 14, 8),
     Accent = Color3.fromRGB(0, 205, 122),
     AccentBright = Color3.fromRGB(0, 229, 137),
     Border = Color3.fromRGB(20, 126, 83),
@@ -688,8 +688,10 @@ function Napoleon:Window(GuiConfig)
         Main.BackgroundTransparency = 0.15
         Main.ImageTransparency = GuiConfig.ThemeTransparency or 0.15
     else
-        Main.BackgroundColor3 = GuiConfig.Color2 -- Latar Warna Window
-        Main.BackgroundTransparency = 0.15
+        -- UIGradient multiplies BackgroundColor3, so a white base is required
+        -- for the emerald colors below to remain visible.
+        Main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Main.BackgroundTransparency = 0.04
     end
 
     Main.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -703,10 +705,11 @@ function Napoleon:Window(GuiConfig)
     local MainGradient = Instance.new("UIGradient")
     MainGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, ThemeColors.BackgroundTop),
-        ColorSequenceKeypoint.new(0.52, ThemeColors.BackgroundMid),
+        ColorSequenceKeypoint.new(0.34, Color3.fromRGB(0, 45, 27)),
+        ColorSequenceKeypoint.new(0.62, ThemeColors.BackgroundMid),
         ColorSequenceKeypoint.new(1, ThemeColors.BackgroundBottom)
     })
-    MainGradient.Rotation = 135
+    MainGradient.Rotation = 125
     MainGradient.Parent = Main
 
     UICorner3.Parent = Main
@@ -3633,13 +3636,17 @@ function Napoleon:Window(GuiConfig)
         -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
 
-        -- Update window background and retain the black-to-accent gradient.
-        TweenService:Create(_themeColorElements.mainBG, TweenInfo.new(0.4), { BackgroundColor3 = GuiConfig.Color2 }):Play()
+        -- UIGradient needs a white base; otherwise a dark BackgroundColor3
+        -- multiplies the gradient and makes the entire window look black.
+        TweenService:Create(_themeColorElements.mainBG, TweenInfo.new(0.4), {
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        }):Play()
         if _themeColorElements.mainGradient then
             _themeColorElements.mainGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, GuiConfig.Color2),
-                ColorSequenceKeypoint.new(0.52, newColor:Lerp(Color3.fromRGB(0, 22, 13), 0.72)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 7, 4))
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(3, 9, 7)),
+                ColorSequenceKeypoint.new(0.34, newColor:Lerp(Color3.fromRGB(0, 20, 12), 0.72)),
+                ColorSequenceKeypoint.new(0.62, newColor:Lerp(Color3.fromRGB(0, 38, 22), 0.48)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(1, 14, 8))
             })
         end
 
