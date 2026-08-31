@@ -185,6 +185,38 @@ local Mouse = LocalPlayer:GetMouse()
 local CoreGui = game:GetService("CoreGui")
 local viewport = workspace.CurrentCamera.ViewportSize
 
+-- Zeroin visual identity: sampled from the supplied black/emerald reference.
+local ThemeColors = {
+    BackgroundTop = Color3.fromRGB(1, 18, 11),
+    BackgroundMid = Color3.fromRGB(0, 48, 30),
+    BackgroundBottom = Color3.fromRGB(0, 7, 4),
+    Accent = Color3.fromRGB(0, 205, 122),
+    AccentBright = Color3.fromRGB(0, 229, 137),
+    Border = Color3.fromRGB(20, 126, 83),
+}
+
+local function resolveImage(source)
+    if source == nil then return "" end
+
+    local value = tostring(source)
+    if value == "" then return "" end
+    if value:match("^rbxasset") or value:match("^https?://") then
+        return value
+    end
+    if value:match("^%d+$") then
+        return "rbxassetid://" .. value
+    end
+
+    -- Local images are useful during executor-side development. Published
+    -- builds should pass a Roblox asset id so every user can load the logo.
+    if getcustomasset then
+        local ok, asset = pcall(getcustomasset, value)
+        if ok and asset then return asset end
+    end
+
+    return value
+end
+
 local function isMobileDevice()
     return UserInputService.TouchEnabled
         and not UserInputService.KeyboardEnabled
@@ -577,7 +609,8 @@ function Napoleon:Window(GuiConfig)
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "Napoleon"
     GuiConfig.Footer       = GuiConfig.Footer or "Napoleon >:D"
-    GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(150, 150, 150)
+    GuiConfig.Color        = GuiConfig.Color or ThemeColors.Accent
+    GuiConfig.Color2       = GuiConfig.Color2 or ThemeColors.BackgroundTop
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
 
@@ -668,19 +701,20 @@ function Napoleon:Window(GuiConfig)
     Main.Parent = DropShadow
 
     local MainGradient = Instance.new("UIGradient")
-    MainGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 80, 80))
-    }
-    MainGradient.Rotation = 90
+    MainGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, ThemeColors.BackgroundTop),
+        ColorSequenceKeypoint.new(0.52, ThemeColors.BackgroundMid),
+        ColorSequenceKeypoint.new(1, ThemeColors.BackgroundBottom)
+    })
+    MainGradient.Rotation = 135
     MainGradient.Parent = Main
 
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
 
     local MainStroke = Instance.new("UIStroke")
-    MainStroke.Color = Color3.fromRGB(115, 115, 115) -- Outline abu-abu agak terang
-    MainStroke.Transparency = 0
+    MainStroke.Color = ThemeColors.Border
+    MainStroke.Transparency = 0.18
     MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
@@ -707,7 +741,7 @@ function Napoleon:Window(GuiConfig)
     TextLabel.Parent = Top
 
     local LogoImg = Instance.new("ImageLabel")
-    LogoImg.Image = GuiConfig.LogoHUB and ("rbxassetid://" .. GuiConfig.LogoHUB) or ""
+    LogoImg.Image = resolveImage(GuiConfig.LogoHUB)
 	LogoImg.BackgroundTransparency = 1
 	LogoImg.BorderSizePixel = 0
 	LogoImg.Size = UDim2.new(0, 22, 0, 22)
@@ -998,7 +1032,7 @@ function Napoleon:Window(GuiConfig)
     UICorner2.Parent = LayersTab
 
     DecideFrame.AnchorPoint = Vector2.new(0.5, 0)
-    DecideFrame.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
+    DecideFrame.BackgroundColor3 = GuiConfig.Color
     DecideFrame.BackgroundTransparency = 0
     DecideFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     DecideFrame.BorderSizePixel = 0
@@ -1020,7 +1054,7 @@ function Napoleon:Window(GuiConfig)
     UICorner6.Parent = Layers
 
 	local WindowImg1 = Instance.new("ImageLabel")
-	WindowImg1.Image = "rbxassetid://" .. GuiConfig.LogoHUB
+	WindowImg1.Image = resolveImage(GuiConfig.LogoHUB)
 	WindowImg1.BackgroundTransparency = 1
 	WindowImg1.ImageTransparency = 0.8
 	WindowImg1.BorderSizePixel = 0
@@ -1033,7 +1067,7 @@ function Napoleon:Window(GuiConfig)
     WindowImg1.Visible = false
 
 	local WindowImg2 = Instance.new("ImageLabel")
-	WindowImg2.Image = "rbxassetid://" .. GuiConfig.WindowIMG
+	WindowImg2.Image = resolveImage(GuiConfig.WindowIMG)
 	WindowImg2.BackgroundTransparency = 1
 	WindowImg2.ImageTransparency = 0.8
 	WindowImg2.BorderSizePixel = 0
@@ -1302,7 +1336,7 @@ function Napoleon:Window(GuiConfig)
         MainButton.Size = UDim2.new(0, 40, 0, 40)
         MainButton.Position = UDim2.new(0, 20, 0, 150)
         MainButton.BackgroundTransparency = 1
-        MainButton.Image = "rbxassetid://119958938217417" --.. GuiConfig.Image
+        MainButton.Image = resolveImage(GuiConfig.Image or GuiConfig.LogoHUB)
         MainButton.ScaleType = Enum.ScaleType.Fit
 
         local ToggleUIStroke = Instance.new("UIStroke")
@@ -3577,6 +3611,7 @@ function Napoleon:Window(GuiConfig)
         mainStroke  = MainStroke,
         decideFrm   = DecideFrame,
         mainBG      = Main,
+        mainGradient = MainGradient,
         executorFrm = Executor,
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
@@ -3598,8 +3633,15 @@ function Napoleon:Window(GuiConfig)
         -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
 
-        -- Update window background (Color2)
+        -- Update window background and retain the black-to-accent gradient.
         TweenService:Create(_themeColorElements.mainBG, TweenInfo.new(0.4), { BackgroundColor3 = GuiConfig.Color2 }):Play()
+        if _themeColorElements.mainGradient then
+            _themeColorElements.mainGradient.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, GuiConfig.Color2),
+                ColorSequenceKeypoint.new(0.52, newColor:Lerp(Color3.fromRGB(0, 22, 13), 0.72)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 7, 4))
+            })
+        end
 
         -- Update ChooseFrame & UIStroke di semua tab
         for _, tab in ScrollTab:GetChildren() do
