@@ -688,10 +688,10 @@ function Napoleon:Window(GuiConfig)
         Main.BackgroundTransparency = 0.15
         Main.ImageTransparency = GuiConfig.ThemeTransparency or 0.15
     else
-        -- UIGradient multiplies BackgroundColor3, so a white base is required
-        -- for the emerald colors below to remain visible.
-        Main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Main.BackgroundTransparency = 0.04
+        -- A single dark-emerald material avoids Roblox UIGradient banding on
+        -- very dark colors while preserving the requested black/green blend.
+        Main.BackgroundColor3 = Color3.fromRGB(5, 39, 25)
+        Main.BackgroundTransparency = 0.02
     end
 
     Main.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -701,21 +701,6 @@ function Napoleon:Window(GuiConfig)
     Main.Size = UDim2.new(1, -47, 1, -47)
     Main.Name = "Main"
     Main.Parent = DropShadow
-
-    local MainGradient = Instance.new("UIGradient")
-    -- One continuous surface gradient avoids diagonal seams caused by
-    -- overlapping translucent glow layers. Adjacent stops intentionally use
-    -- small color differences so black and emerald blend as one material.
-    MainGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, ThemeColors.BackgroundTop),
-        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(5, 37, 23)),
-        ColorSequenceKeypoint.new(0.42, Color3.fromRGB(6, 47, 29)),
-        ColorSequenceKeypoint.new(0.62, ThemeColors.BackgroundMid),
-        ColorSequenceKeypoint.new(0.82, Color3.fromRGB(5, 42, 26)),
-        ColorSequenceKeypoint.new(1, ThemeColors.BackgroundBottom)
-    })
-    MainGradient.Rotation = 18
-    MainGradient.Parent = Main
 
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
@@ -727,22 +712,13 @@ function Napoleon:Window(GuiConfig)
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
-    Top.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Top.BackgroundTransparency = 0.08
+    Top.BackgroundColor3 = Color3.fromRGB(6, 49, 31)
+    Top.BackgroundTransparency = 0.04
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Top.BorderSizePixel = 0
     Top.Size = UDim2.new(1, 0, 0, 38)
     Top.Name = "Top"
     Top.Parent = Main
-
-    local TopGradient = Instance.new("UIGradient")
-    TopGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(4, 30, 20)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(6, 46, 29)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 34, 22))
-    })
-    TopGradient.Rotation = 0
-    TopGradient.Parent = Top
 
     TextLabel.Font = Enum.Font.GothamBold
     TextLabel.Text = GuiConfig.Title
@@ -3628,8 +3604,7 @@ function Napoleon:Window(GuiConfig)
         mainStroke  = MainStroke,
         decideFrm   = DecideFrame,
         mainBG      = Main,
-        mainGradient = MainGradient,
-        topGradient = TopGradient,
+        topBar      = Top,
         executorFrm = Executor,
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
@@ -3651,27 +3626,15 @@ function Napoleon:Window(GuiConfig)
         -- TweenService:Create(_themeColorElements.mainStroke, TweenInfo.new(0.4), { Color = newColor }):Play()
         TweenService:Create(_themeColorElements.decideFrm, TweenInfo.new(0.4), { BackgroundColor3 = newColor }):Play()
 
-        -- UIGradient needs a white base; otherwise a dark BackgroundColor3
-        -- multiplies the gradient and makes the entire window look black.
+        -- Solid tinted surfaces eliminate color banding entirely. Lerp keeps
+        -- alternate themes dark while retaining a visible accent undertone.
         TweenService:Create(_themeColorElements.mainBG, TweenInfo.new(0.4), {
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            BackgroundColor3 = newColor:Lerp(Color3.fromRGB(3, 20, 13), 0.88)
         }):Play()
-        if _themeColorElements.mainGradient then
-            _themeColorElements.mainGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 29, 19)),
-                ColorSequenceKeypoint.new(0.2, newColor:Lerp(Color3.fromRGB(5, 37, 23), 0.92)),
-                ColorSequenceKeypoint.new(0.42, newColor:Lerp(Color3.fromRGB(6, 47, 29), 0.88)),
-                ColorSequenceKeypoint.new(0.62, newColor:Lerp(Color3.fromRGB(6, 53, 32), 0.86)),
-                ColorSequenceKeypoint.new(0.82, newColor:Lerp(Color3.fromRGB(5, 42, 26), 0.9)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 31, 20))
-            })
-        end
-        if _themeColorElements.topGradient then
-            _themeColorElements.topGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, newColor:Lerp(Color3.fromRGB(4, 30, 20), 0.92)),
-                ColorSequenceKeypoint.new(0.5, newColor:Lerp(Color3.fromRGB(6, 46, 29), 0.86)),
-                ColorSequenceKeypoint.new(1, newColor:Lerp(Color3.fromRGB(4, 34, 22), 0.9))
-            })
+        if _themeColorElements.topBar then
+            TweenService:Create(_themeColorElements.topBar, TweenInfo.new(0.4), {
+                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(4, 28, 18), 0.84)
+            }):Play()
         end
 
         -- Update ChooseFrame & UIStroke di semua tab
