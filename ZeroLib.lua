@@ -690,8 +690,8 @@ function Napoleon:Window(GuiConfig)
     else
         -- A single dark-emerald material avoids Roblox UIGradient banding on
         -- very dark colors while preserving the requested black/green blend.
-        Main.BackgroundColor3 = Color3.fromRGB(5, 39, 25)
-        Main.BackgroundTransparency = 0.02
+        Main.BackgroundColor3 = Color3.fromRGB(4, 28, 18)
+        Main.BackgroundTransparency = 0.01
     end
 
     Main.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -712,8 +712,8 @@ function Napoleon:Window(GuiConfig)
     MainStroke.Thickness = 1.2
     MainStroke.Parent = Main
 
-    Top.BackgroundColor3 = Color3.fromRGB(5, 39, 25)
-    Top.BackgroundTransparency = 0.02
+    Top.BackgroundColor3 = Color3.fromRGB(4, 28, 18)
+    Top.BackgroundTransparency = 0.01
     Top.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Top.BorderSizePixel = 0
     Top.Size = UDim2.new(1, 0, 0, 38)
@@ -3629,12 +3629,12 @@ function Napoleon:Window(GuiConfig)
         -- Solid tinted surfaces eliminate color banding entirely. Lerp keeps
         -- alternate themes dark while retaining a visible accent undertone.
         TweenService:Create(_themeColorElements.mainBG, TweenInfo.new(0.4), {
-            BackgroundColor3 = newColor:Lerp(Color3.fromRGB(3, 20, 13), 0.88)
+            BackgroundColor3 = newColor:Lerp(Color3.fromRGB(2, 14, 9), 0.93)
         }):Play()
         if _themeColorElements.topBar then
             TweenService:Create(_themeColorElements.topBar, TweenInfo.new(0.4), {
-                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(3, 20, 13), 0.88),
-                BackgroundTransparency = 0.02
+                BackgroundColor3 = newColor:Lerp(Color3.fromRGB(2, 14, 9), 0.93),
+                BackgroundTransparency = 0.01
             }):Play()
         end
 
