@@ -187,9 +187,9 @@ local viewport = workspace.CurrentCamera.ViewportSize
 
 -- Zeroin visual identity: sampled from the supplied black/emerald reference.
 local ThemeColors = {
-    BackgroundTop = Color3.fromRGB(3, 9, 7),
-    BackgroundMid = Color3.fromRGB(0, 92, 53),
-    BackgroundBottom = Color3.fromRGB(1, 14, 8),
+    BackgroundTop = Color3.fromRGB(5, 8, 7),
+    BackgroundMid = Color3.fromRGB(8, 24, 17),
+    BackgroundBottom = Color3.fromRGB(3, 11, 8),
     Accent = Color3.fromRGB(0, 205, 122),
     AccentBright = Color3.fromRGB(0, 229, 137),
     Border = Color3.fromRGB(20, 126, 83),
@@ -705,12 +705,35 @@ function Napoleon:Window(GuiConfig)
     local MainGradient = Instance.new("UIGradient")
     MainGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, ThemeColors.BackgroundTop),
-        ColorSequenceKeypoint.new(0.34, Color3.fromRGB(0, 45, 27)),
-        ColorSequenceKeypoint.new(0.62, ThemeColors.BackgroundMid),
+        ColorSequenceKeypoint.new(0.58, ThemeColors.BackgroundMid),
         ColorSequenceKeypoint.new(1, ThemeColors.BackgroundBottom)
     })
-    MainGradient.Rotation = 125
+    MainGradient.Rotation = 115
     MainGradient.Parent = Main
+
+    -- A separate low-opacity wash creates an emerald atmosphere without
+    -- turning the entire surface into a bright or banded green gradient.
+    local AmbientGlow = Instance.new("Frame")
+    AmbientGlow.Name = "AmbientGlow"
+    AmbientGlow.BackgroundColor3 = ThemeColors.Accent
+    AmbientGlow.BackgroundTransparency = 0.72
+    AmbientGlow.BorderSizePixel = 0
+    AmbientGlow.Position = UDim2.fromScale(0, 0)
+    AmbientGlow.Size = UDim2.fromScale(1, 1)
+    AmbientGlow.ZIndex = 0
+    AmbientGlow.Active = false
+    AmbientGlow.Parent = Main
+
+    local AmbientGradient = Instance.new("UIGradient")
+    AmbientGradient.Color = ColorSequence.new(Color3.new(1, 1, 1))
+    AmbientGradient.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.48, 0.96),
+        NumberSequenceKeypoint.new(0.78, 0.76),
+        NumberSequenceKeypoint.new(1, 0.9)
+    })
+    AmbientGradient.Rotation = 145
+    AmbientGradient.Parent = AmbientGlow
 
     UICorner3.Parent = Main
     UICorner3.CornerRadius = UDim.new(0.02, 0)
@@ -3615,6 +3638,7 @@ function Napoleon:Window(GuiConfig)
         decideFrm   = DecideFrame,
         mainBG      = Main,
         mainGradient = MainGradient,
+        ambientGlow = AmbientGlow,
         executorFrm = Executor,
     }
     local _themeTabChooseFrames = {} -- referensi semua ChooseFrame tab
@@ -3643,11 +3667,15 @@ function Napoleon:Window(GuiConfig)
         }):Play()
         if _themeColorElements.mainGradient then
             _themeColorElements.mainGradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(3, 9, 7)),
-                ColorSequenceKeypoint.new(0.34, newColor:Lerp(Color3.fromRGB(0, 20, 12), 0.72)),
-                ColorSequenceKeypoint.new(0.62, newColor:Lerp(Color3.fromRGB(0, 38, 22), 0.48)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(1, 14, 8))
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 8, 7)),
+                ColorSequenceKeypoint.new(0.58, newColor:Lerp(Color3.fromRGB(8, 24, 17), 0.88)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(3, 11, 8))
             })
+        end
+        if _themeColorElements.ambientGlow then
+            TweenService:Create(_themeColorElements.ambientGlow, TweenInfo.new(0.4), {
+                BackgroundColor3 = newColor
+            }):Play()
         end
 
         -- Update ChooseFrame & UIStroke di semua tab
