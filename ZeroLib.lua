@@ -1605,6 +1605,7 @@ function Zeroin:Window(GuiConfig)
         local UICorner3 = Instance.new("UICorner");
         local TabButton = Instance.new("TextButton");
         local TabName = Instance.new("TextLabel")
+        local TabIconImg
         local UIStroke2 = Instance.new("UIStroke");
         local UICorner4 = Instance.new("UICorner");
 
@@ -1637,17 +1638,40 @@ function Zeroin:Window(GuiConfig)
         TabButton.Name = "TabButton"
         TabButton.Parent = Tab
 
-        TabName.Font = Enum.Font.GothamBold
+        local textOffsetX = 8
+
+        if TabConfig.Icon and TabConfig.Icon ~= "" then
+            TabIconImg = Instance.new("ImageLabel")
+            TabIconImg.Name = "TabIcon"
+            TabIconImg.Size = UDim2.fromOffset(14, 14)
+            TabIconImg.Position = UDim2.new(0, 8, 0.5, 0)
+            TabIconImg.AnchorPoint = Vector2.new(0, 0.5)
+            TabIconImg.BackgroundTransparency = 1
+            if Icons and Icons[TabConfig.Icon] then
+                TabIconImg.Image = Icons[TabConfig.Icon]
+            else
+                TabIconImg.Image = TabConfig.Icon
+            end
+            TabIconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            TabIconImg.ImageTransparency = CountTab == 0 and 0 or 0.4
+            TabIconImg.ScaleType = Enum.ScaleType.Fit
+            TabIconImg.Parent = Tab
+
+            textOffsetX = 28
+        end
+
+        TabName.Font = Enum.Font.GothamMedium
         TabName.Text = tostring(TabConfig.Name)
         TabName.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TabName.TextSize = 13
+        TabName.TextSize = 12
+        TabName.TextTransparency = CountTab == 0 and 0 or 0.4
         TabName.TextXAlignment = Enum.TextXAlignment.Left
         TabName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         TabName.BackgroundTransparency = 0.9990000128746033
         TabName.BorderColor3 = Color3.fromRGB(0, 0, 0)
         TabName.BorderSizePixel = 0
-        TabName.Size = UDim2.new(1, 0, 1, 0)
-        TabName.Position = UDim2.new(0, 8, 0, 0)
+        TabName.Size = UDim2.new(1, -textOffsetX, 1, 0)
+        TabName.Position = UDim2.new(0, textOffsetX, 0, 0)
         TabName.Name = "TabName"
         TabName.Parent = Tab
 
@@ -1697,6 +1721,15 @@ function Zeroin:Window(GuiConfig)
                             TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
                             { BackgroundTransparency = 0.9990000128746033 }
                         ):Play()
+                        
+                        local tIcon = TabFrame:FindFirstChild("TabIcon")
+                        local tName = TabFrame:FindFirstChild("TabName")
+                        if tIcon then
+                            TweenService:Create(tIcon, TweenInfo.new(0.3), { ImageTransparency = 0.4 }):Play()
+                        end
+                        if tName then
+                            TweenService:Create(tName, TweenInfo.new(0.3), { TextTransparency = 0.4 }):Play()
+                        end
                     end
                 end
                 TweenService:Create(
@@ -1704,6 +1737,12 @@ function Zeroin:Window(GuiConfig)
                     TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
                     { BackgroundTransparency = 0.9200000166893005 }
                 ):Play()
+                
+                if TabIconImg then
+                    TweenService:Create(TabIconImg, TweenInfo.new(0.6), { ImageTransparency = 0 }):Play()
+                end
+                TweenService:Create(TabName, TweenInfo.new(0.6), { TextTransparency = 0 }):Play()
+
                 TweenService:Create(
                     FrameChoose,
                     TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
