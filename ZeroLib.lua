@@ -3328,9 +3328,7 @@ function Zeroin:Window(GuiConfig)
 
                 DropdownButton.Text = ""
                 DropdownButton.BackgroundTransparency = 1
-                DropdownButton.Size = UDim2.new(1, 0, 0, 46)
                 DropdownButton.Name = "ToggleButton"
-                DropdownButton.Parent = Dropdown
 
                 UICorner10.CornerRadius = UDim.new(0, 4)
                 UICorner10.Parent = Dropdown
@@ -3390,6 +3388,14 @@ function Zeroin:Window(GuiConfig)
                 SelectStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 SelectStroke.Parent = SelectOptionsFrame
 
+                -- The selector itself owns the interaction button. Keeping the
+                -- hit target inside this visual frame makes open/close toggling
+                -- deterministic even while the popup overlay is active.
+                DropdownButton.Size = UDim2.fromScale(1, 1)
+                DropdownButton.Position = UDim2.fromOffset(0, 0)
+                DropdownButton.ZIndex = 120
+                DropdownButton.Parent = SelectOptionsFrame
+
                 OptionSelecting.Font = Enum.Font.GothamBold
                 OptionSelecting.Text = DropdownConfig.Multi and "Select Options" or "Select Option"
                 OptionSelecting.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -3401,6 +3407,7 @@ function Zeroin:Window(GuiConfig)
                 OptionSelecting.Position = UDim2.new(0, 5, 0.5, 0)
                 OptionSelecting.Size = UDim2.new(1, -30, 1, -8)
                 OptionSelecting.Name = "OptionSelecting"
+                OptionSelecting.ZIndex = 121
                 OptionSelecting.Parent = SelectOptionsFrame
 
                 OptionImg.Image = "rbxassetid://16851841101"
@@ -3410,6 +3417,7 @@ function Zeroin:Window(GuiConfig)
                 OptionImg.Position = UDim2.new(1, 0, 0.5, 0)
                 OptionImg.Size = UDim2.new(0, 25, 0, 25)
                 OptionImg.Name = "OptionImg"
+                OptionImg.ZIndex = 121
                 OptionImg.Parent = SelectOptionsFrame
 
                 local DropdownContainer = Instance.new("Frame")
@@ -3554,7 +3562,7 @@ function Zeroin:Window(GuiConfig)
                     if cell and cell:IsA("GuiObject") then cell.ZIndex = open and 89 or 1 end
                     if row and row:IsA("GuiObject") then row.ZIndex = open and 88 or 1 end
                     SelectOptionsFrame.ZIndex = open and 91 or 1
-                    DropdownButton.ZIndex = open and 92 or 1
+                    DropdownButton.ZIndex = 120
                     SectionOverlay.Active = open
                     if open then updatePopupPosition() end
                     updateInlineMenuSize()
