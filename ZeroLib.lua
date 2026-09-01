@@ -1256,7 +1256,7 @@ function Zeroin:Window(GuiConfig)
     DiscordTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
     DiscordTitle.TextSize = 10
     DiscordTitle.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordTitle.Position = UDim2.new(0, 29, 0, 6)
+    DiscordTitle.Position = UDim2.new(0, 29, 0, 8)
     DiscordTitle.Size = UDim2.new(1, -35, 0, 12)
     DiscordTitle.Parent = DiscordCard
 
