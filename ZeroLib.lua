@@ -3429,6 +3429,18 @@ function Zeroin:Window(GuiConfig)
                 MenuCorner.CornerRadius = UDim.new(0, 6)
                 MenuCorner.Parent = DropdownContainer
 
+                local MenuShield = Instance.new("TextButton")
+                MenuShield.Name = "InteractionShield"
+                MenuShield.BackgroundTransparency = 1
+                MenuShield.BorderSizePixel = 0
+                MenuShield.Text = ""
+                MenuShield.AutoButtonColor = false
+                MenuShield.Active = true
+                MenuShield.Selectable = false
+                MenuShield.Size = UDim2.fromScale(1, 1)
+                MenuShield.ZIndex = 101
+                MenuShield.Parent = DropdownContainer
+
                 local MenuStroke = Instance.new("UIStroke")
                 MenuStroke.Color = Color3.fromRGB(34, 91, 68)
                 MenuStroke.Transparency = 0.3
@@ -3448,7 +3460,7 @@ function Zeroin:Window(GuiConfig)
                 SearchBox.BorderSizePixel = 0
                 SearchBox.Size = UDim2.new(1, -10, 0, 25)
                 SearchBox.Position = UDim2.fromOffset(5, 5)
-                SearchBox.ZIndex = 102
+                SearchBox.ZIndex = 105
                 SearchBox.ClearTextOnFocus = false
                 SearchBox.Name = "SearchBox"
                 SearchBox.Parent = DropdownContainer
@@ -3460,7 +3472,8 @@ function Zeroin:Window(GuiConfig)
                 local ScrollSelect = Instance.new("ScrollingFrame")
                 ScrollSelect.Size = UDim2.new(1, -10, 1, -40)
                 ScrollSelect.Position = UDim2.fromOffset(5, 35)
-                ScrollSelect.ZIndex = 101
+                ScrollSelect.ZIndex = 103
+                ScrollSelect.Active = true
                 ScrollSelect.ScrollBarImageColor3 = Color3.fromRGB(34, 91, 68)
                 ScrollSelect.ScrollBarImageTransparency = 0.25
                 ScrollSelect.BorderSizePixel = 0
@@ -3542,6 +3555,7 @@ function Zeroin:Window(GuiConfig)
                     if row and row:IsA("GuiObject") then row.ZIndex = open and 88 or 1 end
                     SelectOptionsFrame.ZIndex = open and 91 or 1
                     DropdownButton.ZIndex = open and 92 or 1
+                    SectionOverlay.Active = open
                     if open then updatePopupPosition() end
                     updateInlineMenuSize()
                 end
@@ -3592,7 +3606,7 @@ function Zeroin:Window(GuiConfig)
                     Option.BackgroundTransparency = 1
                     Option.Size = UDim2.new(1, -2, 0, 30)
                     Option.Name = "Option"
-                    Option.ZIndex = 102
+                    Option.ZIndex = 104
                     Option.Parent = ScrollSelect
 
                     UICorner37.CornerRadius = UDim.new(0, 3)
@@ -3600,7 +3614,10 @@ function Zeroin:Window(GuiConfig)
 
                     OptionButton.BackgroundTransparency = 1
                     OptionButton.Size = UDim2.new(1, 0, 1, 0)
-                    OptionButton.ZIndex = 104
+                    OptionButton.ZIndex = 106
+                    OptionButton.Active = true
+                    OptionButton.Selectable = true
+                    OptionButton.AutoButtonColor = false
                     OptionButton.Text = ""
                     OptionButton.Name = "OptionButton"
                     OptionButton.Parent = Option
@@ -3613,7 +3630,7 @@ function Zeroin:Window(GuiConfig)
                     OptionText.Size = UDim2.new(1, -30, 0, 13)
                     OptionText.BackgroundTransparency = 1
                     OptionText.TextXAlignment = Enum.TextXAlignment.Left
-                    OptionText.ZIndex = 103
+                    OptionText.ZIndex = 105
                     OptionText.Name = "OptionText"
                     OptionText.Parent = Option
 
@@ -3624,7 +3641,7 @@ function Zeroin:Window(GuiConfig)
                     ChooseFrame.Position = UDim2.new(0, 2, 0.5, 0)
                     ChooseFrame.Size = UDim2.new(0, 0, 0, 0)
                     ChooseFrame.Name = "ChooseFrame"
-                    ChooseFrame.ZIndex = 103
+                    ChooseFrame.ZIndex = 105
                     ChooseFrame.Parent = Option
 
                     UIStroke15.Color = GuiConfig.Color
