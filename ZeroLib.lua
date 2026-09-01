@@ -3511,7 +3511,7 @@ function Zeroin:Window(GuiConfig)
                 local DropCount = 0
                 local MenuOpen = false
                 Dropdown:SetAttribute("MenuOpen", false)
-                local MaxVisibleOptions = 3
+                local MaxVisibleOptions = 5
 
                 local function countVisibleOptions()
                     local count = 0
