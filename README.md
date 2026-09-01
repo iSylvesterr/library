@@ -29,18 +29,18 @@ Isi bawaan:
 
 ```text
 Info Script Hub
-├── Welcome to <Window Title>
-├── Script Information
-│   ├── Hub
-│   ├── Current game (auto-detected)
-│   ├── Version
-│   └── Executor
-├── Quick Guide
-├── Community & Support
-└── Join Discord
+└── Welcome to <Window Title>
+
+Have Problem / Need Help? Join Server Now
+├── [Discord Server Icon] Server Name
+│   ├── Member Count
+│   └── Online Count
+└── [Copy Discord Invite] [Update Info]
 ```
 
-Tombol `Join Discord` otomatis menyalin invite yang sama dengan footer card dan menampilkan notification. Atur datanya dari config Window:
+`Script Information`, `Quick Guide`, dan `Community & Support` tidak ditampilkan. Data komunitas diambil secara asynchronous dari public Discord Invite API (`with_counts=true`) tanpa bot token. Request mendukung `syn.request`, `http.request`, `http_request`, `request`, dan fallback `game:HttpGet`. Jika request gagal, card berubah menjadi error state tanpa merusak tab Info.
+
+Tombol `Copy Discord Invite` menyalin invite yang sama dengan footer. Tombol `Update Info` mengambil ulang nama server, icon server, total member, dan online member. Atur invite dari config Window:
 
 ```lua
 local Window = Zeroin:Window({

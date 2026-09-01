@@ -2208,8 +2208,12 @@ function Zeroin:Window(GuiConfig)
             SectionTitle.Font = Enum.Font.GothamBold
             SectionTitle.Text = Title
             SectionTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
-            SectionTitle.TextSize = 13
-            SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            SectionTitle.TextSize = tonumber(SectionConfig.TextSize) or 13
+            SectionTitle.TextTransparency = math.clamp(tonumber(SectionConfig.TextTransparency) or 0, 0, 1)
+            local titleAlignment = tostring(SectionConfig.TextXAlignment or "Left"):lower()
+            SectionTitle.TextXAlignment = titleAlignment == "center" and Enum.TextXAlignment.Center
+                or titleAlignment == "right" and Enum.TextXAlignment.Right
+                or Enum.TextXAlignment.Left
             SectionTitle.TextYAlignment = Enum.TextYAlignment.Top
             SectionTitle.BackgroundTransparency = 1
             SectionTitle.Position = UDim2.fromOffset(6, 0)
@@ -2567,10 +2571,12 @@ function Zeroin:Window(GuiConfig)
                 UICorner14.Parent = Paragraph
 
                 local iconOffset = 10
+                local IconImg
+                local paragraphIconSize = math.max(12, tonumber(ParagraphConfig.IconSize or ParagraphConfig.ImageSize) or 20)
                 if ParagraphConfig.Icon then
-                    local IconImg = Instance.new("ImageLabel")
-                    IconImg.Size = UDim2.new(0, 20, 0, 20)
-                    IconImg.Position = UDim2.new(0, 8, 0, 12)
+                    IconImg = Instance.new("ImageLabel")
+                    IconImg.Size = UDim2.fromOffset(paragraphIconSize, paragraphIconSize)
+                    IconImg.Position = UDim2.new(0, 8, 0, 10)
                     IconImg.BackgroundTransparency = 1
                     IconImg.Name = "ParagraphIcon"
                     IconImg.Parent = Paragraph
@@ -2578,7 +2584,7 @@ function Zeroin:Window(GuiConfig)
                     IconImg.Image = resolveIcon(ParagraphConfig.Icon)
                     IconImg.ImageColor3 = Color3.fromRGB(177, 219, 197)
 
-                    iconOffset = 30
+                    iconOffset = paragraphIconSize + 12
                 end
 
                 ParagraphTitle.Font = Enum.Font.GothamBold
@@ -2650,7 +2656,8 @@ function Zeroin:Window(GuiConfig)
 
                     -- Keep enough room for the optional icon even with very
                     -- short content, while expanding naturally for long text.
-                    Paragraph.Size = UDim2.new(1, 0, 0, math.max(totalHeight, 46))
+                    local iconMinHeight = IconImg and (IconImg.Position.Y.Offset + paragraphIconSize + 10) or 46
+                    Paragraph.Size = UDim2.new(1, 0, 0, math.max(totalHeight, 46, iconMinHeight))
                     updatingParagraph = false
                 end
 
@@ -2667,6 +2674,12 @@ function Zeroin:Window(GuiConfig)
 
                 function ParagraphFunc:SetTitle(title)
                     ParagraphTitle.Text = title or "Title"
+                end
+
+                function ParagraphFunc:SetIcon(source)
+                    if IconImg then
+                        IconImg.Image = resolveIcon(source)
+                    end
                 end
 
                 ParagraphFunc.Frame = Paragraph
@@ -2839,6 +2852,8 @@ function Zeroin:Window(GuiConfig)
                 ButtonConfig.Callback = ButtonConfig.Callback or function() end
                 ButtonConfig.SubTitle = ButtonConfig.SubTitle or nil
                 ButtonConfig.SubCallback = ButtonConfig.SubCallback or function() end
+                ButtonConfig.Icon = ButtonConfig.Icon or "arrow-right"
+                ButtonConfig.SubIcon = ButtonConfig.SubIcon or "arrow-right"
 
                 local Button = Instance.new("Frame")
                 Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -2877,7 +2892,7 @@ function Zeroin:Window(GuiConfig)
 
                 -- Properti Tampilan
                 ButtonIcon.BackgroundTransparency = 1 -- Agar background icon tidak kelihatan
-                ButtonIcon.Image = resolveIcon("arrow-right")
+                ButtonIcon.Image = resolveIcon(ButtonConfig.Icon)
                 ButtonIcon.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Warna icon
                 ButtonIcon.ImageTransparency = 0.3 -- Biar estetik (cocok dengan teksmu yang transparan 0.3)
                 ButtonIcon.ScaleType = Enum.ScaleType.Fit -- Agar gambar tidak gepeng
@@ -2935,7 +2950,7 @@ function Zeroin:Window(GuiConfig)
                     SubButtonIcon.Position = UDim2.new(1, -8, 0.5, 0)
                     SubButtonIcon.AnchorPoint = Vector2.new(1, 0.5)
                     SubButtonIcon.BackgroundTransparency = 1
-                    SubButtonIcon.Image = resolveIcon("arrow-right")
+                    SubButtonIcon.Image = resolveIcon(ButtonConfig.SubIcon)
                     SubButtonIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                     SubButtonIcon.ImageTransparency = 0.3
                     SubButtonIcon.ScaleType = Enum.ScaleType.Fit
@@ -4373,52 +4388,122 @@ function Zeroin:Window(GuiConfig)
             Row = 1
         })
 
-        local function scriptInfoContent(gameName)
-            return string.format(
-                "<b>Hub:</b> %s\n<b>Current game:</b> %s\n<b>Version:</b> %s\n<b>Executor:</b> %s",
-                tostring(GuiConfig.Title),
-                tostring(gameName),
-                tostring(GuiConfig.Version),
-                tostring(execName)
-            )
+        local DiscordSection = BuiltInInfoTab:AddSection({
+            Title = "Have Problem / Need Help? Join Server Now",
+            Layout = "Grid",
+            ItemGap = 4,
+            TextTransparency = 0.05,
+            TextSize = 17,
+            TextXAlignment = "Center"
+        })
+
+        local DiscordInfo = DiscordSection:AddParagraph({
+            Title = "Loading Discord Server...",
+            Content = "Fetching member and online counts from Discord.",
+            Icon = "discord",
+            IconSize = 42,
+            Column = "Full",
+            Row = 1
+        })
+
+        local InviteCode = DiscordUrl:match("discord%.gg/([^/?#]+)")
+            or DiscordUrl:match("discord%.com/invite/([^/?#]+)")
+            or "9snzkaGkRE"
+        local DiscordAPI = "https://discord.com/api/v10/invites/" .. InviteCode
+            .. "?with_counts=true&with_expiration=true"
+
+        local function formatCount(value)
+            local number = math.max(0, math.floor(tonumber(value) or 0))
+            local formatted = tostring(number)
+            repeat
+                local replaced
+                formatted, replaced = formatted:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
+            until replaced == 0
+            return formatted
         end
 
-        local ScriptInfoParagraph = InfoSection:AddParagraph({
-            Title = "Script Information",
-            Content = scriptInfoContent(detectedGameName),
-            Icon = "badge-info",
-            Column = "Full",
-            Row = 2
-        })
+        local function requestDiscordInfo()
+            local responseBody
+            local requester = (syn and syn.request)
+                or (http and http.request)
+                or http_request
+                or request
 
-        table.insert(gameNameListeners, function(gameName)
-            if not isDestroyed then
-                ScriptInfoParagraph:SetContent(scriptInfoContent(gameName))
+            if requester then
+                local response = requester({
+                    Url = DiscordAPI,
+                    Method = "GET",
+                    Headers = { ["Accept"] = "application/json" }
+                })
+                responseBody = response and (response.Body or response.body)
+                local status = response and (response.StatusCode or response.Status)
+                if status and tonumber(status) and tonumber(status) >= 400 then
+                    error("Discord API returned HTTP " .. tostring(status))
+                end
+            else
+                responseBody = game:HttpGet(DiscordAPI)
             end
-        end)
 
-        InfoSection:AddParagraph({
-            Title = "Quick Guide",
-            Content = "Use the search field to find features quickly. Press F3 or the floating Zeroin logo to minimize and restore the window. Closing the window automatically cleans the previous Zeroin UI before the next execution.",
-            Icon = "book-open-check",
+            if not responseBody or responseBody == "" then
+                error("Discord API returned an empty response")
+            end
+            local decoded = HttpService:JSONDecode(responseBody)
+            if type(decoded) ~= "table" or type(decoded.guild) ~= "table" then
+                error(decoded and decoded.message or "Invalid Discord invite response")
+            end
+            return decoded
+        end
+
+        local function updateDiscordInfo(showNotification)
+            DiscordInfo:SetTitle("Loading Discord Server...")
+            DiscordInfo:SetContent("Fetching member and online counts from Discord.")
+            DiscordInfo:SetIcon("discord")
+
+            local ok, response = pcall(requestDiscordInfo)
+            if isDestroyed then return end
+
+            if ok and response and response.guild then
+                local guild = response.guild
+                DiscordInfo:SetTitle(tostring(guild.name or "Discord Server"))
+                DiscordInfo:SetContent(
+                    ' <font color="#52525b">•</font> Member Count: '
+                    .. formatCount(response.approximate_member_count)
+                    .. '\n <font color="#16a34a">•</font> Online Count: '
+                    .. formatCount(response.approximate_presence_count)
+                )
+                if guild.id and guild.icon then
+                    DiscordInfo:SetIcon(
+                        "https://cdn.discordapp.com/icons/" .. tostring(guild.id)
+                        .. "/" .. tostring(guild.icon) .. ".png?size=256"
+                    )
+                end
+                if showNotification then
+                    notif("Discord server information updated.", 3, GuiConfig.Color, "Zeroin", "Discord")
+                end
+            else
+                DiscordInfo:SetTitle("Error Receiving Discord Information")
+                DiscordInfo:SetContent(tostring(response or "Unknown error occurred"))
+                DiscordInfo:SetIcon("triangle-alert")
+                if showNotification then
+                    notif("Unable to update Discord server information.", 3, Color3.fromRGB(220, 90, 90), "Zeroin", "Discord")
+                end
+            end
+        end
+
+        DiscordSection:AddButton({
+            Title = "Copy Discord Invite",
+            SubTitle = "Update Info",
             Column = "Full",
-            Row = 3
+            Row = 2,
+            Icon = "link",
+            SubIcon = "refresh-cw",
+            Callback = copyDiscordInvite,
+            SubCallback = function()
+                trackCleanup(task.spawn(updateDiscordInfo, true))
+            end
         })
 
-        InfoSection:AddParagraph({
-            Title = "Community & Support",
-            Content = "Join the official Discord community for announcements, updates, support, and new script releases. The button below copies the invite link automatically.",
-            Icon = "messages-square",
-            Column = "Full",
-            Row = 4
-        })
-
-        InfoSection:AddButton({
-            Title = "Join Discord",
-            Column = "Full",
-            Row = 5,
-            Callback = copyDiscordInvite
-        })
+        trackCleanup(task.spawn(updateDiscordInfo, false))
     end
 
     -- ═══════════════════════════════════════════════════
