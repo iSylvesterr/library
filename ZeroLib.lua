@@ -7,6 +7,9 @@ pcall(function()
     if not isfolder("Zeroin/Config") then
         makefolder("Zeroin/Config")
     end
+    if not isfolder("Zeroin/Cache") then
+        makefolder("Zeroin/Cache")
+    end
 end)
 
 local univId = tostring(game.GameId)
@@ -2200,7 +2203,7 @@ function Zeroin:Window(GuiConfig)
             SectionReal.BackgroundTransparency = 1
             SectionReal.BorderSizePixel = 0
             SectionReal.Position = UDim2.fromOffset(0, 0)
-            SectionReal.Size = UDim2.new(1, 0, 0, 27)
+            SectionReal.Size = UDim2.new(1, 0, 0, SectionConfig.HideTitle and 0 or 27)
             SectionReal.Parent = Section
 
             local SectionTitle = Instance.new("TextLabel")
@@ -2218,8 +2221,10 @@ function Zeroin:Window(GuiConfig)
             SectionTitle.BackgroundTransparency = 1
             SectionTitle.Position = UDim2.fromOffset(6, 0)
             SectionTitle.Size = UDim2.new(1, -12, 0, 18)
+            SectionTitle.Visible = not SectionConfig.HideTitle
             SectionTitle.Parent = SectionReal
 
+            local SectionContentOffset = SectionConfig.HideTitle and 0 or 27
             local SectionAdd = Instance.new("Frame")
             SectionAdd.Name = "SectionAdd"
             SectionAdd.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
@@ -2227,7 +2232,7 @@ function Zeroin:Window(GuiConfig)
             SectionAdd.BorderSizePixel = 0
             SectionAdd.ClipsDescendants = true
             -- 2px inset keeps the Border stroke visible on both sides.
-            SectionAdd.Position = UDim2.fromOffset(2, 27)
+            SectionAdd.Position = UDim2.fromOffset(2, SectionContentOffset)
             SectionAdd.Size = UDim2.new(1, -4, 0, 0)
             SectionAdd.Parent = Section
 
@@ -2281,7 +2286,7 @@ function Zeroin:Window(GuiConfig)
                 SectionAdd.Size = UDim2.new(1, -4, 0, contentHeight)
                 SectionOverlay.Position = SectionAdd.Position
                 SectionOverlay.Size = SectionAdd.Size
-                Section.Size = UDim2.new(1, 0, 0, 27 + contentHeight)
+                Section.Size = UDim2.new(1, 0, 0, SectionContentOffset + contentHeight)
                 task.defer(UpdateSizeScroll)
             end
 
@@ -4389,12 +4394,10 @@ function Zeroin:Window(GuiConfig)
         })
 
         local DiscordSection = BuiltInInfoTab:AddSection({
-            Title = "Have Problem / Need Help? Join Server Now",
+            Title = "Discord",
+            HideTitle = true,
             Layout = "Grid",
-            ItemGap = 4,
-            TextTransparency = 0.05,
-            TextSize = 17,
-            TextXAlignment = "Center"
+            ItemGap = 4
         })
 
         local DiscordInfo = DiscordSection:AddParagraph({
@@ -4422,8 +4425,7 @@ function Zeroin:Window(GuiConfig)
             return formatted
         end
 
-        local function requestDiscordInfo()
-            local responseBody
+        local function httpGetBody(url, accept)
             local requester = (syn and syn.request)
                 or (http and http.request)
                 or http_request
@@ -4431,27 +4433,53 @@ function Zeroin:Window(GuiConfig)
 
             if requester then
                 local response = requester({
-                    Url = DiscordAPI,
+                    Url = url,
                     Method = "GET",
-                    Headers = { ["Accept"] = "application/json" }
+                    Headers = { ["Accept"] = accept or "*/*" }
                 })
-                responseBody = response and (response.Body or response.body)
                 local status = response and (response.StatusCode or response.Status)
                 if status and tonumber(status) and tonumber(status) >= 400 then
-                    error("Discord API returned HTTP " .. tostring(status))
+                    error("HTTP " .. tostring(status))
                 end
-            else
-                responseBody = game:HttpGet(DiscordAPI)
+                local body = response and (response.Body or response.body)
+                if not body or body == "" then error("Empty HTTP response") end
+                return body
             end
+            return game:HttpGet(url)
+        end
 
-            if not responseBody or responseBody == "" then
-                error("Discord API returned an empty response")
-            end
+        local function requestDiscordInfo()
+            local responseBody = httpGetBody(DiscordAPI, "application/json")
             local decoded = HttpService:JSONDecode(responseBody)
             if type(decoded) ~= "table" or type(decoded.guild) ~= "table" then
                 error(decoded and decoded.message or "Invalid Discord invite response")
             end
             return decoded
+        end
+
+        local function getDiscordIconAsset(guild)
+            if not guild or not guild.id or not guild.icon then return nil end
+            if not writefile or not getcustomasset then return nil end
+
+            local extension = tostring(guild.icon):sub(1, 2) == "a_" and "gif" or "png"
+            local cachePath = "Zeroin/Cache/discord_" .. tostring(guild.id)
+                .. "_" .. tostring(guild.icon) .. "." .. extension
+
+            local cached = false
+            if isfile then
+                local ok, exists = pcall(isfile, cachePath)
+                cached = ok and exists
+            end
+
+            if not cached then
+                local iconUrl = "https://cdn.discordapp.com/icons/" .. tostring(guild.id)
+                    .. "/" .. tostring(guild.icon) .. "." .. extension .. "?size=256"
+                local bytes = httpGetBody(iconUrl, "image/*")
+                writefile(cachePath, bytes)
+            end
+
+            local ok, asset = pcall(getcustomasset, cachePath)
+            return ok and asset or nil
         end
 
         local function updateDiscordInfo(showNotification)
@@ -4472,10 +4500,12 @@ function Zeroin:Window(GuiConfig)
                     .. formatCount(response.approximate_presence_count)
                 )
                 if guild.id and guild.icon then
-                    DiscordInfo:SetIcon(
-                        "https://cdn.discordapp.com/icons/" .. tostring(guild.id)
-                        .. "/" .. tostring(guild.icon) .. ".png?size=256"
-                    )
+                    local iconOk, iconAsset = pcall(getDiscordIconAsset, guild)
+                    if iconOk and iconAsset then
+                        DiscordInfo:SetIcon(iconAsset)
+                    else
+                        DiscordInfo:SetIcon("discord")
+                    end
                 end
                 if showNotification then
                     notif("Discord server information updated.", 3, GuiConfig.Color, "Zeroin", "Discord")

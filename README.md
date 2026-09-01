@@ -31,14 +31,15 @@ Isi bawaan:
 Info Script Hub
 └── Welcome to <Window Title>
 
-Have Problem / Need Help? Join Server Now
-├── [Discord Server Icon] Server Name
+[Discord Server Icon] Server Name
 │   ├── Member Count
 │   └── Online Count
 └── [Copy Discord Invite] [Update Info]
 ```
 
-`Script Information`, `Quick Guide`, dan `Community & Support` tidak ditampilkan. Data komunitas diambil secara asynchronous dari public Discord Invite API (`with_counts=true`) tanpa bot token. Request mendukung `syn.request`, `http.request`, `http_request`, `request`, dan fallback `game:HttpGet`. Jika request gagal, card berubah menjadi error state tanpa merusak tab Info.
+`Script Information`, `Quick Guide`, `Community & Support`, dan heading tambahan di atas card Discord tidak ditampilkan. Data komunitas diambil secara asynchronous dari public Discord Invite API (`with_counts=true`) tanpa bot token. Request mendukung `syn.request`, `http.request`, `http_request`, `request`, dan fallback `game:HttpGet`. Jika request gagal, card berubah menjadi error state tanpa merusak tab Info.
+
+Roblox `ImageLabel` tidak dapat menampilkan URL CDN Discord secara langsung. Zeroin mengunduh icon server ke `Zeroin/Cache/`, lalu mengubahnya menggunakan `getcustomasset()`. File memakai cache berdasarkan guild ID dan icon hash supaya tidak diunduh berulang kali. Jika executor tidak mendukung file/custom asset, logo Discord Footagesus digunakan sebagai fallback.
 
 Tombol `Copy Discord Invite` menyalin invite yang sama dengan footer. Tombol `Update Info` mengambil ulang nama server, icon server, total member, dan online member. Atur invite dari config Window:
 
