@@ -1243,8 +1243,8 @@ function Zeroin:Window(GuiConfig)
     applyIcon(DiscordIcon, "discord")
     DiscordIcon.ImageColor3 = Color3.fromRGB(190, 218, 202)
     DiscordIcon.ImageTransparency = 0.08
-    DiscordIcon.Position = UDim2.new(0, 8, 0.5, -5)
-    DiscordIcon.Size = UDim2.fromOffset(14, 14)
+    DiscordIcon.Position = UDim2.new(0, 7, 0, 12)
+    DiscordIcon.Size = UDim2.fromOffset(16, 16)
     DiscordIcon.ScaleType = Enum.ScaleType.Fit
     DiscordIcon.Parent = DiscordCard
 
@@ -1254,7 +1254,7 @@ function Zeroin:Window(GuiConfig)
     DiscordTitle.Font = Enum.Font.GothamBold
     DiscordTitle.Text = "Discord"
     DiscordTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
-    DiscordTitle.TextSize = 10
+    DiscordTitle.TextSize = 11
     DiscordTitle.TextXAlignment = Enum.TextXAlignment.Left
     DiscordTitle.Position = UDim2.new(0, 29, 0, 8)
     DiscordTitle.Size = UDim2.new(1, -35, 0, 12)
