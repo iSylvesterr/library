@@ -3405,7 +3405,7 @@ function Zeroin:Window(GuiConfig)
                 DropdownContainer.ClipsDescendants = true
                 DropdownContainer.AnchorPoint = Vector2.new(1, 0)
                 DropdownContainer.Position = UDim2.new(1, -7, 0, 43)
-                DropdownContainer.Size = UDim2.fromOffset(148, 0)
+                DropdownContainer.Size = UDim2.fromOffset(154, 0)
                 DropdownContainer.Visible = false
                 DropdownContainer.ZIndex = 30
                 DropdownContainer.Parent = Dropdown
@@ -3431,7 +3431,7 @@ function Zeroin:Window(GuiConfig)
                 SearchBox.BackgroundColor3 = Color3.fromRGB(10, 43, 31)
                 SearchBox.BackgroundTransparency = 0
                 SearchBox.BorderSizePixel = 0
-                SearchBox.Size = UDim2.new(1, -10, 0, 21)
+                SearchBox.Size = UDim2.new(1, -10, 0, 25)
                 SearchBox.Position = UDim2.fromOffset(5, 5)
                 SearchBox.ZIndex = 32
                 SearchBox.ClearTextOnFocus = false
@@ -3443,8 +3443,8 @@ function Zeroin:Window(GuiConfig)
                 SearchCorner.Parent = SearchBox
 
                 local ScrollSelect = Instance.new("ScrollingFrame")
-                ScrollSelect.Size = UDim2.new(1, -10, 1, -34)
-                ScrollSelect.Position = UDim2.fromOffset(5, 29)
+                ScrollSelect.Size = UDim2.new(1, -10, 1, -40)
+                ScrollSelect.Position = UDim2.fromOffset(5, 35)
                 ScrollSelect.ZIndex = 31
                 ScrollSelect.ScrollBarImageColor3 = Color3.fromRGB(34, 91, 68)
                 ScrollSelect.ScrollBarImageTransparency = 0.25
@@ -3496,9 +3496,9 @@ function Zeroin:Window(GuiConfig)
 
                 updateInlineMenuSize = function()
                     local visibleCount = math.max(1, countVisibleOptions())
-                    local listHeight = math.min(visibleCount, MaxVisibleOptions) * 27
-                    local menuHeight = 34 + listHeight
-                    DropdownContainer.Size = UDim2.fromOffset(148, menuHeight)
+                    local listHeight = math.min(visibleCount, MaxVisibleOptions) * 32
+                    local menuHeight = 40 + listHeight
+                    DropdownContainer.Size = UDim2.fromOffset(154, menuHeight)
                     DropdownContainer.Visible = MenuOpen
                     OptionImg.Rotation = MenuOpen and 180 or 0
                 end
@@ -3545,7 +3545,7 @@ function Zeroin:Window(GuiConfig)
 
                     Option.BackgroundColor3 = Color3.fromRGB(10, 43, 31)
                     Option.BackgroundTransparency = 1
-                    Option.Size = UDim2.new(1, -2, 0, 25)
+                    Option.Size = UDim2.new(1, -2, 0, 30)
                     Option.Name = "Option"
                     Option.ZIndex = 32
                     Option.Parent = ScrollSelect
@@ -3562,9 +3562,9 @@ function Zeroin:Window(GuiConfig)
 
                     OptionText.Font = Enum.Font.GothamBold
                     OptionText.Text = label
-                    OptionText.TextSize = 11
+                    OptionText.TextSize = 12
                     OptionText.TextColor3 = Color3.fromRGB(214, 232, 220)
-                    OptionText.Position = UDim2.new(0, 9, 0, 6)
+                    OptionText.Position = UDim2.new(0, 9, 0, 8)
                     OptionText.Size = UDim2.new(1, -30, 0, 13)
                     OptionText.BackgroundTransparency = 1
                     OptionText.TextXAlignment = Enum.TextXAlignment.Left
@@ -3604,9 +3604,9 @@ function Zeroin:Window(GuiConfig)
                             DropdownFunc.Value = value
                         end
                         DropdownFunc:Set(DropdownFunc.Value)
-                        if not DropdownConfig.Multi then
-                            setMenuOpen(false)
-                        end
+                        -- Keep the popup open after selection, matching the
+                        -- original dropdown behavior. Click the selector again
+                        -- to close it.
                     end)
                     DropCount = DropCount + 1
                     updateInlineMenuSize()
