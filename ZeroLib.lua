@@ -138,47 +138,33 @@ function DeleteProfile(name)
     return ok
 end
 
-local Icons = {
-    home      = "rbxassetid://10828236109",
-    info      = "rbxassetid://10828236359",
-    player    = "rbxassetid://12120698352",
-    web       = "rbxassetid://137601480983962",
-    bag       = "rbxassetid://8601111810",
-    shop      = "rbxassetid://4985385964",
-    cart      = "rbxassetid://128874923961846",
-    plug      = "rbxassetid://137601480983962",
-    settings  = "rbxassetid://70386228443175",
-    loop      = "rbxassetid://122032243989747",
-    gps       = "rbxassetid://17824309485",
-    compas    = "rbxassetid://125300760963399",
-    gamepad   = "rbxassetid://84173963561612",
-    boss      = "rbxassetid://13132186360",
-    scroll    = "rbxassetid://114127804740858",
-    menu      = "rbxassetid://6340513838",
-    crosshair = "rbxassetid://12614416478",
-    user      = "rbxassetid://108483430622128",
-    stat      = "rbxassetid://12094445329",
-    eyes      = "rbxassetid://14321059114",
-    sword     = "rbxassetid://82472368671405",
-    discord   = "rbxassetid://94434236999817",
-    star      = "rbxassetid://107005941750079",
-    skeleton  = "rbxassetid://17313330026",
-    payment   = "rbxassetid://18747025078",
-    scan      = "rbxassetid://109869955247116",
-    alert     = "rbxassetid://73186275216515",
-    question  = "rbxassetid://17510196486",
-    idea      = "rbxassetid://16833255748",
-    strom     = "rbxassetid://13321880293",
-    water     = "rbxassetid://100076212630732",
-    dcs       = "rbxassetid://15310731934",
-    start     = "rbxassetid://108886429866687",
-    next      = "rbxassetid://12662718374",
-    rod       = "rbxassetid://103247953194129",
-    fish      = "rbxassetid://97167558235554",
-    enviicon  = "rbxassetid://101669656973003",
-    nplnicon  = "rbxassetid://111895858615511",
-    nplnv4    = "rbxassetid://87167468756710",
+-- Footagesus icon data is intentionally kept outside ZeroLib.lua. Only the
+-- Lucide resolver is loaded at runtime; the complete vendored source remains
+-- available in this repository under vendor/footagesus-icons.
+local FOOTAGESUS_ICON_URL = "https://raw.githubusercontent.com/iSylvesterr/library/7dbfc2a/ZeroinIcons.lua"
+local IconPack = {
+    Name = "Footagesus Lucide (unavailable)",
+    GetIcon = function() return nil end,
+    HasIcon = function() return false end,
+    ListIcons = function() return {} end,
 }
+
+do
+    local ok, result = pcall(function()
+        return loadstring(game:HttpGet(FOOTAGESUS_ICON_URL))()
+    end)
+    if ok and type(result) == "table" and type(result.GetIcon) == "function" then
+        IconPack = result
+    else
+        warn("Zeroin UI: Footagesus icon pack failed to load:", result)
+    end
+end
+
+local Icons = setmetatable({}, {
+    __index = function(_, name)
+        return IconPack.GetIcon(name) or ""
+    end,
+})
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -217,6 +203,14 @@ local function resolveImage(source)
     end
 
     return value
+end
+
+local function resolveIcon(source)
+    if source == nil then return "" end
+    local value = tostring(source)
+    local icon = IconPack.GetIcon(value)
+    if icon then return icon end
+    return resolveImage(value)
 end
 
 local function isMobileDevice()
@@ -386,12 +380,25 @@ function CircleClick(Button, X, Y)
 end
 
 local Zeroin = {}
+
+function Zeroin:GetIcon(name)
+    return IconPack.GetIcon(name)
+end
+
+function Zeroin:HasIcon(name)
+    return IconPack.HasIcon(name)
+end
+
+function Zeroin:GetIconNames()
+    return IconPack.ListIcons()
+end
+
 function Zeroin:MakeNotify(NotifyConfig)
     local NotifyConfig = NotifyConfig or {}
     NotifyConfig.Title = NotifyConfig.Title or "Zeroin"
     NotifyConfig.Description = NotifyConfig.Description or "Notification"
     NotifyConfig.Content = NotifyConfig.Content or "Content"
-    NotifyConfig.Icon = NotifyConfig.Icon or "108203634075572"
+    NotifyConfig.Icon = NotifyConfig.Icon or "bell"
     NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(150, 150, 150)
     NotifyConfig.Time = NotifyConfig.Time or 0.5
     NotifyConfig.Delay = NotifyConfig.Delay or 5
@@ -473,7 +480,7 @@ function Zeroin:MakeNotify(NotifyConfig)
         DropShadowHolder.Parent = NotifyFrameReal
 
         local NotifIcon = Instance.new("ImageLabel")
-        NotifIcon.Image = "rbxassetid://108203634075572" --.. NotifyConfig.Icon
+        NotifIcon.Image = resolveIcon(NotifyConfig.Icon)
         NotifIcon.BackgroundTransparency = 1
         NotifIcon.ImageTransparency = 0
         NotifIcon.BorderSizePixel = 0
@@ -537,7 +544,7 @@ function Zeroin:MakeNotify(NotifyConfig)
         Close.Name = "Close"
         Close.Parent = Top
 
-        ImageLabel.Image = "rbxassetid://9886659671"
+        ImageLabel.Image = resolveIcon("x")
         ImageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
         ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         ImageLabel.BackgroundTransparency = 0.9990000128746033
@@ -989,7 +996,7 @@ function Zeroin:Window(GuiConfig)
     Close.Name = "Close"
     Close.Parent = Top
 
-    ImageLabel1.Image = "rbxassetid://9886659671"
+    ImageLabel1.Image = resolveIcon("x")
     ImageLabel1.AnchorPoint = Vector2.new(0.5, 0.5)
     ImageLabel1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     ImageLabel1.BackgroundTransparency = 0.9990000128746033
@@ -1013,7 +1020,7 @@ function Zeroin:Window(GuiConfig)
     Min.Name = "Min"
     Min.Parent = Top
 
-    ImageLabel2.Image = "rbxassetid://9886659276"
+    ImageLabel2.Image = resolveIcon("minus")
     ImageLabel2.AnchorPoint = Vector2.new(0.5, 0.5)
     ImageLabel2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     ImageLabel2.BackgroundTransparency = 0.9990000128746033
@@ -1038,7 +1045,7 @@ function Zeroin:Window(GuiConfig)
     FullScreen.Name = "FullScreen"
     FullScreen.Parent = Top
 
-    ImageLabel3.Image = "rbxassetid://113480421738477" -- ganti dengan icon fullscreen sesuai assetid kamu
+    ImageLabel3.Image = resolveIcon("maximize-2")
     ImageLabel3.AnchorPoint = Vector2.new(0.5, 0.5)
     ImageLabel3.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     ImageLabel3.BackgroundTransparency = 0.9990000128746033
@@ -1105,7 +1112,7 @@ function Zeroin:Window(GuiConfig)
     local SearchIcon = Instance.new("ImageLabel")
     SearchIcon.Name = "SearchIcon"
     SearchIcon.BackgroundTransparency = 1
-    SearchIcon.Image = "rbxassetid://109869955247116"
+    SearchIcon.Image = resolveIcon("search")
     SearchIcon.AnchorPoint = Vector2.new(0, 0.5)
     SearchIcon.Position = UDim2.new(0, 7, 0.5, 0)
     SearchIcon.Size = UDim2.new(0, 13, 0, 13)
@@ -1943,87 +1950,19 @@ function Zeroin:Window(GuiConfig)
         TabButton.Parent = Tab
 
         local textOffsetX = 8
-        local TabIconNative
-
-        local function makeLine(parent, size, position, rotation)
-            local line = Instance.new("Frame")
-            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            line.BorderSizePixel = 0
-            line.AnchorPoint = Vector2.new(0.5, 0.5)
-            line.Size = size
-            line.Position = position
-            line.Rotation = rotation or 0
-            line.Parent = parent
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(1, 0)
-            corner.Parent = line
-            return line
-        end
-
-        local function makeNativeLucideIcon(iconName)
-            local icon = Instance.new("CanvasGroup")
-            icon.Name = "TabIconNative"
-            icon.Size = UDim2.fromOffset(14, 14)
-            icon.Position = UDim2.new(0, 8, 0.5, 0)
-            icon.AnchorPoint = Vector2.new(0, 0.5)
-            icon.BackgroundTransparency = 1
-            icon.GroupTransparency = CountTab == 0 and 0 or 0.4
-            icon.Parent = Tab
-
-            if iconName == "home" then
-                -- Lucide Home: roof plus open rectangular body.
-                makeLine(icon, UDim2.fromOffset(9, 2), UDim2.fromOffset(4.2, 4), -42)
-                makeLine(icon, UDim2.fromOffset(9, 2), UDim2.fromOffset(9.8, 4), 42)
-                makeLine(icon, UDim2.fromOffset(2, 7), UDim2.fromOffset(2.5, 9.5), 0)
-                makeLine(icon, UDim2.fromOffset(2, 7), UDim2.fromOffset(11.5, 9.5), 0)
-                makeLine(icon, UDim2.fromOffset(10, 2), UDim2.fromOffset(7, 13), 0)
-            elseif iconName == "info" then
-                -- Lucide CircleInfo: stroked circle, dot, and stem.
-                local circle = Instance.new("Frame")
-                circle.Name = "Circle"
-                circle.AnchorPoint = Vector2.new(0.5, 0.5)
-                circle.BackgroundTransparency = 1
-                -- Keep the stroke inside the 14x14 CanvasGroup. A full 13px
-                -- circle plus stroke was clipped by the CanvasGroup boundary.
-                circle.Size = UDim2.fromOffset(11, 11)
-                circle.Position = UDim2.fromOffset(7, 7)
-                circle.Parent = icon
-                local circleCorner = Instance.new("UICorner")
-                circleCorner.CornerRadius = UDim.new(1, 0)
-                circleCorner.Parent = circle
-                local circleStroke = Instance.new("UIStroke")
-                circleStroke.Color = Color3.fromRGB(255, 255, 255)
-                circleStroke.Thickness = 1.25
-                circleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-                circleStroke.Parent = circle
-                makeLine(icon, UDim2.fromOffset(1.8, 1.8), UDim2.fromOffset(7, 4.2), 0)
-                makeLine(icon, UDim2.fromOffset(1.8, 5), UDim2.fromOffset(7, 9), 0)
-            end
-
-            return icon
-        end
 
         if TabConfig.Icon and TabConfig.Icon ~= "" then
-            if TabConfig.Icon == "home" or TabConfig.Icon == "info" then
-                TabIconNative = makeNativeLucideIcon(TabConfig.Icon)
-            else
-                TabIconImg = Instance.new("ImageLabel")
-                TabIconImg.Name = "TabIcon"
-                TabIconImg.Size = UDim2.fromOffset(14, 14)
-                TabIconImg.Position = UDim2.new(0, 8, 0.5, 0)
-                TabIconImg.AnchorPoint = Vector2.new(0, 0.5)
-                TabIconImg.BackgroundTransparency = 1
-                if Icons and Icons[TabConfig.Icon] then
-                    TabIconImg.Image = Icons[TabConfig.Icon]
-                else
-                    TabIconImg.Image = resolveImage(TabConfig.Icon)
-                end
-                TabIconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                TabIconImg.ImageTransparency = CountTab == 0 and 0 or 0.4
-                TabIconImg.ScaleType = Enum.ScaleType.Fit
-                TabIconImg.Parent = Tab
-            end
-
+            TabIconImg = Instance.new("ImageLabel")
+            TabIconImg.Name = "TabIcon"
+            TabIconImg.Size = UDim2.fromOffset(14, 14)
+            TabIconImg.Position = UDim2.new(0, 8, 0.5, 0)
+            TabIconImg.AnchorPoint = Vector2.new(0, 0.5)
+            TabIconImg.BackgroundTransparency = 1
+            TabIconImg.Image = resolveIcon(TabConfig.Icon)
+            TabIconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            TabIconImg.ImageTransparency = CountTab == 0 and 0 or 0.4
+            TabIconImg.ScaleType = Enum.ScaleType.Fit
+            TabIconImg.Parent = Tab
             textOffsetX = 28
         end
 
@@ -2090,13 +2029,9 @@ function Zeroin:Window(GuiConfig)
                         ):Play()
                         
                         local tIcon = TabFrame:FindFirstChild("TabIcon")
-                        local tNativeIcon = TabFrame:FindFirstChild("TabIconNative")
                         local tName = TabFrame:FindFirstChild("TabName")
                         if tIcon then
                             TweenService:Create(tIcon, TweenInfo.new(0.3), { ImageTransparency = 0.4 }):Play()
-                        end
-                        if tNativeIcon then
-                            TweenService:Create(tNativeIcon, TweenInfo.new(0.3), { GroupTransparency = 0.4 }):Play()
                         end
                         if tName then
                             TweenService:Create(tName, TweenInfo.new(0.3), { TextTransparency = 0.4 }):Play()
@@ -2111,9 +2046,6 @@ function Zeroin:Window(GuiConfig)
                 
                 if TabIconImg then
                     TweenService:Create(TabIconImg, TweenInfo.new(0.6), { ImageTransparency = 0 }):Play()
-                end
-                if TabIconNative then
-                    TweenService:Create(TabIconNative, TweenInfo.new(0.6), { GroupTransparency = 0 }):Play()
                 end
                 TweenService:Create(TabName, TweenInfo.new(0.6), { TextTransparency = 0 }):Play()
 
@@ -2548,11 +2480,8 @@ function Zeroin:Window(GuiConfig)
                     IconImg.Name = "ParagraphIcon"
                     IconImg.Parent = Paragraph
 
-                    if Icons and Icons[ParagraphConfig.Icon] then
-                        IconImg.Image = Icons[ParagraphConfig.Icon]
-                    else
-                        IconImg.Image = ParagraphConfig.Icon
-                    end
+                    IconImg.Image = resolveIcon(ParagraphConfig.Icon)
+                    IconImg.ImageColor3 = Color3.fromRGB(177, 219, 197)
 
                     iconOffset = 30
                 end
@@ -2853,7 +2782,7 @@ function Zeroin:Window(GuiConfig)
 
                 -- Properti Tampilan
                 ButtonIcon.BackgroundTransparency = 1 -- Agar background icon tidak kelihatan
-                ButtonIcon.Image = "rbxassetid://90520342625816" -- Ganti 0 dengan ID gambarmu
+                ButtonIcon.Image = resolveIcon("arrow-right")
                 ButtonIcon.ImageColor3 = Color3.fromRGB(255, 255, 255) -- Warna icon
                 ButtonIcon.ImageTransparency = 0.3 -- Biar estetik (cocok dengan teksmu yang transparan 0.3)
                 ButtonIcon.ScaleType = Enum.ScaleType.Fit -- Agar gambar tidak gepeng
@@ -2911,7 +2840,7 @@ function Zeroin:Window(GuiConfig)
                     SubButtonIcon.Position = UDim2.new(1, -8, 0.5, 0)
                     SubButtonIcon.AnchorPoint = Vector2.new(1, 0.5)
                     SubButtonIcon.BackgroundTransparency = 1
-                    SubButtonIcon.Image = "rbxassetid://90520342625816"
+                    SubButtonIcon.Image = resolveIcon("arrow-right")
                     SubButtonIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                     SubButtonIcon.ImageTransparency = 0.3
                     SubButtonIcon.ScaleType = Enum.ScaleType.Fit
@@ -3869,7 +3798,7 @@ function Zeroin:Window(GuiConfig)
                 OptionSelecting.ZIndex = 121
                 OptionSelecting.Parent = SelectOptionsFrame
 
-                OptionImg.Image = "rbxassetid://16851841101"
+                OptionImg.Image = resolveIcon("chevron-down")
                 OptionImg.ImageColor3 = Color3.fromRGB(230, 230, 230)
                 OptionImg.AnchorPoint = Vector2.new(1, 0.5)
                 OptionImg.BackgroundTransparency = 1

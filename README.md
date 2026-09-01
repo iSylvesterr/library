@@ -620,15 +620,77 @@ Window:DestroyGui()              -- alias lama, sekarang full cleanup
 - Close: confirmation dialog dan full lifecycle cleanup.
 - Window dapat di-drag dan di-resize.
 
-## Built-in Icon Names
+## Footagesus Icon Pack
 
-Beberapa icon bawaan yang tersedia:
+Icon generik Zeroin sekarang menggunakan vendored [Footagesus Icons](https://github.com/FyyWannaFly/FyyUI/tree/main/vendor/footagesus-icons) dengan lisensi MIT. Source dipisah dari `ZeroLib.lua`:
 
 ```text
-home, info, player, user, bag, shop, cart, plug, settings,
-loop, gps, compas, gamepad, boss, scroll, menu, crosshair,
-stat, eyes, sword, discord, star, skeleton, payment, scan,
-alert, question, idea, water, start, next, rod, fish
+ZeroinIcons.lua
+vendor/footagesus-icons/
+├── lucide/dist/Icons.lua
+├── geist/dist/Icons.lua
+├── craft/dist/Icons.lua
+├── gravity/dist/Icons.lua
+├── solar/dist/Icons.lua
+├── sfsymbols/dist/Icons.lua
+└── LICENSE
 ```
 
-`home` dan `info` pada tab dirender sebagai native Lucide-style icons agar selalu tersedia.
+Runtime default hanya memuat `ZeroinIcons.lua` berisi 1.717 icon Lucide agar ringan. Seluruh vendor pack tetap tersedia di repository sebagai source terpisah.
+
+### Menggunakan nama Lucide langsung
+
+```lua
+Window:AddTab({
+    Name = "Main",
+    Icon = "house"
+})
+
+Window:AddTab({
+    Name = "Security",
+    Icon = "shield-check"
+})
+
+Section:AddParagraph({
+    Title = "Profile",
+    Content = "Player information",
+    Icon = "circle-user-round"
+})
+```
+
+Contoh nama icon:
+
+```text
+house, info, repeat-2, backpack, shield-check, bot,
+circle-user-round, settings, search, bell, crown, swords,
+chart-no-axes-column-increasing, map-pin, gamepad-2,
+shopping-cart, credit-card, eye, star, skull, fish
+```
+
+Nama dapat ditulis dengan prefix opsional:
+
+```lua
+Icon = "lucide:house"
+```
+
+### Alias script lama
+
+Nama Zeroin lama tetap didukung dan otomatis dipetakan ke Footagesus/Lucide:
+
+```text
+home→house, bag→backpack, loop→repeat-2, player→user-round,
+shop→store, cart→shopping-cart, stat→chart-no-axes-column-increasing,
+eyes→eye, sword→swords, discord→message-circle
+```
+
+### API icon
+
+```lua
+local iconAsset = Zeroin:GetIcon("shield-check")
+local exists = Zeroin:HasIcon("shield-check")
+local allNames = Zeroin:GetIconNames()
+```
+
+Jika `Icon` berisi asset ID atau URL alih-alih nama pack, resolver tetap memakai nilai custom tersebut sebagai fallback.
+
+Logo Zeroin, watermark, floating logo, dan shadow texture tetap memakai asset branding sendiri karena bukan generic UI icon.
