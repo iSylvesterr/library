@@ -1059,7 +1059,7 @@ function Zeroin:Window(GuiConfig)
     DiscordLink.TextSize = 8
     DiscordLink.TextTruncate = Enum.TextTruncate.AtEnd
     DiscordLink.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordLink.Position = UDim2.new(0, 31, 0, 21)
+    DiscordLink.Position = UDim2.new(0, 31, 0, 18)
     DiscordLink.Size = UDim2.new(1, -37, 0, 12)
     DiscordLink.Parent = DiscordCard
 
