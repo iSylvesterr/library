@@ -610,6 +610,33 @@ function notif(msg, delay, color, title, desc)
 end
 
 function Zeroin:Window(GuiConfig)
+    -- Single-instance lifecycle. Because this registry lives in the executor
+    -- environment, it survives a new loadstring execution. Re-executing a
+    -- script therefore cleans the previous window before creating this one.
+    local GlobalEnvironment = (getgenv and getgenv()) or _G
+    local ActiveWindowKey = "__ZEROIN_ACTIVE_WINDOW"
+    local previousWindow = GlobalEnvironment[ActiveWindowKey]
+    if previousWindow then
+        local ok, err = pcall(function()
+            if type(previousWindow.Destroy) == "function" then
+                previousWindow:Destroy()
+            elseif type(previousWindow.Close) == "function" then
+                previousWindow:Close()
+            end
+        end)
+        if not ok then warn("Zeroin previous window cleanup error:", err) end
+        GlobalEnvironment[ActiveWindowKey] = nil
+    end
+
+    -- Fallback for legacy/stale instances that predate the registry or were
+    -- interrupted during construction.
+    for _, guiName in ipairs({ "ZeroinOnTop", "ToggleUIZeroin", "NotifyGui" }) do
+        local staleGui = CoreGui:FindFirstChild(guiName)
+        if staleGui then
+            pcall(function() staleGui:Destroy() end)
+        end
+    end
+
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "Zeroin"
     GuiConfig.Footer       = GuiConfig.Footer or "Zeroin >:D"
@@ -629,6 +656,7 @@ function Zeroin:Window(GuiConfig)
     local isDestroyed = false
     local cleanupStarted = false
     local runCleanup
+    local publicWindow
 
     local function cleanupResource(resource)
         if resource == nil then return end
@@ -1372,6 +1400,11 @@ function Zeroin:Window(GuiConfig)
         end
         table.clear(windowElementKeys)
 
+        if GlobalEnvironment[ActiveWindowKey] == publicWindow
+            or GlobalEnvironment[ActiveWindowKey] == GuiFunc then
+            GlobalEnvironment[ActiveWindowKey] = nil
+        end
+
         local toggleGui = CoreGui:FindFirstChild("ToggleUIZeroin")
         if toggleGui then toggleGui:Destroy() end
         local notifyGui = CoreGui:FindFirstChild("NotifyGui")
@@ -1796,6 +1829,8 @@ function Zeroin:Window(GuiConfig)
     DropPageLayout.Parent = DropdownFolder
     --// Tabs
     local Tabs = {}
+    publicWindow = Tabs
+    GlobalEnvironment[ActiveWindowKey] = Tabs
 
     -- The public Window object is Tabs. Forward lifecycle methods from the
     -- internal controller so scripts can manage every feature from Window.

@@ -476,9 +476,23 @@ Window:AddConfigTab()
 
 Config menyimpan toggle, dropdown, slider, dan input berdasarkan judul komponennya.
 
-## Window Lifecycle dan Cleanup
+## Window Lifecycle, Cleanup, dan Execute Ulang
 
-Tombol silang menjalankan full lifecycle cleanup, bukan hanya menghapus GUI:
+Zeroin memakai single-instance registry global. Ketika script dieksekusi ulang:
+
+```text
+Window lama ditemukan
+→ full lifecycle Destroy window lama
+→ toggle aktif menerima false
+→ connection dan GUI internal lama dibersihkan
+→ window baru dibuat
+```
+
+Jadi execute ulang tidak membuat dua Zeroin UI menumpuk dan tidak membutuhkan rejoin. Sebagai fallback, library juga menghapus `ZeroinOnTop`, `ToggleUIZeroin`, dan `NotifyGui` lama jika registry dari versi lama tidak tersedia atau proses sebelumnya terputus.
+
+Registry hanya dapat dibersihkan oleh instance yang sedang aktif, sehingga cleanup window lama tidak akan menghapus referensi window baru.
+
+Tombol silang juga menjalankan full lifecycle cleanup, bukan hanya menghapus GUI:
 
 1. Semua toggle aktif dipanggil dengan `false` tanpa menimpa config tersimpan.
 2. Semua callback `OnClose` dijalankan.
