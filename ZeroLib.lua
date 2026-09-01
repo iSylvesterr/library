@@ -1678,20 +1678,24 @@ function Zeroin:Window(GuiConfig)
             elseif iconName == "info" then
                 -- Lucide CircleInfo: stroked circle, dot, and stem.
                 local circle = Instance.new("Frame")
+                circle.Name = "Circle"
+                circle.AnchorPoint = Vector2.new(0.5, 0.5)
                 circle.BackgroundTransparency = 1
-                circle.Size = UDim2.fromOffset(13, 13)
-                circle.Position = UDim2.fromOffset(0.5, 0.5)
+                -- Keep the stroke inside the 14x14 CanvasGroup. A full 13px
+                -- circle plus stroke was clipped by the CanvasGroup boundary.
+                circle.Size = UDim2.fromOffset(11, 11)
+                circle.Position = UDim2.fromOffset(7, 7)
                 circle.Parent = icon
                 local circleCorner = Instance.new("UICorner")
                 circleCorner.CornerRadius = UDim.new(1, 0)
                 circleCorner.Parent = circle
                 local circleStroke = Instance.new("UIStroke")
                 circleStroke.Color = Color3.fromRGB(255, 255, 255)
-                circleStroke.Thickness = 1.5
+                circleStroke.Thickness = 1.25
                 circleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 circleStroke.Parent = circle
-                makeLine(icon, UDim2.fromOffset(2, 2), UDim2.fromOffset(7, 4), 0)
-                makeLine(icon, UDim2.fromOffset(2, 6), UDim2.fromOffset(7, 9), 0)
+                makeLine(icon, UDim2.fromOffset(1.8, 1.8), UDim2.fromOffset(7, 4.2), 0)
+                makeLine(icon, UDim2.fromOffset(1.8, 5), UDim2.fromOffset(7, 9), 0)
             end
 
             return icon
