@@ -3482,6 +3482,7 @@ function Zeroin:Window(GuiConfig)
 
                 local DropCount = 0
                 local MenuOpen = false
+                Dropdown:SetAttribute("MenuOpen", false)
                 local MaxVisibleOptions = 3
 
                 local function countVisibleOptions()
@@ -3500,6 +3501,7 @@ function Zeroin:Window(GuiConfig)
                     local menuHeight = 40 + listHeight
                     DropdownContainer.Size = UDim2.fromOffset(154, menuHeight)
                     DropdownContainer.Visible = MenuOpen
+                    Dropdown:SetAttribute("MenuOpen", MenuOpen)
                     OptionImg.Rotation = MenuOpen and 180 or 0
                 end
 
@@ -3509,7 +3511,7 @@ function Zeroin:Window(GuiConfig)
                 end
 
                 DropdownButton.Activated:Connect(function()
-                    setMenuOpen(not MenuOpen)
+                    setMenuOpen(not DropdownContainer.Visible)
                 end)
 
                 function DropdownFunc:Clear()
