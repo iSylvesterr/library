@@ -2688,9 +2688,10 @@ function Zeroin:Window(GuiConfig)
                 ToggleButton.Font = Enum.Font.SourceSans
                 ToggleButton.Text = ""
                 ToggleButton.BackgroundTransparency = 1
-                ToggleButton.Size = UDim2.new(1, 0, 1, 0)
                 ToggleButton.Name = "ToggleButton"
-                ToggleButton.Parent = Toggle
+                ToggleButton.Active = true
+                ToggleButton.Selectable = true
+                ToggleButton.AutoButtonColor = false
 
                 FeatureFrame2.AnchorPoint = Vector2.new(1, 0.5)
                 FeatureFrame2.BackgroundTransparency = 0.92
@@ -2698,7 +2699,17 @@ function Zeroin:Window(GuiConfig)
                 FeatureFrame2.Position = UDim2.new(1, -15, 0.5, 0)
                 FeatureFrame2.Size = UDim2.new(0, 30, 0, 15)
                 FeatureFrame2.Name = "FeatureFrame"
+                FeatureFrame2.Active = true
                 FeatureFrame2.Parent = Toggle
+
+                -- Only this switch hit area can toggle the value. It is wider
+                -- than the visual track for comfortable mouse/touch input, but
+                -- no longer overlaps the title or description.
+                ToggleButton.AnchorPoint = Vector2.new(0.5, 0.5)
+                ToggleButton.Position = UDim2.new(0.5, 0, 0.5, 0)
+                ToggleButton.Size = UDim2.fromOffset(38, 25)
+                ToggleButton.ZIndex = 20
+                ToggleButton.Parent = FeatureFrame2
 
                 UICorner22.Parent = FeatureFrame2
 
