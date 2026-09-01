@@ -1579,6 +1579,26 @@ function Zeroin:Window(GuiConfig)
     local Tabs = {}
     local CountTab = 0
     local CountDropdown = 0
+    local PageTransitionToken = 0
+
+    local function SetSectionArrowsVisible(visible)
+        for _, descendant in ipairs(LayersFolder:GetDescendants()) do
+            if descendant.Name == "FeatureImg" and descendant:IsA("ImageLabel") then
+                descendant.Visible = visible
+            end
+        end
+    end
+
+    local function HideArrowsDuringPageTransition()
+        PageTransitionToken = PageTransitionToken + 1
+        local token = PageTransitionToken
+        SetSectionArrowsVisible(false)
+        task.delay(LayersPageLayout.TweenTime + 0.04, function()
+            if token == PageTransitionToken then
+                SetSectionArrowsVisible(true)
+            end
+        end)
+    end
     function Tabs:AddTab(TabConfig)
         local TabConfig = TabConfig or {}
         TabConfig.Name = TabConfig.Name or "Tab"
@@ -1820,6 +1840,7 @@ function Zeroin:Window(GuiConfig)
                     TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
                     { Position = UDim2.new(0, 2, 0, 9 + (33 * Tab.LayoutOrder)) }
                 ):Play()
+                HideArrowsDuringPageTransition()
                 LayersPageLayout:JumpToIndex(Tab.LayoutOrder)
                 task.wait(0.05)
                 NameTab.Text = TabConfig.Name
