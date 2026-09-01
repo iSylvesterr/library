@@ -944,9 +944,10 @@ function Zeroin:Window(GuiConfig)
     LayersTab.BackgroundTransparency = 1
     LayersTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     LayersTab.BorderSizePixel = 0
-    LayersTab.Position = UDim2.new(0, 9, 0, 50)
-    -- Reserve a compact footer area for the single Discord card.
-    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -104)
+    -- Center the sidebar content between the window edge and divider.
+    LayersTab.Position = UDim2.new(0, 8, 0, 50)
+    -- Equal 8px gutters on both sides when Tab Width is 130.
+    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"] - 3, 1, -104)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
@@ -1010,8 +1011,8 @@ function Zeroin:Window(GuiConfig)
     DiscordCard.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
     DiscordCard.BackgroundTransparency = 0
     DiscordCard.BorderSizePixel = 0
-    DiscordCard.Position = UDim2.new(0, 9, 1, -50)
-    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 40)
+    DiscordCard.Position = UDim2.new(0, 8, 1, -50)
+    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"] - 3, 0, 40)
     DiscordCard.Parent = Main
 
     local DiscordCorner = Instance.new("UICorner")
