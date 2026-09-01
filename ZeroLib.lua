@@ -3924,7 +3924,7 @@ function Zeroin:Window(GuiConfig)
                 OptionImg.ZIndex = 121
                 OptionImg.Parent = SelectOptionsFrame
 
-                local DropdownContainer = Instance.new("Frame")
+                local DropdownContainer = Instance.new("CanvasGroup")
                 DropdownContainer.Name = "InlineMenu"
                 DropdownContainer.BackgroundColor3 = Color3.fromRGB(4, 25, 17)
                 DropdownContainer.BackgroundTransparency = 0
@@ -3934,12 +3934,18 @@ function Zeroin:Window(GuiConfig)
                 DropdownContainer.AnchorPoint = Vector2.new(1, 0)
                 DropdownContainer.Size = UDim2.fromOffset(154, 0)
                 DropdownContainer.Visible = false
+                DropdownContainer.GroupTransparency = 1
                 DropdownContainer.ZIndex = 100
                 DropdownContainer.Parent = SectionOverlay
 
                 local MenuCorner = Instance.new("UICorner")
                 MenuCorner.CornerRadius = UDim.new(0, 6)
                 MenuCorner.Parent = DropdownContainer
+
+                local MenuScale = Instance.new("UIScale")
+                MenuScale.Name = "MenuScale"
+                MenuScale.Scale = 0.96
+                MenuScale.Parent = DropdownContainer
 
                 local MenuShield = Instance.new("TextButton")
                 MenuShield.Name = "InteractionShield"
@@ -4022,8 +4028,11 @@ function Zeroin:Window(GuiConfig)
 
                 local DropCount = 0
                 local MenuOpen = false
+                local MenuAnimationToken = 0
+                local ActiveMenuTweens = {}
                 Dropdown:SetAttribute("MenuOpen", false)
                 local MaxVisibleOptions = 5
+                local MenuAnimationDuration = 0.16
 
                 local function countVisibleOptions()
                     local count = 0
@@ -4040,36 +4049,97 @@ function Zeroin:Window(GuiConfig)
                     local listHeight = math.min(visibleCount, MaxVisibleOptions) * 32
                     local menuHeight = 40 + listHeight
                     DropdownContainer.Size = UDim2.fromOffset(154, menuHeight)
-                    DropdownContainer.Visible = MenuOpen
                     Dropdown:SetAttribute("MenuOpen", MenuOpen)
-                    OptionImg.Rotation = MenuOpen and 180 or 0
                 end
 
-                local function updatePopupPosition()
+                local function getPopupPosition(yOffset)
                     -- Position relative to the section portal, directly below
                     -- the selector, so it moves naturally with section scroll.
                     local dropdownRight = Dropdown.AbsolutePosition.X + Dropdown.AbsoluteSize.X
                     local popupX = dropdownRight - SectionOverlay.AbsolutePosition.X - 7
                     local popupY = Dropdown.AbsolutePosition.Y - SectionOverlay.AbsolutePosition.Y + 43
-                    DropdownContainer.Position = UDim2.fromOffset(popupX, popupY)
+                    return UDim2.fromOffset(popupX, popupY + (yOffset or 0))
+                end
+
+                local function updatePopupPosition()
+                    if DropdownContainer.Visible then
+                        DropdownContainer.Position = getPopupPosition(MenuOpen and 0 or -5)
+                    end
+                end
+
+                local function cancelMenuTweens()
+                    for _, tween in ipairs(ActiveMenuTweens) do
+                        pcall(function() tween:Cancel() end)
+                    end
+                    table.clear(ActiveMenuTweens)
+                end
+
+                local function playMenuTween(target, tweenInfo, properties)
+                    local tween = TweenService:Create(target, tweenInfo, properties)
+                    table.insert(ActiveMenuTweens, tween)
+                    tween:Play()
+                    return tween
                 end
 
                 local function setMenuOpen(open)
+                    if open == MenuOpen and DropdownContainer.Visible == open then return end
                     MenuOpen = open
+                    MenuAnimationToken = MenuAnimationToken + 1
+                    local animationToken = MenuAnimationToken
+                    cancelMenuTweens()
 
-                    -- Raise the dropdown and its row/cell while open. Roblox
-                    -- sibling rows with the same ZIndex can otherwise intercept
-                    -- clicks even when the popup descendants have a high ZIndex.
                     local cell = Dropdown.Parent
                     local row = cell and cell.Parent
-                    Dropdown.ZIndex = open and 90 or 1
-                    if cell and cell:IsA("GuiObject") then cell.ZIndex = open and 89 or 1 end
-                    if row and row:IsA("GuiObject") then row.ZIndex = open and 88 or 1 end
-                    SelectOptionsFrame.ZIndex = open and 91 or 1
+                    local tweenInfo = TweenInfo.new(
+                        MenuAnimationDuration,
+                        Enum.EasingStyle.Quart,
+                        open and Enum.EasingDirection.Out or Enum.EasingDirection.In
+                    )
+
+                    -- Keep the whole portal interactive and elevated until the
+                    -- close animation finishes, preventing click-through.
+                    Dropdown.ZIndex = 90
+                    if cell and cell:IsA("GuiObject") then cell.ZIndex = 89 end
+                    if row and row:IsA("GuiObject") then row.ZIndex = 88 end
+                    SelectOptionsFrame.ZIndex = 91
                     DropdownButton.ZIndex = 123
-                    SectionOverlay.Active = open
-                    if open then updatePopupPosition() end
+                    SectionOverlay.Active = true
+                    Dropdown:SetAttribute("MenuOpen", MenuOpen)
                     updateInlineMenuSize()
+
+                    playMenuTween(OptionImg, tweenInfo, { Rotation = open and 180 or 0 })
+
+                    if open then
+                        DropdownContainer.Visible = true
+                        DropdownContainer.Active = true
+                        DropdownContainer.Position = getPopupPosition(-5)
+                        DropdownContainer.GroupTransparency = 1
+                        MenuScale.Scale = 0.96
+                        playMenuTween(DropdownContainer, tweenInfo, {
+                            Position = getPopupPosition(0),
+                            GroupTransparency = 0,
+                        })
+                        playMenuTween(MenuScale, tweenInfo, { Scale = 1 })
+                    else
+                        SearchBox:ReleaseFocus()
+                        playMenuTween(DropdownContainer, tweenInfo, {
+                            Position = getPopupPosition(-5),
+                            GroupTransparency = 1,
+                        })
+                        playMenuTween(MenuScale, tweenInfo, { Scale = 0.96 })
+
+                        task.delay(MenuAnimationDuration, function()
+                            if animationToken ~= MenuAnimationToken or MenuOpen then return end
+                            DropdownContainer.Visible = false
+                            DropdownContainer.Active = false
+                            Dropdown.ZIndex = 1
+                            if cell and cell:IsA("GuiObject") then cell.ZIndex = 1 end
+                            if row and row:IsA("GuiObject") then row.ZIndex = 1 end
+                            SelectOptionsFrame.ZIndex = 1
+                            DropdownButton.ZIndex = 123
+                            SectionOverlay.Active = false
+                        end)
+                    end
                 end
 
                 DropdownButton.Activated:Connect(function()

@@ -388,7 +388,7 @@ print(Dropdown:GetValue())
 Dropdown:Clear()
 ```
 
-Dropdown menampilkan maksimal 5 opsi. Opsi tambahan dapat dicari dengan search atau internal scroll. Klik di luar atau Escape menutup popup.
+Dropdown menampilkan maksimal 5 opsi. Opsi tambahan dapat dicari dengan search atau internal scroll. Klik di luar atau Escape menutup popup. Popup memakai animasi `0.16s`: fade dan scale `0.96→1` saat buka, lalu `1→0.96` saat tutup, disertai pergeseran vertikal 5px dan rotasi chevron. Tween lama otomatis dibatalkan ketika selector diklik cepat agar state tidak glitch.
 
 ## Slider
 
