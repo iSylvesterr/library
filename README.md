@@ -51,7 +51,7 @@ local ColumnsSection = Tab:AddSection({
     Title = "Compact Example",
     Layout = "Columns",
     ColumnGap = 6,
-    ItemGap = 4
+    ItemGap = 2
 })
 ```
 
@@ -60,7 +60,7 @@ local ColumnsSection = Tab:AddSection({
 | `Grid` (default) | Tinggi kiri dan kanan disamakan per row | Pasangan komponen dengan tinggi serupa |
 | `Columns` | Jarak vertikal kiri dan kanan dihitung secara independen | Toggle di kiri dan slider/dropdown/input di kanan |
 
-Pada mode `Grid`, komponen kanan yang lebih tinggi membuat tinggi row kiri ikut membesar. Pada mode `Columns`, toggle berikutnya langsung berada `ItemGap` pixel di bawah toggle sebelumnya dan tidak dipengaruhi tinggi slider di kanan. Toggle title-only memakai tinggi compact 36px; dengan `ItemGap = 4`, dua toggle tepat berjumlah 76px dan sejajar dengan satu dropdown standar.
+Pada mode `Grid`, komponen kanan yang lebih tinggi membuat tinggi row kiri ikut membesar. Pada mode `Columns`, toggle berikutnya langsung berada `ItemGap` pixel di bawah toggle sebelumnya dan tidak dipengaruhi tinggi slider di kanan. Toggle title-only memakai tinggi compact 37px; dengan default `ItemGap = 2`, dua toggle tepat berjumlah 76px dan sejajar dengan satu dropdown standar.
 
 `ColumnGap` mengatur jarak horizontal kiri-kanan. `ItemGap` mengatur jarak vertikal antar-item.
 
@@ -92,7 +92,7 @@ Jika slot yang diminta sudah terisi, Zeroin tidak menimpa komponen lama; kompone
 local Section = Tab:AddSection({
     Title = "Farm",
     Layout = "Columns",
-    ItemGap = 4
+    ItemGap = 2
 })
 
 Section:AddToggle({

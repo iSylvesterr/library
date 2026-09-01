@@ -2161,7 +2161,7 @@ function Zeroin:Window(GuiConfig)
             local LayoutMode = tostring(SectionConfig.Layout or "Grid"):lower()
             local UseIndependentColumns = LayoutMode == "columns" or LayoutMode == "column"
             local ColumnGap = math.max(0, tonumber(SectionConfig.ColumnGap) or 6)
-            local ItemGap = math.max(0, tonumber(SectionConfig.ItemGap) or 4)
+            local ItemGap = math.max(0, tonumber(SectionConfig.ItemGap) or 2)
 
             -- Sections are intentionally always open. A boolean second
             -- argument is retained only for backward API compatibility;
@@ -3049,9 +3049,9 @@ function Zeroin:Window(GuiConfig)
                     updatingToggleLayout = true
 
                     if not hasDescription and not hasTitle2 then
-                        -- Two compact title-only toggles plus the default 4px
+                        -- Two compact title-only toggles plus the default 2px
                         -- ItemGap total exactly 76px, matching one dropdown.
-                        Toggle.Size = UDim2.new(1, 0, 0, 36)
+                        Toggle.Size = UDim2.new(1, 0, 0, 37)
                         ToggleTitle.Position = UDim2.fromOffset(10, 0)
                         ToggleTitle.Size = UDim2.new(1, -100, 1, 0)
                         ToggleTitle.TextYAlignment = Enum.TextYAlignment.Center
