@@ -3304,6 +3304,7 @@ function Zeroin:Window(GuiConfig)
                 Dropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Dropdown.BackgroundTransparency = 0.935
                 Dropdown.BorderSizePixel = 0
+                Dropdown.ClipsDescendants = true
                 Dropdown.LayoutOrder = CountItem
                 Dropdown.Size = UDim2.new(1, 0, 0, 46)
                 Dropdown.Name = "Dropdown"
@@ -3311,7 +3312,7 @@ function Zeroin:Window(GuiConfig)
 
                 DropdownButton.Text = ""
                 DropdownButton.BackgroundTransparency = 1
-                DropdownButton.Size = UDim2.new(1, 0, 1, 0)
+                DropdownButton.Size = UDim2.new(1, 0, 0, 46)
                 DropdownButton.Name = "ToggleButton"
                 DropdownButton.Parent = Dropdown
 
@@ -3357,23 +3358,21 @@ function Zeroin:Window(GuiConfig)
                     SelectOptionsFrame.Position = UDim2.new(0.5, 0, 1, -7)
                     SelectOptionsFrame.Size = UDim2.new(1, -20, 0, 28)
                 end
-                SelectOptionsFrame.BackgroundTransparency = 0.95
+                SelectOptionsFrame.BackgroundColor3 = Color3.fromRGB(8, 36, 25)
+                SelectOptionsFrame.BackgroundTransparency = 0
                 SelectOptionsFrame.Name = "SelectOptionsFrame"
                 SelectOptionsFrame.LayoutOrder = CountDropdown
                 SelectOptionsFrame.Parent = Dropdown
 
-                UICorner11.CornerRadius = UDim.new(0, 4)
+                UICorner11.CornerRadius = UDim.new(0, 5)
                 UICorner11.Parent = SelectOptionsFrame
 
-                DropdownButton.Activated:Connect(function()
-                    if not MoreBlur.Visible then
-                        MoreBlur.Visible = true
-                        DropPageLayout:JumpToIndex(SelectOptionsFrame.LayoutOrder)
-                        TweenService:Create(MoreBlur, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
-                        TweenService:Create(DropdownSelect, TweenInfo.new(0.3), { Position = UDim2.new(1, -11, 0.5, 0) })
-                            :Play()
-                    end
-                end)
+                local SelectStroke = Instance.new("UIStroke")
+                SelectStroke.Color = Color3.fromRGB(34, 91, 68)
+                SelectStroke.Transparency = 0.45
+                SelectStroke.Thickness = 1
+                SelectStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                SelectStroke.Parent = SelectOptionsFrame
 
                 OptionSelecting.Font = Enum.Font.GothamBold
                 OptionSelecting.Text = DropdownConfig.Multi and "Select Options" or "Select Option"
@@ -3398,32 +3397,55 @@ function Zeroin:Window(GuiConfig)
                 OptionImg.Parent = SelectOptionsFrame
 
                 local DropdownContainer = Instance.new("Frame")
-                DropdownContainer.Size = UDim2.new(1, 0, 1, 0)
-                DropdownContainer.BackgroundTransparency = 1
-                DropdownContainer.Parent = DropdownFolder
+                DropdownContainer.Name = "InlineMenu"
+                DropdownContainer.BackgroundColor3 = Color3.fromRGB(6, 31, 22)
+                DropdownContainer.BackgroundTransparency = 0.08
+                DropdownContainer.BorderSizePixel = 0
+                DropdownContainer.ClipsDescendants = true
+                local BaseDropdownHeight = (DropdownConfig.FullWidth ~= false) and 46 or 76
+                DropdownContainer.Position = UDim2.fromOffset(10, BaseDropdownHeight)
+                DropdownContainer.Size = UDim2.new(1, -20, 0, 0)
+                DropdownContainer.Parent = Dropdown
+
+                local MenuCorner = Instance.new("UICorner")
+                MenuCorner.CornerRadius = UDim.new(0, 6)
+                MenuCorner.Parent = DropdownContainer
+
+                local MenuStroke = Instance.new("UIStroke")
+                MenuStroke.Color = Color3.fromRGB(34, 91, 68)
+                MenuStroke.Transparency = 0.3
+                MenuStroke.Thickness = 1
+                MenuStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                MenuStroke.Parent = DropdownContainer
 
                 local SearchBox = Instance.new("TextBox")
-                SearchBox.PlaceholderText = "Search"
-                SearchBox.Font = Enum.Font.Gotham
+                SearchBox.PlaceholderText = "Search options..."
+                SearchBox.PlaceholderColor3 = Color3.fromRGB(116, 159, 136)
+                SearchBox.Font = Enum.Font.GothamMedium
                 SearchBox.Text = ""
-                SearchBox.TextSize = 12
-                SearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-                SearchBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                SearchBox.BackgroundTransparency = 0.9
+                SearchBox.TextSize = 10
+                SearchBox.TextColor3 = Color3.fromRGB(220, 234, 226)
+                SearchBox.BackgroundColor3 = Color3.fromRGB(10, 43, 31)
+                SearchBox.BackgroundTransparency = 0
                 SearchBox.BorderSizePixel = 0
-                SearchBox.Size = UDim2.new(1, 0, 0, 25)
-                SearchBox.Position = UDim2.new(0, 0, 0, 0)
+                SearchBox.Size = UDim2.new(1, -12, 0, 23)
+                SearchBox.Position = UDim2.fromOffset(6, 6)
                 SearchBox.ClearTextOnFocus = false
                 SearchBox.Name = "SearchBox"
                 SearchBox.Parent = DropdownContainer
 
+                local SearchCorner = Instance.new("UICorner")
+                SearchCorner.CornerRadius = UDim.new(0, 4)
+                SearchCorner.Parent = SearchBox
+
                 local ScrollSelect = Instance.new("ScrollingFrame")
-                ScrollSelect.Size = UDim2.new(1, 0, 1, -30)
-                ScrollSelect.Position = UDim2.new(0, 0, 0, 30)
-                ScrollSelect.ScrollBarImageTransparency = 1
+                ScrollSelect.Size = UDim2.new(1, -12, 1, -39)
+                ScrollSelect.Position = UDim2.fromOffset(6, 33)
+                ScrollSelect.ScrollBarImageColor3 = Color3.fromRGB(34, 91, 68)
+                ScrollSelect.ScrollBarImageTransparency = 0.25
                 ScrollSelect.BorderSizePixel = 0
                 ScrollSelect.BackgroundTransparency = 1
-                ScrollSelect.ScrollBarThickness = 0
+                ScrollSelect.ScrollBarThickness = 2
                 ScrollSelect.CanvasSize = UDim2.new(0, 0, 0, 0)
                 ScrollSelect.Name = "ScrollSelect"
                 ScrollSelect.Parent = DropdownContainer
@@ -3437,6 +3459,8 @@ function Zeroin:Window(GuiConfig)
                     ScrollSelect.CanvasSize = UDim2.new(0, 0, 0, UIListLayout4.AbsoluteContentSize.Y)
                 end)
 
+                local updateInlineMenuSize
+
                 SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
                     local query = string.lower(SearchBox.Text)
                     for _, option in pairs(ScrollSelect:GetChildren()) do
@@ -3446,9 +3470,48 @@ function Zeroin:Window(GuiConfig)
                         end
                     end
                     ScrollSelect.CanvasSize = UDim2.new(0, 0, 0, UIListLayout4.AbsoluteContentSize.Y)
+                    task.defer(function()
+                        if updateInlineMenuSize then updateInlineMenuSize() end
+                    end)
                 end)
 
                 local DropCount = 0
+                local MenuOpen = false
+                local MaxVisibleOptions = 4
+
+                local function countVisibleOptions()
+                    local count = 0
+                    for _, option in ipairs(ScrollSelect:GetChildren()) do
+                        if option.Name == "Option" and option.Visible then
+                            count = count + 1
+                        end
+                    end
+                    return count
+                end
+
+                updateInlineMenuSize = function()
+                    local visibleCount = math.max(1, countVisibleOptions())
+                    local listHeight = math.min(visibleCount, MaxVisibleOptions) * 28
+                    local menuHeight = 39 + listHeight
+                    if MenuOpen then
+                        DropdownContainer.Size = UDim2.new(1, -20, 0, menuHeight)
+                        Dropdown.Size = UDim2.new(1, 0, 0, BaseDropdownHeight + menuHeight + 6)
+                        OptionImg.Rotation = 180
+                    else
+                        DropdownContainer.Size = UDim2.new(1, -20, 0, 0)
+                        Dropdown.Size = UDim2.new(1, 0, 0, BaseDropdownHeight)
+                        OptionImg.Rotation = 0
+                    end
+                end
+
+                local function setMenuOpen(open)
+                    MenuOpen = open
+                    updateInlineMenuSize()
+                end
+
+                DropdownButton.Activated:Connect(function()
+                    setMenuOpen(not MenuOpen)
+                end)
 
                 function DropdownFunc:Clear()
                     for _, DropFrame in ScrollSelect:GetChildren() do
@@ -3460,6 +3523,7 @@ function Zeroin:Window(GuiConfig)
                     DropdownFunc.Options = {}
                     OptionSelecting.Text = DropdownConfig.Multi and "Select Options" or "Select Option"
                     DropCount = 0
+                    updateInlineMenuSize()
                 end
 
                 function DropdownFunc:AddOption(option)
@@ -3480,8 +3544,9 @@ function Zeroin:Window(GuiConfig)
                     local UICorner38 = Instance.new("UICorner")
                     local UICorner37 = Instance.new("UICorner")
 
+                    Option.BackgroundColor3 = Color3.fromRGB(10, 43, 31)
                     Option.BackgroundTransparency = 1
-                    Option.Size = UDim2.new(1, 0, 0, 30)
+                    Option.Size = UDim2.new(1, 0, 0, 25)
                     Option.Name = "Option"
                     Option.Parent = ScrollSelect
 
@@ -3496,10 +3561,10 @@ function Zeroin:Window(GuiConfig)
 
                     OptionText.Font = Enum.Font.GothamBold
                     OptionText.Text = label
-                    OptionText.TextSize = 13
-                    OptionText.TextColor3 = Color3.fromRGB(230, 230, 230)
-                    OptionText.Position = UDim2.new(0, 8, 0, 8)
-                    OptionText.Size = UDim2.new(1, -100, 0, 13)
+                    OptionText.TextSize = 11
+                    OptionText.TextColor3 = Color3.fromRGB(214, 232, 220)
+                    OptionText.Position = UDim2.new(0, 9, 0, 6)
+                    OptionText.Size = UDim2.new(1, -30, 0, 13)
                     OptionText.BackgroundTransparency = 1
                     OptionText.TextXAlignment = Enum.TextXAlignment.Left
                     OptionText.Name = "OptionText"
@@ -3536,7 +3601,12 @@ function Zeroin:Window(GuiConfig)
                             DropdownFunc.Value = value
                         end
                         DropdownFunc:Set(DropdownFunc.Value)
+                        if not DropdownConfig.Multi then
+                            setMenuOpen(false)
+                        end
                     end)
+                    DropCount = DropCount + 1
+                    updateInlineMenuSize()
                 end
 
                 function DropdownFunc:Set(Value)
@@ -3576,6 +3646,8 @@ function Zeroin:Window(GuiConfig)
                     OptionSelecting.Text = (#texts == 0)
                         and (DropdownConfig.Multi and "Select Options" or "Select Option")
                         or table.concat(texts, ", ")
+
+                    updateInlineMenuSize()
 
                     if DropdownConfig.Callback then
                         if DropdownConfig.Multi then
