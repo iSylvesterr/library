@@ -3304,7 +3304,8 @@ function Zeroin:Window(GuiConfig)
                 Dropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Dropdown.BackgroundTransparency = 0.935
                 Dropdown.BorderSizePixel = 0
-                Dropdown.ClipsDescendants = true
+                -- The compact popup may extend below the 46px dropdown row.
+                Dropdown.ClipsDescendants = false
                 Dropdown.LayoutOrder = CountItem
                 Dropdown.Size = UDim2.new(1, 0, 0, 46)
                 Dropdown.Name = "Dropdown"
@@ -3399,12 +3400,14 @@ function Zeroin:Window(GuiConfig)
                 local DropdownContainer = Instance.new("Frame")
                 DropdownContainer.Name = "InlineMenu"
                 DropdownContainer.BackgroundColor3 = Color3.fromRGB(6, 31, 22)
-                DropdownContainer.BackgroundTransparency = 0.08
+                DropdownContainer.BackgroundTransparency = 0.04
                 DropdownContainer.BorderSizePixel = 0
                 DropdownContainer.ClipsDescendants = true
-                local BaseDropdownHeight = (DropdownConfig.FullWidth ~= false) and 46 or 76
-                DropdownContainer.Position = UDim2.fromOffset(10, BaseDropdownHeight)
-                DropdownContainer.Size = UDim2.new(1, -20, 0, 0)
+                DropdownContainer.AnchorPoint = Vector2.new(1, 0)
+                DropdownContainer.Position = UDim2.new(1, -7, 0, 43)
+                DropdownContainer.Size = UDim2.fromOffset(148, 0)
+                DropdownContainer.Visible = false
+                DropdownContainer.ZIndex = 30
                 DropdownContainer.Parent = Dropdown
 
                 local MenuCorner = Instance.new("UICorner")
@@ -3428,8 +3431,9 @@ function Zeroin:Window(GuiConfig)
                 SearchBox.BackgroundColor3 = Color3.fromRGB(10, 43, 31)
                 SearchBox.BackgroundTransparency = 0
                 SearchBox.BorderSizePixel = 0
-                SearchBox.Size = UDim2.new(1, -12, 0, 23)
-                SearchBox.Position = UDim2.fromOffset(6, 6)
+                SearchBox.Size = UDim2.new(1, -10, 0, 21)
+                SearchBox.Position = UDim2.fromOffset(5, 5)
+                SearchBox.ZIndex = 32
                 SearchBox.ClearTextOnFocus = false
                 SearchBox.Name = "SearchBox"
                 SearchBox.Parent = DropdownContainer
@@ -3439,8 +3443,9 @@ function Zeroin:Window(GuiConfig)
                 SearchCorner.Parent = SearchBox
 
                 local ScrollSelect = Instance.new("ScrollingFrame")
-                ScrollSelect.Size = UDim2.new(1, -12, 1, -39)
-                ScrollSelect.Position = UDim2.fromOffset(6, 33)
+                ScrollSelect.Size = UDim2.new(1, -10, 1, -34)
+                ScrollSelect.Position = UDim2.fromOffset(5, 29)
+                ScrollSelect.ZIndex = 31
                 ScrollSelect.ScrollBarImageColor3 = Color3.fromRGB(34, 91, 68)
                 ScrollSelect.ScrollBarImageTransparency = 0.25
                 ScrollSelect.BorderSizePixel = 0
@@ -3451,7 +3456,7 @@ function Zeroin:Window(GuiConfig)
                 ScrollSelect.Parent = DropdownContainer
 
                 local UIListLayout4 = Instance.new("UIListLayout")
-                UIListLayout4.Padding = UDim.new(0, 3)
+                UIListLayout4.Padding = UDim.new(0, 2)
                 UIListLayout4.SortOrder = Enum.SortOrder.LayoutOrder
                 UIListLayout4.Parent = ScrollSelect
 
@@ -3477,7 +3482,7 @@ function Zeroin:Window(GuiConfig)
 
                 local DropCount = 0
                 local MenuOpen = false
-                local MaxVisibleOptions = 4
+                local MaxVisibleOptions = 3
 
                 local function countVisibleOptions()
                     local count = 0
@@ -3491,17 +3496,11 @@ function Zeroin:Window(GuiConfig)
 
                 updateInlineMenuSize = function()
                     local visibleCount = math.max(1, countVisibleOptions())
-                    local listHeight = math.min(visibleCount, MaxVisibleOptions) * 28
-                    local menuHeight = 39 + listHeight
-                    if MenuOpen then
-                        DropdownContainer.Size = UDim2.new(1, -20, 0, menuHeight)
-                        Dropdown.Size = UDim2.new(1, 0, 0, BaseDropdownHeight + menuHeight + 6)
-                        OptionImg.Rotation = 180
-                    else
-                        DropdownContainer.Size = UDim2.new(1, -20, 0, 0)
-                        Dropdown.Size = UDim2.new(1, 0, 0, BaseDropdownHeight)
-                        OptionImg.Rotation = 0
-                    end
+                    local listHeight = math.min(visibleCount, MaxVisibleOptions) * 27
+                    local menuHeight = 34 + listHeight
+                    DropdownContainer.Size = UDim2.fromOffset(148, menuHeight)
+                    DropdownContainer.Visible = MenuOpen
+                    OptionImg.Rotation = MenuOpen and 180 or 0
                 end
 
                 local function setMenuOpen(open)
@@ -3546,8 +3545,9 @@ function Zeroin:Window(GuiConfig)
 
                     Option.BackgroundColor3 = Color3.fromRGB(10, 43, 31)
                     Option.BackgroundTransparency = 1
-                    Option.Size = UDim2.new(1, 0, 0, 25)
+                    Option.Size = UDim2.new(1, -2, 0, 25)
                     Option.Name = "Option"
+                    Option.ZIndex = 32
                     Option.Parent = ScrollSelect
 
                     UICorner37.CornerRadius = UDim.new(0, 3)
@@ -3555,6 +3555,7 @@ function Zeroin:Window(GuiConfig)
 
                     OptionButton.BackgroundTransparency = 1
                     OptionButton.Size = UDim2.new(1, 0, 1, 0)
+                    OptionButton.ZIndex = 34
                     OptionButton.Text = ""
                     OptionButton.Name = "OptionButton"
                     OptionButton.Parent = Option
@@ -3567,6 +3568,7 @@ function Zeroin:Window(GuiConfig)
                     OptionText.Size = UDim2.new(1, -30, 0, 13)
                     OptionText.BackgroundTransparency = 1
                     OptionText.TextXAlignment = Enum.TextXAlignment.Left
+                    OptionText.ZIndex = 33
                     OptionText.Name = "OptionText"
                     OptionText.Parent = Option
 
@@ -3577,6 +3579,7 @@ function Zeroin:Window(GuiConfig)
                     ChooseFrame.Position = UDim2.new(0, 2, 0.5, 0)
                     ChooseFrame.Size = UDim2.new(0, 0, 0, 0)
                     ChooseFrame.Name = "ChooseFrame"
+                    ChooseFrame.ZIndex = 33
                     ChooseFrame.Parent = Option
 
                     UIStroke15.Color = GuiConfig.Color
