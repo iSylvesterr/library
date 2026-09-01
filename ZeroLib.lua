@@ -1961,33 +1961,19 @@ function Zeroin:Window(GuiConfig)
             -- retained only for backward API compatibility.
             local Section = Instance.new("Frame")
             Section.Name = "Section"
-            Section.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
-            Section.BackgroundTransparency = 0
+            Section.BackgroundTransparency = 1
             Section.BorderSizePixel = 0
-            Section.ClipsDescendants = true
+            Section.ClipsDescendants = false
             Section.LayoutOrder = CountSection
             Section.Size = UDim2.new(1, 0, 0, 36)
             Section.Parent = ScrolLayers
 
-            local SectionCorner = Instance.new("UICorner")
-            SectionCorner.CornerRadius = UDim.new(0, 7)
-            SectionCorner.Parent = Section
-
-            local SectionStroke = Instance.new("UIStroke")
-            SectionStroke.Name = "SectionOutline"
-            SectionStroke.Color = Color3.fromRGB(34, 91, 68)
-            SectionStroke.Transparency = 0.35
-            SectionStroke.Thickness = 1
-            SectionStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            SectionStroke.Parent = Section
-
             local SectionReal = Instance.new("Frame")
             SectionReal.Name = "SectionReal"
-            SectionReal.BackgroundColor3 = Color3.fromRGB(12, 46, 33)
-            SectionReal.BackgroundTransparency = 0
+            SectionReal.BackgroundTransparency = 1
             SectionReal.BorderSizePixel = 0
             SectionReal.Position = UDim2.fromOffset(0, 0)
-            SectionReal.Size = UDim2.new(1, 0, 0, 31)
+            SectionReal.Size = UDim2.new(1, 0, 0, 26)
             SectionReal.Parent = Section
 
             local SectionTitle = Instance.new("TextLabel")
@@ -1995,27 +1981,47 @@ function Zeroin:Window(GuiConfig)
             SectionTitle.Font = Enum.Font.GothamBold
             SectionTitle.Text = Title
             SectionTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
-            SectionTitle.TextSize = 12
+            SectionTitle.TextSize = 13
             SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
             SectionTitle.BackgroundTransparency = 1
-            SectionTitle.Position = UDim2.fromOffset(10, 0)
-            SectionTitle.Size = UDim2.new(1, -20, 1, 0)
+            SectionTitle.Position = UDim2.fromOffset(6, 0)
+            SectionTitle.Size = UDim2.new(1, -12, 1, 0)
             SectionTitle.Parent = SectionReal
 
             local SectionAdd = Instance.new("Frame")
             SectionAdd.Name = "SectionAdd"
-            SectionAdd.BackgroundTransparency = 1
+            SectionAdd.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
+            SectionAdd.BackgroundTransparency = 0
             SectionAdd.BorderSizePixel = 0
             SectionAdd.ClipsDescendants = true
-            SectionAdd.Position = UDim2.fromOffset(8, 31)
-            SectionAdd.Size = UDim2.new(1, -16, 0, 0)
+            SectionAdd.Position = UDim2.fromOffset(0, 26)
+            SectionAdd.Size = UDim2.new(1, 0, 0, 0)
             SectionAdd.Parent = Section
+
+            local SectionAddCorner = Instance.new("UICorner")
+            SectionAddCorner.CornerRadius = UDim.new(0, 6)
+            SectionAddCorner.Parent = SectionAdd
+
+            local SectionAddStroke = Instance.new("UIStroke")
+            SectionAddStroke.Name = "SectionOutline"
+            SectionAddStroke.Color = Color3.fromRGB(34, 91, 68)
+            SectionAddStroke.Transparency = 0.35
+            SectionAddStroke.Thickness = 1
+            SectionAddStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            SectionAddStroke.Parent = SectionAdd
 
             local RowsLayout = Instance.new("UIListLayout")
             RowsLayout.Name = "RowsLayout"
             RowsLayout.Padding = UDim.new(0, 4)
             RowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
             RowsLayout.Parent = SectionAdd
+
+            local UIPadding = Instance.new("UIPadding")
+            UIPadding.PaddingTop = UDim.new(0, 4)
+            UIPadding.PaddingBottom = UDim.new(0, 4)
+            UIPadding.PaddingLeft = UDim.new(0, 8)
+            UIPadding.PaddingRight = UDim.new(0, 8)
+            UIPadding.Parent = SectionAdd
 
             local function UpdateSizeScroll()
                 local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
@@ -2025,9 +2031,9 @@ function Zeroin:Window(GuiConfig)
             end
 
             local function UpdateSizeSection()
-                local contentHeight = RowsLayout.AbsoluteContentSize.Y
-                SectionAdd.Size = UDim2.new(1, -16, 0, contentHeight)
-                Section.Size = UDim2.new(1, 0, 0, 39 + contentHeight)
+                local contentHeight = RowsLayout.AbsoluteContentSize.Y + 8 -- account for padding
+                SectionAdd.Size = UDim2.new(1, 0, 0, contentHeight)
+                Section.Size = UDim2.new(1, 0, 0, 26 + contentHeight)
                 task.defer(UpdateSizeScroll)
             end
 
