@@ -2212,11 +2212,11 @@ function Zeroin:Window(GuiConfig)
                 ParagraphContent.BackgroundTransparency = 1
                 ParagraphContent.Position = UDim2.new(0, iconOffset, 0, 25)
                 ParagraphContent.Name = "ParagraphContent"
-                ParagraphContent.TextWrapped = false
+                ParagraphContent.TextWrapped = true
                 ParagraphContent.RichText = true
                 ParagraphContent.Parent = Paragraph
 
-                ParagraphContent.Size = UDim2.new(1, -(iconOffset + 8), 0, ParagraphContent.TextBounds.Y)
+                ParagraphContent.Size = UDim2.new(1, -(iconOffset + 8), 0, 12)
 
                 local ParagraphButton
                 if ParagraphConfig.ButtonText then
@@ -2241,17 +2241,33 @@ function Zeroin:Window(GuiConfig)
                     end
                 end
 
+                local updatingParagraph = false
                 local function UpdateSize()
-                    local totalHeight = ParagraphContent.TextBounds.Y + 33
+                    if updatingParagraph then return end
+                    updatingParagraph = true
+
+                    local contentHeight = math.max(12, math.ceil(ParagraphContent.TextBounds.Y))
+                    ParagraphContent.Size = UDim2.new(1, -(iconOffset + 8), 0, contentHeight)
+
+                    local contentBottom = ParagraphContent.Position.Y.Offset + contentHeight
+                    local totalHeight
                     if ParagraphButton then
-                        totalHeight = totalHeight + ParagraphButton.Size.Y.Offset + 5
+                        ParagraphButton.Position = UDim2.new(0, 10, 0, contentBottom + 8)
+                        totalHeight = ParagraphButton.Position.Y.Offset + ParagraphButton.Size.Y.Offset + 10
+                    else
+                        totalHeight = contentBottom + 10
                     end
-                    Paragraph.Size = UDim2.new(1, 0, 0, totalHeight)
+
+                    -- Keep enough room for the optional icon even with very
+                    -- short content, while expanding naturally for long text.
+                    Paragraph.Size = UDim2.new(1, 0, 0, math.max(totalHeight, 46))
+                    updatingParagraph = false
                 end
 
-                UpdateSize()
+                task.defer(UpdateSize)
 
                 ParagraphContent:GetPropertyChangedSignal("TextBounds"):Connect(UpdateSize)
+                ParagraphContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateSize)
 
                 function ParagraphFunc:SetContent(content)
                     content = content or "Content"
