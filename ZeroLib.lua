@@ -1973,7 +1973,7 @@ function Zeroin:Window(GuiConfig)
             SectionReal.BackgroundTransparency = 1
             SectionReal.BorderSizePixel = 0
             SectionReal.Position = UDim2.fromOffset(0, 0)
-            SectionReal.Size = UDim2.new(1, 0, 0, 34)
+            SectionReal.Size = UDim2.new(1, 0, 0, 27)
             SectionReal.Parent = Section
 
             local SectionTitle = Instance.new("TextLabel")
@@ -1983,19 +1983,21 @@ function Zeroin:Window(GuiConfig)
             SectionTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
             SectionTitle.TextSize = 13
             SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            SectionTitle.TextYAlignment = Enum.TextYAlignment.Top
             SectionTitle.BackgroundTransparency = 1
             SectionTitle.Position = UDim2.fromOffset(6, 0)
-            SectionTitle.Size = UDim2.new(1, -12, 1, 0)
+            SectionTitle.Size = UDim2.new(1, -12, 0, 18)
             SectionTitle.Parent = SectionReal
 
             local SectionAdd = Instance.new("Frame")
             SectionAdd.Name = "SectionAdd"
             SectionAdd.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
-            SectionAdd.BackgroundTransparency = 0.55
+            SectionAdd.BackgroundTransparency = 0.28
             SectionAdd.BorderSizePixel = 0
             SectionAdd.ClipsDescendants = true
-            SectionAdd.Position = UDim2.fromOffset(0, 34)
-            SectionAdd.Size = UDim2.new(1, 0, 0, 0)
+            -- 2px inset keeps the Border stroke visible on both sides.
+            SectionAdd.Position = UDim2.fromOffset(2, 27)
+            SectionAdd.Size = UDim2.new(1, -4, 0, 0)
             SectionAdd.Parent = Section
 
             local SectionAddCorner = Instance.new("UICorner")
@@ -2005,7 +2007,7 @@ function Zeroin:Window(GuiConfig)
             local SectionAddStroke = Instance.new("UIStroke")
             SectionAddStroke.Name = "SectionOutline"
             SectionAddStroke.Color = Color3.fromRGB(34, 91, 68)
-            SectionAddStroke.Transparency = 0.35
+            SectionAddStroke.Transparency = 0.22
             SectionAddStroke.Thickness = 1
             SectionAddStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             SectionAddStroke.Parent = SectionAdd
@@ -2032,8 +2034,8 @@ function Zeroin:Window(GuiConfig)
 
             local function UpdateSizeSection()
                 local contentHeight = RowsLayout.AbsoluteContentSize.Y + 16 -- account for top/bottom padding
-                SectionAdd.Size = UDim2.new(1, 0, 0, contentHeight)
-                Section.Size = UDim2.new(1, 0, 0, 34 + contentHeight)
+                SectionAdd.Size = UDim2.new(1, -4, 0, contentHeight)
+                Section.Size = UDim2.new(1, 0, 0, 27 + contentHeight)
                 task.defer(UpdateSizeScroll)
             end
 
