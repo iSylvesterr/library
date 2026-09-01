@@ -1243,8 +1243,8 @@ function Zeroin:Window(GuiConfig)
     applyIcon(DiscordIcon, "discord")
     DiscordIcon.ImageColor3 = Color3.fromRGB(190, 218, 202)
     DiscordIcon.ImageTransparency = 0.08
-    DiscordIcon.Position = UDim2.new(0, 8, 0.5, -8)
-    DiscordIcon.Size = UDim2.fromOffset(16, 16)
+    DiscordIcon.Position = UDim2.new(0, 8, 0.5, -5)
+    DiscordIcon.Size = UDim2.fromOffset(14, 14)
     DiscordIcon.ScaleType = Enum.ScaleType.Fit
     DiscordIcon.Parent = DiscordCard
 
@@ -1254,10 +1254,10 @@ function Zeroin:Window(GuiConfig)
     DiscordTitle.Font = Enum.Font.GothamBold
     DiscordTitle.Text = "Discord"
     DiscordTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
-    DiscordTitle.TextSize = 11
+    DiscordTitle.TextSize = 10
     DiscordTitle.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordTitle.Position = UDim2.new(0, 31, 0, 4)
-    DiscordTitle.Size = UDim2.new(1, -37, 0, 14)
+    DiscordTitle.Position = UDim2.new(0, 29, 0, 6)
+    DiscordTitle.Size = UDim2.new(1, -35, 0, 12)
     DiscordTitle.Parent = DiscordCard
 
     local DiscordLink = Instance.new("TextLabel")
@@ -1266,11 +1266,11 @@ function Zeroin:Window(GuiConfig)
     DiscordLink.Font = Enum.Font.GothamMedium
     DiscordLink.Text = DiscordUrl:gsub("^https?://", "")
     DiscordLink.TextColor3 = Color3.fromRGB(151, 190, 169)
-    DiscordLink.TextSize = 8
+    DiscordLink.TextSize = 7
     DiscordLink.TextTruncate = Enum.TextTruncate.AtEnd
     DiscordLink.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordLink.Position = UDim2.new(0, 31, 0, 18)
-    DiscordLink.Size = UDim2.new(1, -37, 0, 12)
+    DiscordLink.Position = UDim2.new(0, 29, 0, 20)
+    DiscordLink.Size = UDim2.new(1, -35, 0, 10)
     DiscordLink.Parent = DiscordCard
 
     local DiscordButton = Instance.new("TextButton")
