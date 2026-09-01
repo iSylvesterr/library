@@ -946,8 +946,8 @@ function Zeroin:Window(GuiConfig)
     LayersTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     LayersTab.BorderSizePixel = 0
     LayersTab.Position = UDim2.new(0, 9, 0, 50)
-    -- Reserve space for the Discord and account cards at the bottom.
-    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -153)
+    -- Reserve only a compact footer area for Discord and account cards.
+    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -139)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
@@ -1011,8 +1011,8 @@ function Zeroin:Window(GuiConfig)
     DiscordCard.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
     DiscordCard.BackgroundTransparency = 0
     DiscordCard.BorderSizePixel = 0
-    DiscordCard.Position = UDim2.new(0, 9, 1, -99)
-    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 46)
+    DiscordCard.Position = UDim2.new(0, 9, 1, -85)
+    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 34)
     DiscordCard.Parent = Main
 
     local DiscordCorner = Instance.new("UICorner")
@@ -1033,8 +1033,8 @@ function Zeroin:Window(GuiConfig)
     DiscordIcon.Image = Icons.discord
     DiscordIcon.ImageColor3 = Color3.fromRGB(190, 218, 202)
     DiscordIcon.ImageTransparency = 0.08
-    DiscordIcon.Position = UDim2.new(0, 8, 0.5, -9)
-    DiscordIcon.Size = UDim2.fromOffset(18, 18)
+    DiscordIcon.Position = UDim2.new(0, 7, 0.5, -7)
+    DiscordIcon.Size = UDim2.fromOffset(14, 14)
     DiscordIcon.ScaleType = Enum.ScaleType.Fit
     DiscordIcon.Parent = DiscordCard
 
@@ -1044,10 +1044,10 @@ function Zeroin:Window(GuiConfig)
     DiscordTitle.Font = Enum.Font.GothamBold
     DiscordTitle.Text = "Discord"
     DiscordTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
-    DiscordTitle.TextSize = 11
+    DiscordTitle.TextSize = 10
     DiscordTitle.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordTitle.Position = UDim2.new(0, 34, 0, 7)
-    DiscordTitle.Size = UDim2.new(1, -40, 0, 14)
+    DiscordTitle.Position = UDim2.new(0, 27, 0, 3)
+    DiscordTitle.Size = UDim2.new(1, -33, 0, 13)
     DiscordTitle.Parent = DiscordCard
 
     local DiscordLink = Instance.new("TextLabel")
@@ -1056,11 +1056,11 @@ function Zeroin:Window(GuiConfig)
     DiscordLink.Font = Enum.Font.GothamMedium
     DiscordLink.Text = "discord.gg/9snzkaGkRE"
     DiscordLink.TextColor3 = Color3.fromRGB(151, 190, 169)
-    DiscordLink.TextSize = 8
+    DiscordLink.TextSize = 7
     DiscordLink.TextTruncate = Enum.TextTruncate.AtEnd
     DiscordLink.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordLink.Position = UDim2.new(0, 34, 0, 23)
-    DiscordLink.Size = UDim2.new(1, -40, 0, 13)
+    DiscordLink.Position = UDim2.new(0, 27, 0, 17)
+    DiscordLink.Size = UDim2.new(1, -33, 0, 11)
     DiscordLink.Parent = DiscordCard
 
     local DiscordButton = Instance.new("TextButton")
