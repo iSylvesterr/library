@@ -1216,14 +1216,9 @@ function Zeroin:Window(GuiConfig)
                         if sectionAdd and sectionReal then
                             local sectionVisible = false
                             local searchableItems = {}
-                            for _, columnName in ipairs({"LeftColumn", "RightColumn"}) do
-                                local column = sectionAdd:FindFirstChild(columnName)
-                                if column then
-                                    for _, item in ipairs(column:GetChildren()) do
-                                        if item:IsA("GuiObject") then
-                                            table.insert(searchableItems, item)
-                                        end
-                                    end
+                            for _, descendant in ipairs(sectionAdd:GetDescendants()) do
+                                if descendant:IsA("GuiObject") and descendant:GetAttribute("ZeroinSectionItem") then
+                                    table.insert(searchableItems, descendant)
                                 end
                             end
 
@@ -2007,63 +2002,20 @@ function Zeroin:Window(GuiConfig)
             SectionTitle.Size = UDim2.new(1, -20, 1, 0)
             SectionTitle.Parent = SectionReal
 
-            local HeaderDivider = Instance.new("Frame")
-            HeaderDivider.Name = "HeaderDivider"
-            HeaderDivider.BackgroundColor3 = Color3.fromRGB(34, 91, 68)
-            HeaderDivider.BackgroundTransparency = 0.55
-            HeaderDivider.BorderSizePixel = 0
-            HeaderDivider.Position = UDim2.new(0, 0, 1, -1)
-            HeaderDivider.Size = UDim2.new(1, 0, 0, 1)
-            HeaderDivider.Parent = SectionReal
-
             local SectionAdd = Instance.new("Frame")
             SectionAdd.Name = "SectionAdd"
             SectionAdd.BackgroundTransparency = 1
             SectionAdd.BorderSizePixel = 0
             SectionAdd.ClipsDescendants = true
-            SectionAdd.Position = UDim2.fromOffset(0, 31)
-            SectionAdd.Size = UDim2.new(1, 0, 0, 0)
+            SectionAdd.Position = UDim2.fromOffset(8, 31)
+            SectionAdd.Size = UDim2.new(1, -16, 0, 0)
             SectionAdd.Parent = Section
 
-            local LeftColumn = Instance.new("Frame")
-            LeftColumn.Name = "LeftColumn"
-            LeftColumn.BackgroundTransparency = 1
-            LeftColumn.BorderSizePixel = 0
-            LeftColumn.Position = UDim2.fromOffset(0, 0)
-            LeftColumn.Size = UDim2.new(0.5, 0, 0, 0)
-            LeftColumn.AutomaticSize = Enum.AutomaticSize.Y
-            LeftColumn.Parent = SectionAdd
-
-            local RightColumn = Instance.new("Frame")
-            RightColumn.Name = "RightColumn"
-            RightColumn.BackgroundTransparency = 1
-            RightColumn.BorderSizePixel = 0
-            RightColumn.Position = UDim2.new(0.5, 0, 0, 0)
-            RightColumn.Size = UDim2.new(0.5, 0, 0, 0)
-            RightColumn.AutomaticSize = Enum.AutomaticSize.Y
-            RightColumn.Parent = SectionAdd
-
-            local LeftLayout = Instance.new("UIListLayout")
-            LeftLayout.Name = "ColumnLayout"
-            LeftLayout.Padding = UDim.new(0, 0)
-            LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            LeftLayout.Parent = LeftColumn
-
-            local RightLayout = Instance.new("UIListLayout")
-            RightLayout.Name = "ColumnLayout"
-            RightLayout.Padding = UDim.new(0, 0)
-            RightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            RightLayout.Parent = RightColumn
-
-            local ColumnDivider = Instance.new("Frame")
-            ColumnDivider.Name = "ColumnDivider"
-            ColumnDivider.AnchorPoint = Vector2.new(0.5, 0)
-            ColumnDivider.BackgroundColor3 = Color3.fromRGB(34, 91, 68)
-            ColumnDivider.BackgroundTransparency = 0.62
-            ColumnDivider.BorderSizePixel = 0
-            ColumnDivider.Position = UDim2.new(0.5, 0, 0, 0)
-            ColumnDivider.Size = UDim2.new(0, 1, 1, 0)
-            ColumnDivider.Parent = SectionAdd
+            local RowsLayout = Instance.new("UIListLayout")
+            RowsLayout.Name = "RowsLayout"
+            RowsLayout.Padding = UDim.new(0, 4)
+            RowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            RowsLayout.Parent = SectionAdd
 
             local function UpdateSizeScroll()
                 local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
@@ -2073,41 +2025,67 @@ function Zeroin:Window(GuiConfig)
             end
 
             local function UpdateSizeSection()
-                local contentHeight = math.max(
-                    LeftLayout.AbsoluteContentSize.Y,
-                    RightLayout.AbsoluteContentSize.Y
-                )
-                SectionAdd.Size = UDim2.new(1, 0, 0, contentHeight)
-                Section.Size = UDim2.new(1, 0, 0, 31 + contentHeight)
+                local contentHeight = RowsLayout.AbsoluteContentSize.Y
+                SectionAdd.Size = UDim2.new(1, -16, 0, contentHeight)
+                Section.Size = UDim2.new(1, 0, 0, 39 + contentHeight)
                 task.defer(UpdateSizeScroll)
             end
 
-            LeftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateSizeSection)
-            RightLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateSizeSection)
+            RowsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateSizeSection)
 
-            local NextColumn = 0
+            local NextItem = 0
+            local PendingRow
+
+            local function updateRowHeight(row)
+                if not row then return end
+                local leftHeight, rightHeight = 0, 0
+                for _, child in ipairs(row:GetChildren()) do
+                    if child:IsA("GuiObject") and child:GetAttribute("ZeroinSectionItem") then
+                        local height = child.Visible and child.Size.Y.Offset or 0
+                        if child:GetAttribute("ZeroinColumn") == "Left" then
+                            leftHeight = height
+                        else
+                            rightHeight = height
+                        end
+                    end
+                end
+                row.Size = UDim2.new(1, 0, 0, math.max(leftHeight, rightHeight))
+                task.defer(UpdateSizeSection)
+            end
+
+            local function makeRow(order)
+                local row = Instance.new("Frame")
+                row.Name = "SectionRow"
+                row.BackgroundTransparency = 1
+                row.BorderSizePixel = 0
+                row.LayoutOrder = order
+                row.Size = UDim2.new(1, 0, 0, 0)
+                row.Parent = SectionAdd
+                return row
+            end
+
             local function MountSectionItem(item)
-                item.LayoutOrder = math.floor(NextColumn / 2)
-                item.Size = UDim2.new(1, 0, item.Size.Y.Scale, item.Size.Y.Offset)
+                local isLeft = NextItem % 2 == 0
+                local row = isLeft and makeRow(math.floor(NextItem / 2)) or PendingRow
+                if isLeft then PendingRow = row end
+
+                item:SetAttribute("ZeroinSectionItem", true)
+                item:SetAttribute("ZeroinColumn", isLeft and "Left" or "Right")
+                item.LayoutOrder = 0
+                item.AnchorPoint = Vector2.zero
+                item.Position = isLeft and UDim2.fromOffset(0, 0) or UDim2.new(0.5, 3, 0, 0)
+                item.Size = UDim2.new(0.5, -3, item.Size.Y.Scale, item.Size.Y.Offset)
                 item.BackgroundTransparency = 1
                 item.BorderSizePixel = 0
-                item.Parent = (NextColumn % 2 == 0) and LeftColumn or RightColumn
-                NextColumn = NextColumn + 1
+                item.Parent = row
+                NextItem = NextItem + 1
 
-                local ItemDivider = Instance.new("Frame")
-                ItemDivider.Name = "ItemDivider"
-                ItemDivider.AnchorPoint = Vector2.new(0, 1)
-                ItemDivider.BackgroundColor3 = Color3.fromRGB(34, 91, 68)
-                ItemDivider.BackgroundTransparency = 0.72
-                ItemDivider.BorderSizePixel = 0
-                ItemDivider.Position = UDim2.new(0, 8, 1, 0)
-                ItemDivider.Size = UDim2.new(1, -16, 0, 1)
-                ItemDivider.ZIndex = 3
-                ItemDivider.Parent = item
-
-                item:GetPropertyChangedSignal("Size"):Connect(UpdateSizeSection)
-                item:GetPropertyChangedSignal("Visible"):Connect(UpdateSizeSection)
-                task.defer(UpdateSizeSection)
+                local function refresh()
+                    updateRowHeight(row)
+                end
+                item:GetPropertyChangedSignal("Size"):Connect(refresh)
+                item:GetPropertyChangedSignal("Visible"):Connect(refresh)
+                task.defer(refresh)
             end
 
             local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
@@ -2166,7 +2144,7 @@ function Zeroin:Window(GuiConfig)
                 ParagraphTitle.TextYAlignment = Enum.TextYAlignment.Top
                 ParagraphTitle.BackgroundTransparency = 1
                 ParagraphTitle.Position = UDim2.new(0, iconOffset, 0, 10)
-                ParagraphTitle.Size = UDim2.new(1, -16, 0, 13)
+                ParagraphTitle.Size = UDim2.new(1, -(iconOffset + 8), 0, 13)
                 ParagraphTitle.Name = "ParagraphTitle"
                 ParagraphTitle.Parent = Paragraph
 
@@ -2183,7 +2161,7 @@ function Zeroin:Window(GuiConfig)
                 ParagraphContent.RichText = true
                 ParagraphContent.Parent = Paragraph
 
-                ParagraphContent.Size = UDim2.new(1, -16, 0, ParagraphContent.TextBounds.Y)
+                ParagraphContent.Size = UDim2.new(1, -(iconOffset + 8), 0, ParagraphContent.TextBounds.Y)
 
                 local ParagraphButton
                 if ParagraphConfig.ButtonText then
@@ -2433,8 +2411,8 @@ function Zeroin:Window(GuiConfig)
 
                 -- Ukuran & Posisi (Sesuaikan angka di bawah dengan kebutuhanmu)
                 ButtonIcon.Size = UDim2.new(0, 20, 0, 20) -- Ganti 20, 20 dengan ukuranmu
-                ButtonIcon.Position = UDim2.new(0.92, 0, 0.5, 0) -- Ganti 5 dengan posisi X keinginanmu
-                ButtonIcon.AnchorPoint = Vector2.new(0, 0.5) -- Agar posisi Y (0.5) benar-benar di tengah vertikal
+                ButtonIcon.Position = UDim2.new(1, -8, 0.5, 0)
+                ButtonIcon.AnchorPoint = Vector2.new(1, 0.5)
 
                 -- Properti Tampilan
                 ButtonIcon.BackgroundTransparency = 1 -- Agar background icon tidak kelihatan
@@ -2493,8 +2471,8 @@ function Zeroin:Window(GuiConfig)
                     SubButtonIcon.Name = "Icon"
                     SubButtonIcon.Parent = SubButton
                     SubButtonIcon.Size = UDim2.new(0, 20, 0, 20)
-                    SubButtonIcon.Position = UDim2.new(0.92, 0, 0.5, 0)
-                    SubButtonIcon.AnchorPoint = Vector2.new(0, 0.5)
+                    SubButtonIcon.Position = UDim2.new(1, -8, 0.5, 0)
+                    SubButtonIcon.AnchorPoint = Vector2.new(1, 0.5)
                     SubButtonIcon.BackgroundTransparency = 1
                     SubButtonIcon.Image = "rbxassetid://90520342625816"
                     SubButtonIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -2896,7 +2874,7 @@ function Zeroin:Window(GuiConfig)
                 SliderTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderTitle.BorderSizePixel = 0
                 SliderTitle.Position = UDim2.new(0, 10, 0, 10)
-                SliderTitle.Size = UDim2.new(1, -180, 0, 13)
+                SliderTitle.Size = UDim2.new(1, -20, 0, 13)
                 SliderTitle.Name = "SliderTitle"
                 SliderTitle.Parent = Slider
 
@@ -2912,30 +2890,30 @@ function Zeroin:Window(GuiConfig)
                 SliderContent.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderContent.BorderSizePixel = 0
                 SliderContent.Position = UDim2.new(0, 10, 0, 25)
-                SliderContent.Size = UDim2.new(1, -180, 0, 12)
+                SliderContent.Size = UDim2.new(1, -20, 0, 12)
                 SliderContent.Name = "SliderContent"
                 SliderContent.Parent = Slider
 
-                SliderContent.Size = UDim2.new(1, -180, 0,
-                    12 + (12 * (SliderContent.TextBounds.X // SliderContent.AbsoluteSize.X)))
+                SliderContent.Size = UDim2.new(1, -20, 0,
+                    12 + (12 * (SliderContent.TextBounds.X // math.max(1, SliderContent.AbsoluteSize.X))))
                 SliderContent.TextWrapped = true
-                Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
+                Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 58)
 
                 SliderContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     SliderContent.TextWrapped = false
-                    SliderContent.Size = UDim2.new(1, -180, 0,
-                        12 + (12 * (SliderContent.TextBounds.X // SliderContent.AbsoluteSize.X)))
-                    Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
+                    SliderContent.Size = UDim2.new(1, -20, 0,
+                        12 + (12 * (SliderContent.TextBounds.X // math.max(1, SliderContent.AbsoluteSize.X))))
+                    Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 58)
                     SliderContent.TextWrapped = true
                     UpdateSizeSection()
                 end)
 
-                SliderInput.AnchorPoint = Vector2.new(0, 0.5)
+                SliderInput.AnchorPoint = Vector2.new(1, 0.5)
                 SliderInput.BackgroundColor3 = GuiConfig.Color
                 SliderInput.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderInput.BackgroundTransparency = 1
                 SliderInput.BorderSizePixel = 0
-                SliderInput.Position = UDim2.new(1, -155, 0.5, 0)
+                SliderInput.Position = UDim2.new(1, -10, 1, -15)
                 SliderInput.Size = UDim2.new(0, 28, 0, 20)
                 SliderInput.Name = "SliderInput"
                 SliderInput.Parent = Slider
@@ -2956,13 +2934,13 @@ function Zeroin:Window(GuiConfig)
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
                 TextBox.Parent = SliderInput
 
-                SliderFrame.AnchorPoint = Vector2.new(1, 0.5)
+                SliderFrame.AnchorPoint = Vector2.new(0, 0.5)
                 SliderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 SliderFrame.BackgroundTransparency = 0.800000011920929
                 SliderFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderFrame.BorderSizePixel = 0
-                SliderFrame.Position = UDim2.new(1, -20, 0.5, 0)
-                SliderFrame.Size = UDim2.new(0, 100, 0, 3)
+                SliderFrame.Position = UDim2.new(0, 10, 1, -15)
+                SliderFrame.Size = UDim2.new(1, -58, 0, 3)
                 SliderFrame.Name = "SliderFrame"
                 SliderFrame.Parent = Slider
 
@@ -3264,7 +3242,7 @@ function Zeroin:Window(GuiConfig)
                 DropdownTitle.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownTitle.BackgroundTransparency = 1
                 DropdownTitle.Position = UDim2.new(0, 10, 0, 10)
-                DropdownTitle.Size = UDim2.new(1, -180, 0, 13)
+                DropdownTitle.Size = UDim2.new(1, -20, 0, 13)
                 DropdownTitle.Name = "DropdownTitle"
                 DropdownTitle.Parent = Dropdown
 
@@ -3277,14 +3255,16 @@ function Zeroin:Window(GuiConfig)
                 DropdownContent.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownContent.BackgroundTransparency = 1
                 DropdownContent.Position = UDim2.new(0, 10, 0, 25)
-                DropdownContent.Size = UDim2.new(1, -180, 0, 12)
+                DropdownContent.Size = UDim2.new(1, -20, 0, 12)
                 DropdownContent.Name = "DropdownContent"
                 DropdownContent.Parent = Dropdown
 
-                SelectOptionsFrame.AnchorPoint = Vector2.new(1, 0.5)
+                Dropdown.Size = UDim2.new(1, 0, 0, 76)
+
+                SelectOptionsFrame.AnchorPoint = Vector2.new(0.5, 1)
                 SelectOptionsFrame.BackgroundTransparency = 0.95
-                SelectOptionsFrame.Position = UDim2.new(1, -7, 0.5, 0)
-                SelectOptionsFrame.Size = UDim2.new(0, 148, 0, 30)
+                SelectOptionsFrame.Position = UDim2.new(0.5, 0, 1, -7)
+                SelectOptionsFrame.Size = UDim2.new(1, -20, 0, 28)
                 SelectOptionsFrame.Name = "SelectOptionsFrame"
                 SelectOptionsFrame.LayoutOrder = CountDropdown
                 SelectOptionsFrame.Parent = Dropdown
