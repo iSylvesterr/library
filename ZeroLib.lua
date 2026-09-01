@@ -3564,6 +3564,39 @@ function Zeroin:Window(GuiConfig)
                     setMenuOpen(not DropdownContainer.Visible)
                 end)
 
+                local function pointInside(guiObject, point)
+                    if not guiObject or not guiObject.Visible then return false end
+                    local position = guiObject.AbsolutePosition
+                    local size = guiObject.AbsoluteSize
+                    return point.X >= position.X
+                        and point.X <= position.X + size.X
+                        and point.Y >= position.Y
+                        and point.Y <= position.Y + size.Y
+                end
+
+                -- Close the popup when clicking/tapping anywhere outside the
+                -- selector and popup. Interactions inside search/options remain
+                -- untouched and therefore do not dismiss the menu.
+                UserInputService.InputBegan:Connect(function(input)
+                    if not MenuOpen then return end
+
+                    if input.KeyCode == Enum.KeyCode.Escape then
+                        setMenuOpen(false)
+                        return
+                    end
+
+                    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                        and input.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+
+                    local point = Vector2.new(input.Position.X, input.Position.Y)
+                    if not pointInside(SelectOptionsFrame, point)
+                        and not pointInside(DropdownContainer, point) then
+                        setMenuOpen(false)
+                    end
+                end)
+
                 ScrolLayers:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
                     if MenuOpen then updatePopupPosition() end
                 end)
