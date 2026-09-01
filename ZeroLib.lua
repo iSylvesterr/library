@@ -1245,9 +1245,85 @@ function Zeroin:Window(GuiConfig)
         end
     end
 
+    -- Lightweight window minimize/restore animation. Only the root UIScale
+    -- and root Position are animated, so descendants do not get individual
+    -- tweens and the effect remains inexpensive on lower-end devices.
+    local MinimizeScale = Instance.new("UIScale")
+    MinimizeScale.Name = "MinimizeScale"
+    MinimizeScale.Scale = 1
+    MinimizeScale.Parent = DropShadowHolder
+
+    local windowAnimationLocked = false
+    local restorePosition = DropShadowHolder.Position
+    local minimizeDuration = 0.2
+
+    local function offsetPosition(position, yOffset)
+        return UDim2.new(
+            position.X.Scale,
+            position.X.Offset,
+            position.Y.Scale,
+            position.Y.Offset + yOffset
+        )
+    end
+
+    local function SetWindowVisible(visible)
+        if windowAnimationLocked or not DropShadowHolder then return end
+        if visible == DropShadowHolder.Visible and not windowAnimationLocked then return end
+
+        windowAnimationLocked = true
+
+        if visible then
+            DropShadowHolder.Visible = true
+            MinimizeScale.Scale = 0.88
+            DropShadowHolder.Position = offsetPosition(restorePosition, 12)
+
+            local scaleTween = TweenService:Create(
+                MinimizeScale,
+                TweenInfo.new(minimizeDuration, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+                { Scale = 1 }
+            )
+            local positionTween = TweenService:Create(
+                DropShadowHolder,
+                TweenInfo.new(minimizeDuration, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+                { Position = restorePosition }
+            )
+            scaleTween:Play()
+            positionTween:Play()
+            scaleTween.Completed:Once(function()
+                MinimizeScale.Scale = 1
+                DropShadowHolder.Position = restorePosition
+                windowAnimationLocked = false
+            end)
+        else
+            restorePosition = DropShadowHolder.Position
+            local scaleTween = TweenService:Create(
+                MinimizeScale,
+                TweenInfo.new(minimizeDuration, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+                { Scale = 0.88 }
+            )
+            local positionTween = TweenService:Create(
+                DropShadowHolder,
+                TweenInfo.new(minimizeDuration, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+                { Position = offsetPosition(restorePosition, 12) }
+            )
+            scaleTween:Play()
+            positionTween:Play()
+            scaleTween.Completed:Once(function()
+                DropShadowHolder.Visible = false
+                DropShadowHolder.Position = restorePosition
+                MinimizeScale.Scale = 1
+                windowAnimationLocked = false
+            end)
+        end
+    end
+
+    local function ToggleWindowVisibility()
+        SetWindowVisible(not DropShadowHolder.Visible)
+    end
+
     Min.Activated:Connect(function()
         CircleClick(Min, Mouse.X, Mouse.Y)
-        DropShadowHolder.Visible = false
+        SetWindowVisible(false)
     end)
     Close.Activated:Connect(function()
         CircleClick(Close, Mouse.X, Mouse.Y)
@@ -1362,9 +1438,7 @@ function Zeroin:Window(GuiConfig)
     UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.KeyCode == ToggleKey then
-            if DropShadowHolder then
-                DropShadowHolder.Visible = not DropShadowHolder.Visible
-            end
+            ToggleWindowVisibility()
         end
     end)
 
@@ -1399,9 +1473,7 @@ function Zeroin:Window(GuiConfig)
         Button.Text = ""
 
         Button.MouseButton1Click:Connect(function()
-            if DropShadowHolder then
-                DropShadowHolder.Visible = not DropShadowHolder.Visible
-            end
+            ToggleWindowVisibility()
         end)
 
         local dragging = false
