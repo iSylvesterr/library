@@ -476,12 +476,134 @@ Window:AddConfigTab()
 
 Config menyimpan toggle, dropdown, slider, dan input berdasarkan judul komponennya.
 
+## Window Lifecycle dan Cleanup
+
+Tombol silang menjalankan full lifecycle cleanup, bukan hanya menghapus GUI:
+
+1. Semua toggle aktif dipanggil dengan `false` tanpa menimpa config tersimpan.
+2. Semua callback `OnClose` dijalankan.
+3. Semua resource dari `AddCleanup` dibersihkan.
+4. Semua loop dari `Window:Spawn` dibatalkan.
+5. Internal global connections, element registry, notification, floating button, dan GUI utama dibersihkan.
+
+### Toggle feature
+
+Callback toggle wajib menangani `false` untuk menghentikan fiturnya:
+
+```lua
+local AutoCollect = false
+
+Section:AddToggle({
+    Title = "Auto Collect",
+    Callback = function(value)
+        AutoCollect = value
+    end
+})
+```
+
+Saat window ditutup ketika toggle ON, callback otomatis menerima `false`.
+
+### Loop yang otomatis berhenti
+
+```lua
+Window:Spawn(function(token)
+    while token.Alive do
+        if AutoCollect then
+            -- auto collect logic
+        end
+        task.wait(0.1)
+    end
+end)
+```
+
+`Window:Spawn` mendaftarkan token dan thread sekaligus. Ketika window ditutup, token menjadi mati dan thread dibatalkan.
+
+Alternatif manual:
+
+```lua
+local token = Window:CreateCleanupToken()
+
+local thread = task.spawn(function()
+    while token.Alive do
+        task.wait(0.1)
+    end
+end)
+
+Window:AddCleanup(thread)
+```
+
+### Connection
+
+```lua
+local connection = game:GetService("RunService").Heartbeat:Connect(function()
+    if AutoCollect then
+        -- feature logic
+    end
+end)
+
+Window:AddCleanup(connection)
+```
+
+Connection otomatis di-`Disconnect()` saat close.
+
+### Instance, ESP, Highlight, Folder, atau object sementara
+
+```lua
+local folder = Instance.new("Folder")
+folder.Name = "MyScriptRuntime"
+folder.Parent = workspace
+
+Window:AddCleanup(folder)
+```
+
+Instance otomatis di-`Destroy()` saat close.
+
+### Custom cleanup callback
+
+```lua
+Window:AddCleanup(function()
+    -- Hapus table cache, reset character property, matikan noclip, dll.
+end)
+```
+
+Atau gunakan callback khusus close:
+
+```lua
+Window:OnClose(function()
+    AutoCollect = false
+    AutoSell = false
+end)
+```
+
+### API lifecycle
+
+```lua
+Window:AddCleanup(resource)      -- function/connection/instance/thread/object
+Window:OnClose(callback)         -- callback final ketika close
+Window:CreateCleanupToken()      -- token dengan properti Alive
+Window:Spawn(callback)           -- managed task + token
+Window:IsDestroyed()             -- true setelah cleanup dimulai
+Window:Destroy()                 -- full cleanup programmatic
+Window:Close()                   -- alias full cleanup
+Window:DestroyGui()              -- alias lama, sekarang full cleanup
+```
+
+`AddCleanup` mendukung:
+
+- Function
+- `RBXScriptConnection`
+- `Instance`
+- Luau thread
+- Object table yang memiliki method `Cleanup`, `Destroy`, `Disconnect`, atau `Cancel`
+
+> Library tidak dapat menebak semua resource yang dibuat script pengguna. Semua connection, loop, ESP, instance, hook wrapper, dan perubahan state milik feature harus didaftarkan melalui API lifecycle atau dipulihkan dalam callback toggle `false`/`OnClose`.
+
 ## Window Controls
 
 - Minimize: tombol minimize dengan animasi ringan.
 - Restore: floating logo atau `F3`.
 - Fullscreen: tombol fullscreen.
-- Close: confirmation dialog.
+- Close: confirmation dialog dan full lifecycle cleanup.
 - Window dapat di-drag dan di-resize.
 
 ## Built-in Icon Names

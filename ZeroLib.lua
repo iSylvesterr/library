@@ -239,7 +239,7 @@ local function safeSize(pxWidth, pxHeight)
     return UDim2.new(scaleX, 0, scaleY, 0)
 end
 
-local function MakeDraggable(topbarobject, object)
+local function MakeDraggable(topbarobject, object, trackConnection)
     local function CustomPos(topbarobject, object)
         local Dragging, DragInput, DragStart, StartPosition
 
@@ -274,11 +274,12 @@ local function MakeDraggable(topbarobject, object)
             end
         end)
 
-        UserInputService.InputChanged:Connect(function(input)
+        local dragChangedConnection = UserInputService.InputChanged:Connect(function(input)
             if input == DragInput and Dragging then
                 UpdatePos(input)
             end
         end)
+        if trackConnection then trackConnection(dragChangedConnection) end
     end
 
     local function CustomSize(object)
@@ -336,11 +337,12 @@ local function MakeDraggable(topbarobject, object)
             end
         end)
 
-        UserInputService.InputChanged:Connect(function(input)
+        local resizeChangedConnection = UserInputService.InputChanged:Connect(function(input)
             if input == DragInput and Dragging then
                 UpdateSize(input)
             end
         end)
+        if trackConnection then trackConnection(resizeChangedConnection) end
     end
 
     CustomSize(object)
@@ -620,6 +622,84 @@ function Zeroin:Window(GuiConfig)
     LoadConfigFromFile()
 
     local GuiFunc = {}
+    local cleanupResources = {}
+    local closeCallbacks = {}
+    local activeToggles = {}
+    local windowElementKeys = {}
+    local isDestroyed = false
+    local cleanupStarted = false
+    local runCleanup
+
+    local function cleanupResource(resource)
+        if resource == nil then return end
+        local resourceType = typeof(resource)
+        local ok, err = pcall(function()
+            if resourceType == "function" then
+                resource()
+            elseif resourceType == "RBXScriptConnection" then
+                if resource.Connected then resource:Disconnect() end
+            elseif resourceType == "Instance" then
+                resource:Destroy()
+            elseif resourceType == "thread" then
+                task.cancel(resource)
+            elseif type(resource) == "table" then
+                if type(resource.Cleanup) == "function" then
+                    resource:Cleanup()
+                elseif type(resource.Destroy) == "function" then
+                    resource:Destroy()
+                elseif type(resource.Disconnect) == "function" then
+                    resource:Disconnect()
+                elseif type(resource.Cancel) == "function" then
+                    resource:Cancel()
+                end
+            end
+        end)
+        if not ok then warn("Zeroin cleanup error:", err) end
+    end
+
+    local function trackCleanup(resource)
+        if resource == nil then return resource end
+        if isDestroyed then
+            cleanupResource(resource)
+        else
+            table.insert(cleanupResources, resource)
+        end
+        return resource
+    end
+
+    function GuiFunc:AddCleanup(resource)
+        return trackCleanup(resource)
+    end
+
+    function GuiFunc:OnClose(callback)
+        if type(callback) ~= "function" then return callback end
+        if isDestroyed then
+            cleanupResource(callback)
+        else
+            table.insert(closeCallbacks, callback)
+        end
+        return callback
+    end
+
+    function GuiFunc:IsDestroyed()
+        return isDestroyed
+    end
+
+    function GuiFunc:CreateCleanupToken()
+        local token = { Alive = not isDestroyed }
+        trackCleanup(function()
+            token.Alive = false
+        end)
+        return token
+    end
+
+    function GuiFunc:Spawn(callback)
+        assert(type(callback) == "function", "Window:Spawn expects a function")
+        local token = GuiFunc:CreateCleanupToken()
+        local thread = task.spawn(callback, token)
+        trackCleanup(thread)
+        return thread, token
+    end
 
     local ZeroinOnTop = Instance.new("ScreenGui");
     local DropShadowHolder = Instance.new("Frame");
@@ -840,8 +920,9 @@ function Zeroin:Window(GuiConfig)
             fpsFrames, fpsElapsed = 0, 0
         end
     end)
+    trackCleanup(fpsConnection)
     ZeroinOnTop.Destroying:Connect(function()
-        if fpsConnection then fpsConnection:Disconnect() end
+        if runCleanup then runCleanup(true) end
     end)
 
     local execName = tostring((identifyexecutor and identifyexecutor()) or "Unknown")
@@ -1260,10 +1341,57 @@ function Zeroin:Window(GuiConfig)
         end
     end)
 
-    function GuiFunc:DestroyGui()
-        if CoreGui:FindFirstChild("ZeroinOnTop") then
+    runCleanup = function(guiAlreadyDestroying)
+        if cleanupStarted then return end
+        cleanupStarted = true
+        isDestroyed = true
+
+        -- Disable every active feature first. This invokes its normal toggle
+        -- callback with false but deliberately does not overwrite saved config.
+        for index = #activeToggles, 1, -1 do
+            local toggle = activeToggles[index]
+            if toggle and toggle.Value and toggle.Cleanup then
+                local ok, err = pcall(function() toggle:Cleanup() end)
+                if not ok then warn("Zeroin toggle cleanup error:", err) end
+            end
+        end
+
+        for index = #closeCallbacks, 1, -1 do
+            cleanupResource(closeCallbacks[index])
+        end
+        table.clear(closeCallbacks)
+
+        for index = #cleanupResources, 1, -1 do
+            cleanupResource(cleanupResources[index])
+        end
+        table.clear(cleanupResources)
+        table.clear(activeToggles)
+
+        for key in pairs(windowElementKeys) do
+            Elements[key] = nil
+        end
+        table.clear(windowElementKeys)
+
+        local toggleGui = CoreGui:FindFirstChild("ToggleUIZeroin")
+        if toggleGui then toggleGui:Destroy() end
+        local notifyGui = CoreGui:FindFirstChild("NotifyGui")
+        if notifyGui then notifyGui:Destroy() end
+        if not guiAlreadyDestroying and ZeroinOnTop and ZeroinOnTop.Parent then
             ZeroinOnTop:Destroy()
         end
+    end
+
+    function GuiFunc:Destroy()
+        runCleanup(false)
+    end
+
+    function GuiFunc:Close()
+        runCleanup(false)
+    end
+
+    -- Backward-compatible alias.
+    function GuiFunc:DestroyGui()
+        runCleanup(false)
     end
 
     -- Lightweight window minimize/restore animation. Only the root UIScale
@@ -1444,10 +1572,7 @@ function Zeroin:Window(GuiConfig)
         Instance.new("UICorner", Cancel).CornerRadius = UDim.new(0, 6)
 
         Yes.MouseButton1Click:Connect(function()
-            if ZeroinOnTop then ZeroinOnTop:Destroy() end
-            if game.CoreGui:FindFirstChild("ToggleUIZeroin") then
-                game.CoreGui.ToggleUIZeroin:Destroy()
-            end
+            runCleanup(false)
         end)
 
         Cancel.MouseButton1Click:Connect(function()
@@ -1456,12 +1581,12 @@ function Zeroin:Window(GuiConfig)
     end)
 
     local ToggleKey = Enum.KeyCode.F3
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if gpe then return end
+    trackCleanup(UserInputService.InputBegan:Connect(function(input, gpe)
+        if isDestroyed or gpe then return end
         if input.KeyCode == ToggleKey then
             ToggleWindowVisibility()
         end
-    end)
+    end))
 
     function GuiFunc:ToggleUI()
         local ScreenGui = Instance.new("ScreenGui")
@@ -1524,17 +1649,17 @@ function Zeroin:Window(GuiConfig)
             end
         end)
 
-        game:GetService("UserInputService").InputChanged:Connect(function(input)
+        trackCleanup(game:GetService("UserInputService").InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 update(input)
             end
-        end)
+        end))
     end
 
     GuiFunc:ToggleUI()
 
     DropShadowHolder.Size = UDim2.new(0, 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X, 0, 350)
-    MakeDraggable(Top, DropShadowHolder)
+    MakeDraggable(Top, DropShadowHolder, trackCleanup)
     local isFullscreen = false
     local originalSize = DropShadowHolder.Size
     local originalPos  = DropShadowHolder.Position
@@ -3004,7 +3129,8 @@ function Zeroin:Window(GuiConfig)
                         end
                     end)
 
-                    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                    trackCleanup(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                        if isDestroyed then return end
                         if isRecording then
                             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                                 isRecording = false
@@ -3045,9 +3171,9 @@ function Zeroin:Window(GuiConfig)
                                 end
                             end
                         end
-                    end)
+                    end))
 
-                    UserInputService.InputEnded:Connect(function(input, gameProcessed)
+                    trackCleanup(UserInputService.InputEnded:Connect(function(input, gameProcessed)
                         if isRecording and ignoredKeys[input.KeyCode] and input.KeyCode ~= Enum.KeyCode.Unknown then
                             currentKeybind = input.KeyCode.Name
                             KeybindButton.Text = "[ " .. currentKeybind .. " ]"
@@ -3055,7 +3181,7 @@ function Zeroin:Window(GuiConfig)
                             ConfigData[keybindConfigKey] = currentKeybind
                             SaveConfig()
                         end
-                    end)
+                    end))
                 end
 
                 ToggleButton.Activated:Connect(function()
@@ -3063,15 +3189,19 @@ function Zeroin:Window(GuiConfig)
                     ToggleFunc:Set(ToggleFunc.Value)
                 end)
 
-                function ToggleFunc:Set(Value)
+                function ToggleFunc:Set(Value, skipSave)
+                    Value = Value == true
+                    ToggleFunc.Value = Value
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
                             ToggleConfig.Callback(Value)
                         end)
                         if not ok then warn("Toggle Callback error:", err) end
                     end
-                    ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not skipSave then
+                        ConfigData[configKey] = Value
+                        SaveConfig()
+                    end
                     if Value then
                         TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
                         TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(46, 46, 46) })
@@ -3091,9 +3221,17 @@ function Zeroin:Window(GuiConfig)
                     end
                 end
 
-                ToggleFunc:Set(ToggleFunc.Value)
+                function ToggleFunc:Cleanup()
+                    if ToggleFunc.Value then
+                        ToggleFunc:Set(false, true)
+                    end
+                end
+
+                ToggleFunc:Set(ToggleFunc.Value, true)
+                table.insert(activeToggles, ToggleFunc)
                 CountItem = CountItem + 1
                 Elements[configKey] = ToggleFunc
+                windowElementKeys[configKey] = true
                 return ToggleFunc
             end
 
@@ -3337,7 +3475,8 @@ function Zeroin:Window(GuiConfig)
                     end
                 end)
 
-                UserInputService.InputEnded:Connect(function(Input)
+                trackCleanup(UserInputService.InputEnded:Connect(function(Input)
+                    if isDestroyed then return end
                     if Dragging and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
                         Dragging = false
                         ConfigData[configKey] = SliderFunc.Value
@@ -3348,13 +3487,14 @@ function Zeroin:Window(GuiConfig)
                             { Size = UDim2.new(0, 8, 0, 8) }
                         ):Play()
                     end
-                end)
+                end))
 
-                UserInputService.InputChanged:Connect(function(Input)
+                trackCleanup(UserInputService.InputChanged:Connect(function(Input)
+                    if isDestroyed then return end
                     if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
                         updateFromPosition(Input.Position.X)
                     end
-                end)
+                end))
 
                 -- Numeric editing is committed only when focus leaves the box.
                 -- This allows temporary states such as "", "1", or "-" while
@@ -3395,6 +3535,7 @@ function Zeroin:Window(GuiConfig)
                 SliderFunc:Set(SliderConfig.Default)
                 CountItem = CountItem + 1
                 Elements[configKey] = SliderFunc
+                windowElementKeys[configKey] = true
                 return SliderFunc
             end
 
@@ -3538,6 +3679,7 @@ function Zeroin:Window(GuiConfig)
                 end)
                 CountItem = CountItem + 1
                 Elements[configKey] = InputFunc
+                windowElementKeys[configKey] = true
                 return InputFunc
             end
             
@@ -3839,8 +3981,8 @@ function Zeroin:Window(GuiConfig)
                 -- Close the popup when clicking/tapping anywhere outside the
                 -- selector and popup. Interactions inside search/options remain
                 -- untouched and therefore do not dismiss the menu.
-                UserInputService.InputBegan:Connect(function(input)
-                    if not MenuOpen then return end
+                trackCleanup(UserInputService.InputBegan:Connect(function(input)
+                    if isDestroyed or not MenuOpen then return end
 
                     if input.KeyCode == Enum.KeyCode.Escape then
                         setMenuOpen(false)
@@ -3861,7 +4003,7 @@ function Zeroin:Window(GuiConfig)
                     if not pointInside(DropdownContainer, point) then
                         setMenuOpen(false)
                     end
-                end)
+                end))
 
                 ScrolLayers:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
                     if MenuOpen then updatePopupPosition() end
@@ -4047,6 +4189,7 @@ function Zeroin:Window(GuiConfig)
                 CountItem = CountItem + 1
                 CountDropdown = CountDropdown + 1
                 Elements[configKey] = DropdownFunc
+                windowElementKeys[configKey] = true
                 return DropdownFunc
             end
 
