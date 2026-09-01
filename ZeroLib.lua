@@ -841,6 +841,7 @@ function Zeroin:Window(GuiConfig)
     TextLabel.TextColor3 = Color3.fromRGB(170, 170, 170)
     TextLabel.TextSize = 14
     TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TextLabel.TextTruncate = Enum.TextTruncate.AtEnd
     TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     TextLabel.BackgroundTransparency = 0.9990000128746033
     TextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -953,6 +954,16 @@ function Zeroin:Window(GuiConfig)
     GameFrame:SetAttribute("FullGameName", tostring(game.Name))
     GameFrame:SetAttribute("PlaceId", game.PlaceId)
 
+    local function updateTopTitleSpace()
+        if not GameFrame.Parent or not TextLabel.Parent then return end
+        local available = GameFrame.AbsolutePosition.X - TextLabel.AbsolutePosition.X - 8
+        TextLabel.Size = UDim2.new(0, math.max(0, available), 1, 0)
+    end
+    GameFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateTopTitleSpace)
+    GameFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateTopTitleSpace)
+    Top:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateTopTitleSpace)
+    task.defer(updateTopTitleSpace)
+
     -- Product info gives the experience's public place name. Resolve it in a
     -- managed task so a slow MarketplaceService response never blocks the UI.
     trackCleanup(task.spawn(function()
@@ -966,6 +977,7 @@ function Zeroin:Window(GuiConfig)
         if not isDestroyed and GameFrame.Parent then
             GameTextLabel.Text = compactStatusText(detectedName, 20)
             GameFrame:SetAttribute("FullGameName", detectedName)
+            task.defer(updateTopTitleSpace)
         end
     end))
 
