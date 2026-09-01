@@ -2004,6 +2004,19 @@ function Zeroin:Window(GuiConfig)
             SectionAddCorner.CornerRadius = UDim.new(0, 6)
             SectionAddCorner.Parent = SectionAdd
 
+            -- Popup portal for dropdown menus. It lives at section level so
+            -- buttons outside a 46px dropdown row remain hit-testable, while
+            -- still moving together with the section when the page scrolls.
+            local SectionOverlay = Instance.new("Frame")
+            SectionOverlay.Name = "SectionOverlay"
+            SectionOverlay.BackgroundTransparency = 1
+            SectionOverlay.BorderSizePixel = 0
+            SectionOverlay.Position = SectionAdd.Position
+            SectionOverlay.Size = SectionAdd.Size
+            SectionOverlay.Active = false
+            SectionOverlay.ZIndex = 80
+            SectionOverlay.Parent = Section
+
             local SectionAddStroke = Instance.new("UIStroke")
             SectionAddStroke.Name = "SectionOutline"
             SectionAddStroke.Color = Color3.fromRGB(34, 91, 68)
@@ -2035,6 +2048,8 @@ function Zeroin:Window(GuiConfig)
             local function UpdateSizeSection()
                 local contentHeight = RowsLayout.AbsoluteContentSize.Y + 16 -- account for top/bottom padding
                 SectionAdd.Size = UDim2.new(1, -4, 0, contentHeight)
+                SectionOverlay.Position = SectionAdd.Position
+                SectionOverlay.Size = SectionAdd.Size
                 Section.Size = UDim2.new(1, 0, 0, 27 + contentHeight)
                 task.defer(UpdateSizeScroll)
             end
@@ -3405,11 +3420,10 @@ function Zeroin:Window(GuiConfig)
                 DropdownContainer.ClipsDescendants = true
                 DropdownContainer.Active = true
                 DropdownContainer.AnchorPoint = Vector2.new(1, 0)
-                DropdownContainer.Position = UDim2.new(1, -7, 0, 43)
                 DropdownContainer.Size = UDim2.fromOffset(154, 0)
                 DropdownContainer.Visible = false
                 DropdownContainer.ZIndex = 100
-                DropdownContainer.Parent = Dropdown
+                DropdownContainer.Parent = SectionOverlay
 
                 local MenuCorner = Instance.new("UICorner")
                 MenuCorner.CornerRadius = UDim.new(0, 6)
@@ -3506,6 +3520,15 @@ function Zeroin:Window(GuiConfig)
                     OptionImg.Rotation = MenuOpen and 180 or 0
                 end
 
+                local function updatePopupPosition()
+                    -- Position relative to the section portal, directly below
+                    -- the selector, so it moves naturally with section scroll.
+                    local dropdownRight = Dropdown.AbsolutePosition.X + Dropdown.AbsoluteSize.X
+                    local popupX = dropdownRight - SectionOverlay.AbsolutePosition.X - 7
+                    local popupY = Dropdown.AbsolutePosition.Y - SectionOverlay.AbsolutePosition.Y + 43
+                    DropdownContainer.Position = UDim2.fromOffset(popupX, popupY)
+                end
+
                 local function setMenuOpen(open)
                     MenuOpen = open
 
@@ -3519,15 +3542,19 @@ function Zeroin:Window(GuiConfig)
                     if row and row:IsA("GuiObject") then row.ZIndex = open and 88 or 1 end
                     SelectOptionsFrame.ZIndex = open and 91 or 1
                     DropdownButton.ZIndex = open and 92 or 1
-                    if ScrolLayers then
-                        ScrolLayers.ScrollingEnabled = not open
-                    end
-
+                    if open then updatePopupPosition() end
                     updateInlineMenuSize()
                 end
 
                 DropdownButton.Activated:Connect(function()
                     setMenuOpen(not DropdownContainer.Visible)
+                end)
+
+                ScrolLayers:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+                    if MenuOpen then updatePopupPosition() end
+                end)
+                Dropdown:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+                    if MenuOpen then updatePopupPosition() end
                 end)
 
                 function DropdownFunc:Clear()
