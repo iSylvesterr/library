@@ -2974,8 +2974,9 @@ function Zeroin:Window(GuiConfig)
                     updatingToggleLayout = true
 
                     if not hasDescription and not hasTitle2 then
-                        -- Compact title-only row: title is vertically centered.
-                        Toggle.Size = UDim2.new(1, 0, 0, 40)
+                        -- Two compact title-only toggles plus the default 4px
+                        -- ItemGap total exactly 76px, matching one dropdown.
+                        Toggle.Size = UDim2.new(1, 0, 0, 36)
                         ToggleTitle.Position = UDim2.fromOffset(10, 0)
                         ToggleTitle.Size = UDim2.new(1, -100, 1, 0)
                         ToggleTitle.TextYAlignment = Enum.TextYAlignment.Center

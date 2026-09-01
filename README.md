@@ -60,7 +60,7 @@ local ColumnsSection = Tab:AddSection({
 | `Grid` (default) | Tinggi kiri dan kanan disamakan per row | Pasangan komponen dengan tinggi serupa |
 | `Columns` | Jarak vertikal kiri dan kanan dihitung secara independen | Toggle di kiri dan slider/dropdown/input di kanan |
 
-Pada mode `Grid`, slider 70px di kanan membuat row toggle 40px di kiri ikut memiliki tinggi 70px. Pada mode `Columns`, toggle berikutnya langsung berada `ItemGap` pixel di bawah toggle sebelumnya dan tidak dipengaruhi tinggi slider di kanan.
+Pada mode `Grid`, komponen kanan yang lebih tinggi membuat tinggi row kiri ikut membesar. Pada mode `Columns`, toggle berikutnya langsung berada `ItemGap` pixel di bawah toggle sebelumnya dan tidak dipengaruhi tinggi slider di kanan. Toggle title-only memakai tinggi compact 36px; dengan `ItemGap = 4`, dua toggle tepat berjumlah 76px dan sejajar dengan satu dropdown standar.
 
 `ColumnGap` mengatur jarak horizontal kiri-kanan. `ItemGap` mengatur jarak vertikal antar-item.
 
