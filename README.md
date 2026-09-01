@@ -646,7 +646,7 @@ vendor/footagesus-icons/
 └── LICENSE
 ```
 
-Runtime default hanya memuat `ZeroinIcons.lua` berisi 1.717 icon Lucide agar ringan. Seluruh vendor pack tetap tersedia di repository sebagai source terpisah.
+Runtime default hanya memuat `ZeroinIcons.lua` berisi Lucide plus metadata brand yang diperlukan agar tetap ringan. Seluruh vendor pack tetap tersedia di repository sebagai source terpisah. Footer Discord menggunakan `geist:logo-discord` dari spritesheet Footagesus—bukan generic chat bubble—dengan `ImageRectOffset` dan `ImageRectSize` yang tepat.
 
 ### Menggunakan nama Lucide langsung
 
@@ -697,6 +697,7 @@ eyes→eye, sword→swords, discord→message-circle
 
 ```lua
 local iconAsset = Zeroin:GetIcon("shield-check")
+local iconData = Zeroin:GetIconData("discord") -- spritesheet metadata
 local exists = Zeroin:HasIcon("shield-check")
 local allNames = Zeroin:GetIconNames()
 ```

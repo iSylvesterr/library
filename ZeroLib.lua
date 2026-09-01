@@ -141,10 +141,11 @@ end
 -- Footagesus icon data is intentionally kept outside ZeroLib.lua. Only the
 -- Lucide resolver is loaded at runtime; the complete vendored source remains
 -- available in this repository under vendor/footagesus-icons.
-local FOOTAGESUS_ICON_URL = "https://raw.githubusercontent.com/iSylvesterr/library/7dbfc2a/ZeroinIcons.lua"
+local FOOTAGESUS_ICON_URL = "https://raw.githubusercontent.com/iSylvesterr/library/925579b/ZeroinIcons.lua"
 local IconPack = {
     Name = "Footagesus Lucide (unavailable)",
     GetIcon = function() return nil end,
+    GetIconData = function() return nil end,
     HasIcon = function() return false end,
     ListIcons = function() return {} end,
 }
@@ -211,6 +212,20 @@ local function resolveIcon(source)
     local icon = IconPack.GetIcon(value)
     if icon then return icon end
     return resolveImage(value)
+end
+
+local function applyIcon(imageLabel, source)
+    local data = type(IconPack.GetIconData) == "function" and IconPack.GetIconData(source) or nil
+    if data then
+        imageLabel.Image = data.Image or ""
+        imageLabel.ImageRectOffset = data.ImageRectPosition or Vector2.new(0, 0)
+        imageLabel.ImageRectSize = data.ImageRectSize or Vector2.new(0, 0)
+    else
+        imageLabel.Image = resolveIcon(source)
+        imageLabel.ImageRectOffset = Vector2.new(0, 0)
+        imageLabel.ImageRectSize = Vector2.new(0, 0)
+    end
+    return imageLabel
 end
 
 local function isMobileDevice()
@@ -383,6 +398,10 @@ local Zeroin = {}
 
 function Zeroin:GetIcon(name)
     return IconPack.GetIcon(name)
+end
+
+function Zeroin:GetIconData(name)
+    return type(IconPack.GetIconData) == "function" and IconPack.GetIconData(name) or nil
 end
 
 function Zeroin:HasIcon(name)
@@ -1202,7 +1221,7 @@ function Zeroin:Window(GuiConfig)
     local DiscordIcon = Instance.new("ImageLabel")
     DiscordIcon.Name = "DiscordIcon"
     DiscordIcon.BackgroundTransparency = 1
-    DiscordIcon.Image = Icons.discord
+    applyIcon(DiscordIcon, "discord")
     DiscordIcon.ImageColor3 = Color3.fromRGB(190, 218, 202)
     DiscordIcon.ImageTransparency = 0.08
     DiscordIcon.Position = UDim2.new(0, 8, 0.5, -8)
