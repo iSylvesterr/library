@@ -2038,18 +2038,19 @@ function Zeroin:Window(GuiConfig)
 
             local function updateRowHeight(row)
                 if not row then return end
-                local leftHeight, rightHeight = 0, 0
-                for _, child in ipairs(row:GetChildren()) do
-                    if child:IsA("GuiObject") and child:GetAttribute("ZeroinSectionItem") then
-                        local height = child.Visible and child.Size.Y.Offset or 0
-                        if child:GetAttribute("ZeroinColumn") == "Left" then
-                            leftHeight = height
-                        else
-                            rightHeight = height
-                        end
-                    end
+                local leftCell = row:FindFirstChild("LeftCell")
+                local rightCell = row:FindFirstChild("RightCell")
+                local function cellHeight(cell)
+                    if not cell then return 0 end
+                    local item = cell:FindFirstChildWhichIsA("GuiObject")
+                    return (item and item.Visible) and item.Size.Y.Offset or 0
                 end
-                row.Size = UDim2.new(1, 0, 0, math.max(leftHeight, rightHeight))
+                local leftHeight = cellHeight(leftCell)
+                local rightHeight = cellHeight(rightCell)
+                local height = math.max(leftHeight, rightHeight)
+                if leftCell then leftCell.Size = UDim2.new(0.5, -3, 0, height) end
+                if rightCell then rightCell.Size = UDim2.new(0.5, -3, 0, height) end
+                row.Size = UDim2.new(1, 0, 0, height)
                 task.defer(UpdateSizeSection)
             end
 
@@ -2069,15 +2070,23 @@ function Zeroin:Window(GuiConfig)
                 local row = isLeft and makeRow(math.floor(NextItem / 2)) or PendingRow
                 if isLeft then PendingRow = row end
 
+                local cell = Instance.new("Frame")
+                cell.Name = isLeft and "LeftCell" or "RightCell"
+                cell.BackgroundTransparency = 1
+                cell.BorderSizePixel = 0
+                cell.Position = isLeft and UDim2.fromOffset(0, 0) or UDim2.new(0.5, 3, 0, 0)
+                cell.Size = UDim2.new(0.5, -3, 0, item.Size.Y.Offset)
+                cell.Parent = row
+
                 item:SetAttribute("ZeroinSectionItem", true)
                 item:SetAttribute("ZeroinColumn", isLeft and "Left" or "Right")
                 item.LayoutOrder = 0
                 item.AnchorPoint = Vector2.zero
-                item.Position = isLeft and UDim2.fromOffset(0, 0) or UDim2.new(0.5, 3, 0, 0)
-                item.Size = UDim2.new(0.5, -3, item.Size.Y.Scale, item.Size.Y.Offset)
+                item.Position = UDim2.fromOffset(0, 0)
+                item.Size = UDim2.new(1, 0, item.Size.Y.Scale, item.Size.Y.Offset)
                 item.BackgroundTransparency = 1
                 item.BorderSizePixel = 0
-                item.Parent = row
+                item.Parent = cell
                 NextItem = NextItem + 1
 
                 local function refresh()
