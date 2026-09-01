@@ -3142,16 +3142,42 @@ function Zeroin:Window(GuiConfig)
                     end
                 end)
 
+                -- Numeric editing is committed only when focus leaves the box.
+                -- This allows temporary states such as "", "1", or "-" while
+                -- typing instead of immediately replacing them with Min.
                 TextBox:GetPropertyChangedSignal("Text"):Connect(function()
                     if UpdatingTextInternally then return end
-                    local Valid = TextBox.Text:gsub("[^%d%.]", "")
-                    if Valid ~= "" and tonumber(Valid) then
-                        local ValidNumber = math.clamp(tonumber(Valid), SliderConfig.Min, SliderConfig.Max)
-                        SliderFunc:Set(ValidNumber)
-                    elseif Valid == "" then
-                        SliderFunc:Set(SliderConfig.Min)
+                    local sanitized = TextBox.Text:gsub("[^%d%.%-]", "")
+                    -- Keep a single leading minus and one decimal separator.
+                    local isNegative = sanitized:sub(1, 1) == "-"
+                    sanitized = sanitized:gsub("%-", "")
+                    if isNegative then sanitized = "-" .. sanitized end
+                    local firstDot = sanitized:find("%.")
+                    if firstDot then
+                        sanitized = sanitized:sub(1, firstDot)
+                            .. sanitized:sub(firstDot + 1):gsub("%.", "")
+                    end
+                    if sanitized ~= TextBox.Text then
+                        local cursor = TextBox.CursorPosition
+                        UpdatingTextInternally = true
+                        TextBox.Text = sanitized
+                        TextBox.CursorPosition = math.min(cursor, #sanitized + 1)
+                        UpdatingTextInternally = false
                     end
                 end)
+
+                TextBox.FocusLost:Connect(function()
+                    local numericValue = tonumber(TextBox.Text)
+                    if numericValue == nil then
+                        -- Empty/partial input reverts to the last slider value.
+                        UpdatingTextInternally = true
+                        TextBox.Text = tostring(SliderFunc.Value)
+                        UpdatingTextInternally = false
+                        return
+                    end
+                    SliderFunc:Set(numericValue, { Instant = false, Save = true })
+                end)
+
                 SliderFunc:Set(SliderConfig.Default)
                 CountItem = CountItem + 1
                 Elements[configKey] = SliderFunc
