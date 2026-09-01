@@ -2040,16 +2040,23 @@ function Zeroin:Window(GuiConfig)
                 if not row then return end
                 local leftCell = row:FindFirstChild("LeftCell")
                 local rightCell = row:FindFirstChild("RightCell")
+                local fullCell = row:FindFirstChild("FullCell")
                 local function cellHeight(cell)
                     if not cell then return 0 end
                     local item = cell:FindFirstChildWhichIsA("GuiObject")
                     return (item and item.Visible) and item.Size.Y.Offset or 0
                 end
-                local leftHeight = cellHeight(leftCell)
-                local rightHeight = cellHeight(rightCell)
-                local height = math.max(leftHeight, rightHeight)
-                if leftCell then leftCell.Size = UDim2.new(0.5, -3, 0, height) end
-                if rightCell then rightCell.Size = UDim2.new(0.5, -3, 0, height) end
+                local height
+                if fullCell then
+                    height = cellHeight(fullCell)
+                    fullCell.Size = UDim2.new(1, 0, 0, height)
+                else
+                    local leftHeight = cellHeight(leftCell)
+                    local rightHeight = cellHeight(rightCell)
+                    height = math.max(leftHeight, rightHeight)
+                    if leftCell then leftCell.Size = UDim2.new(0.5, -3, 0, height) end
+                    if rightCell then rightCell.Size = UDim2.new(0.5, -3, 0, height) end
+                end
                 row.Size = UDim2.new(1, 0, 0, height)
                 task.defer(UpdateSizeSection)
             end
@@ -2065,21 +2072,38 @@ function Zeroin:Window(GuiConfig)
                 return row
             end
 
-            local function MountSectionItem(item)
-                local isLeft = NextItem % 2 == 0
-                local row = isLeft and makeRow(math.floor(NextItem / 2)) or PendingRow
-                if isLeft then PendingRow = row end
+            local function MountSectionItem(item, fullWidth)
+                local row, cell, column
 
-                local cell = Instance.new("Frame")
-                cell.Name = isLeft and "LeftCell" or "RightCell"
+                if fullWidth then
+                    -- Finish a pending half-row, then mount this item alone.
+                    if NextItem % 2 == 1 then NextItem = NextItem + 1 end
+                    row = makeRow(math.floor(NextItem / 2))
+                    cell = Instance.new("Frame")
+                    cell.Name = "FullCell"
+                    cell.Position = UDim2.fromOffset(0, 0)
+                    cell.Size = UDim2.new(1, 0, 0, item.Size.Y.Offset)
+                    column = "Full"
+                    NextItem = NextItem + 2
+                    PendingRow = nil
+                else
+                    local isLeft = NextItem % 2 == 0
+                    row = isLeft and makeRow(math.floor(NextItem / 2)) or PendingRow
+                    if isLeft then PendingRow = row end
+                    cell = Instance.new("Frame")
+                    cell.Name = isLeft and "LeftCell" or "RightCell"
+                    cell.Position = isLeft and UDim2.fromOffset(0, 0) or UDim2.new(0.5, 3, 0, 0)
+                    cell.Size = UDim2.new(0.5, -3, 0, item.Size.Y.Offset)
+                    column = isLeft and "Left" or "Right"
+                    NextItem = NextItem + 1
+                end
+
                 cell.BackgroundTransparency = 1
                 cell.BorderSizePixel = 0
-                cell.Position = isLeft and UDim2.fromOffset(0, 0) or UDim2.new(0.5, 3, 0, 0)
-                cell.Size = UDim2.new(0.5, -3, 0, item.Size.Y.Offset)
                 cell.Parent = row
 
                 item:SetAttribute("ZeroinSectionItem", true)
-                item:SetAttribute("ZeroinColumn", isLeft and "Left" or "Right")
+                item:SetAttribute("ZeroinColumn", column)
                 item.LayoutOrder = 0
                 item.AnchorPoint = Vector2.zero
                 item.Position = UDim2.fromOffset(0, 0)
@@ -2087,7 +2111,6 @@ function Zeroin:Window(GuiConfig)
                 item.BackgroundTransparency = 1
                 item.BorderSizePixel = 0
                 item.Parent = cell
-                NextItem = NextItem + 1
 
                 local function refresh()
                     updateRowHeight(row)
@@ -2122,7 +2145,7 @@ function Zeroin:Window(GuiConfig)
                 Paragraph.LayoutOrder = CountItem
                 Paragraph.Size = UDim2.new(1, 0, 0, 46)
                 Paragraph.Name = "Paragraph"
-                MountSectionItem(Paragraph)
+                MountSectionItem(Paragraph, ParagraphConfig.FullWidth ~= false)
 
                 UICorner14.CornerRadius = UDim.new(0, 4)
                 UICorner14.Parent = Paragraph
@@ -2258,7 +2281,7 @@ function Zeroin:Window(GuiConfig)
                 Panel.BackgroundTransparency = 0.935
                 Panel.Size = UDim2.new(1, 0, 0, baseHeight)
                 Panel.LayoutOrder = CountItem
-                MountSectionItem(Panel)
+                MountSectionItem(Panel, PanelConfig.FullWidth ~= false)
 
                 local UICorner = Instance.new("UICorner")
                 UICorner.CornerRadius = UDim.new(0, 4)
@@ -2393,7 +2416,7 @@ function Zeroin:Window(GuiConfig)
                 Button.BackgroundTransparency = 1
                 Button.Size = UDim2.new(1, 0, 0, 40)
                 Button.LayoutOrder = CountItem
-                MountSectionItem(Button)
+                MountSectionItem(Button, ButtonConfig.FullWidth ~= false)
 
                 local UICorner = Instance.new("UICorner")
                 UICorner.CornerRadius = UDim.new(0, 4)
@@ -2565,7 +2588,7 @@ function Zeroin:Window(GuiConfig)
                 Toggle.BorderSizePixel = 0
                 Toggle.LayoutOrder = CountItem
                 Toggle.Name = "Toggle"
-                MountSectionItem(Toggle)
+                MountSectionItem(Toggle, ToggleConfig.FullWidth == true)
 
                 UICorner20.CornerRadius = UDim.new(0, 4)
                 UICorner20.Parent = Toggle
@@ -2867,7 +2890,7 @@ function Zeroin:Window(GuiConfig)
                 Slider.LayoutOrder = CountItem
                 Slider.Size = UDim2.new(1, 0, 0, 46)
                 Slider.Name = "Slider"
-                MountSectionItem(Slider)
+                MountSectionItem(Slider, SliderConfig.FullWidth ~= false)
 
                 UICorner15.CornerRadius = UDim.new(0, 4)
                 UICorner15.Parent = Slider
@@ -2883,7 +2906,9 @@ function Zeroin:Window(GuiConfig)
                 SliderTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderTitle.BorderSizePixel = 0
                 SliderTitle.Position = UDim2.new(0, 10, 0, 10)
-                SliderTitle.Size = UDim2.new(1, -20, 0, 13)
+                SliderTitle.Size = (SliderConfig.FullWidth ~= false)
+                    and UDim2.new(1, -180, 0, 13)
+                    or UDim2.new(1, -20, 0, 13)
                 SliderTitle.Name = "SliderTitle"
                 SliderTitle.Parent = Slider
 
@@ -2899,20 +2924,24 @@ function Zeroin:Window(GuiConfig)
                 SliderContent.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderContent.BorderSizePixel = 0
                 SliderContent.Position = UDim2.new(0, 10, 0, 25)
-                SliderContent.Size = UDim2.new(1, -20, 0, 12)
+                SliderContent.Size = (SliderConfig.FullWidth ~= false)
+                    and UDim2.new(1, -180, 0, 12)
+                    or UDim2.new(1, -20, 0, 12)
                 SliderContent.Name = "SliderContent"
                 SliderContent.Parent = Slider
 
-                SliderContent.Size = UDim2.new(1, -20, 0,
+                local sliderTextWidthOffset = (SliderConfig.FullWidth ~= false) and -180 or -20
+                local sliderBottomPadding = (SliderConfig.FullWidth ~= false) and 33 or 58
+                SliderContent.Size = UDim2.new(1, sliderTextWidthOffset, 0,
                     12 + (12 * (SliderContent.TextBounds.X // math.max(1, SliderContent.AbsoluteSize.X))))
                 SliderContent.TextWrapped = true
-                Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 58)
+                Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + sliderBottomPadding)
 
                 SliderContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     SliderContent.TextWrapped = false
-                    SliderContent.Size = UDim2.new(1, -20, 0,
+                    SliderContent.Size = UDim2.new(1, sliderTextWidthOffset, 0,
                         12 + (12 * (SliderContent.TextBounds.X // math.max(1, SliderContent.AbsoluteSize.X))))
-                    Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 58)
+                    Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + sliderBottomPadding)
                     SliderContent.TextWrapped = true
                     UpdateSizeSection()
                 end)
@@ -2922,7 +2951,9 @@ function Zeroin:Window(GuiConfig)
                 SliderInput.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderInput.BackgroundTransparency = 1
                 SliderInput.BorderSizePixel = 0
-                SliderInput.Position = UDim2.new(1, -10, 1, -15)
+                SliderInput.Position = (SliderConfig.FullWidth ~= false)
+                    and UDim2.new(1, -155, 0.5, 0)
+                    or UDim2.new(1, -10, 1, -15)
                 SliderInput.Size = UDim2.new(0, 28, 0, 20)
                 SliderInput.Name = "SliderInput"
                 SliderInput.Parent = Slider
@@ -2943,15 +2974,32 @@ function Zeroin:Window(GuiConfig)
                 TextBox.Size = UDim2.new(1, 0, 1, 0)
                 TextBox.Parent = SliderInput
 
-                SliderFrame.AnchorPoint = Vector2.new(0, 0.5)
+                SliderFrame.AnchorPoint = (SliderConfig.FullWidth ~= false)
+                    and Vector2.new(1, 0.5)
+                    or Vector2.new(0, 0.5)
                 SliderFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 SliderFrame.BackgroundTransparency = 0.800000011920929
                 SliderFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 SliderFrame.BorderSizePixel = 0
-                SliderFrame.Position = UDim2.new(0, 10, 1, -15)
-                SliderFrame.Size = UDim2.new(1, -58, 0, 3)
+                SliderFrame.Position = (SliderConfig.FullWidth ~= false)
+                    and UDim2.new(1, -20, 0.5, 0)
+                    or UDim2.new(0, 10, 1, -15)
+                SliderFrame.Size = (SliderConfig.FullWidth ~= false)
+                    and UDim2.new(0, 100, 0, 3)
+                    or UDim2.new(1, -58, 0, 3)
                 SliderFrame.Name = "SliderFrame"
                 SliderFrame.Parent = Slider
+
+                local SliderHitbox = Instance.new("Frame")
+                SliderHitbox.Name = "SliderHitbox"
+                SliderHitbox.AnchorPoint = SliderFrame.AnchorPoint
+                SliderHitbox.BackgroundTransparency = 1
+                SliderHitbox.BorderSizePixel = 0
+                SliderHitbox.Position = SliderFrame.Position
+                SliderHitbox.Size = UDim2.new(SliderFrame.Size.X.Scale, SliderFrame.Size.X.Offset, 0, 24)
+                SliderHitbox.Active = true
+                SliderHitbox.ZIndex = SliderFrame.ZIndex + 2
+                SliderHitbox.Parent = Slider
 
                 UICorner17.Parent = SliderFrame
 
@@ -2981,6 +3029,7 @@ function Zeroin:Window(GuiConfig)
                 UIStroke6.Parent = SliderCircle
 
                 local Dragging = false
+                local UpdatingTextInternally = false
                 local function Round(Number, Factor)
                     local Result = math.floor(Number / Factor + (math.sign(Number) * 0.5)) * Factor
                     if Result < 0 then
@@ -2988,45 +3037,66 @@ function Zeroin:Window(GuiConfig)
                     end
                     return Result
                 end
-                function SliderFunc:Set(Value)
+                function SliderFunc:Set(Value, options)
+                    options = options or {}
                     Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
                     SliderFunc.Value = Value
-                    TextBox.Text = tostring(Value)
-                    TweenService:Create(
-                        SliderDraggable,
-                        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        { Size = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1) }
-                    ):Play()
+                    local valueText = tostring(Value)
+                    if TextBox.Text ~= valueText then
+                        UpdatingTextInternally = true
+                        TextBox.Text = valueText
+                        UpdatingTextInternally = false
+                    end
+                    local fillSize = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1)
+                    if options.Instant then
+                        SliderDraggable.Size = fillSize
+                    else
+                        TweenService:Create(
+                            SliderDraggable,
+                            TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            { Size = fillSize }
+                        ):Play()
+                    end
 
                     SliderConfig.Callback(Value)
-                    ConfigData[configKey] = Value
-                    SaveConfig()
+                    if options.Save ~= false then
+                        ConfigData[configKey] = Value
+                        SaveConfig()
+                    end
                 end
 
-                SliderFrame.InputBegan:Connect(function(Input)
+                local function updateFromPosition(x)
+                    local SizeScale = math.clamp(
+                        (x - SliderFrame.AbsolutePosition.X) / math.max(1, SliderFrame.AbsoluteSize.X),
+                        0,
+                        1
+                    )
+                    SliderFunc:Set(
+                        SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * SizeScale),
+                        { Instant = true, Save = false }
+                    )
+                end
+
+                SliderHitbox.InputBegan:Connect(function(Input)
                     if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
                         Dragging = true
                         TweenService:Create(
                             SliderCircle,
-                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
                             { Size = UDim2.new(0, 14, 0, 14) }
                         ):Play()
-                        local SizeScale = math.clamp(
-                            (Input.Position.X - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X,
-                            0,
-                            1
-                        )
-                        SliderFunc:Set(SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * SizeScale))
+                        updateFromPosition(Input.Position.X)
                     end
                 end)
 
-                SliderFrame.InputEnded:Connect(function(Input)
-                    if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+                UserInputService.InputEnded:Connect(function(Input)
+                    if Dragging and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
                         Dragging = false
-                        SliderConfig.Callback(SliderFunc.Value)
+                        ConfigData[configKey] = SliderFunc.Value
+                        SaveConfig()
                         TweenService:Create(
                             SliderCircle,
-                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
                             { Size = UDim2.new(0, 8, 0, 8) }
                         ):Play()
                     end
@@ -3034,16 +3104,12 @@ function Zeroin:Window(GuiConfig)
 
                 UserInputService.InputChanged:Connect(function(Input)
                     if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
-                        local SizeScale = math.clamp(
-                            (Input.Position.X - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X,
-                            0,
-                            1
-                        )
-                        SliderFunc:Set(SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * SizeScale))
+                        updateFromPosition(Input.Position.X)
                     end
                 end)
 
                 TextBox:GetPropertyChangedSignal("Text"):Connect(function()
+                    if UpdatingTextInternally then return end
                     local Valid = TextBox.Text:gsub("[^%d%.]", "")
                     if Valid ~= "" and tonumber(Valid) then
                         local ValidNumber = math.clamp(tonumber(Valid), SliderConfig.Min, SliderConfig.Max)
@@ -3087,7 +3153,7 @@ function Zeroin:Window(GuiConfig)
                 Input.LayoutOrder = CountItem
                 Input.Size = UDim2.new(1, 0, 0, 46)
                 Input.Name = "Input"
-                MountSectionItem(Input)
+                MountSectionItem(Input, InputConfig.FullWidth ~= false)
 
                 UICorner12.CornerRadius = UDim.new(0, 4)
                 UICorner12.Parent = Input
@@ -3233,7 +3299,7 @@ function Zeroin:Window(GuiConfig)
                 Dropdown.LayoutOrder = CountItem
                 Dropdown.Size = UDim2.new(1, 0, 0, 46)
                 Dropdown.Name = "Dropdown"
-                MountSectionItem(Dropdown)
+                MountSectionItem(Dropdown, DropdownConfig.FullWidth ~= false)
 
                 DropdownButton.Text = ""
                 DropdownButton.BackgroundTransparency = 1
@@ -3251,7 +3317,9 @@ function Zeroin:Window(GuiConfig)
                 DropdownTitle.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownTitle.BackgroundTransparency = 1
                 DropdownTitle.Position = UDim2.new(0, 10, 0, 10)
-                DropdownTitle.Size = UDim2.new(1, -20, 0, 13)
+                DropdownTitle.Size = (DropdownConfig.FullWidth ~= false)
+                    and UDim2.new(1, -180, 0, 13)
+                    or UDim2.new(1, -20, 0, 13)
                 DropdownTitle.Name = "DropdownTitle"
                 DropdownTitle.Parent = Dropdown
 
@@ -3264,16 +3332,24 @@ function Zeroin:Window(GuiConfig)
                 DropdownContent.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownContent.BackgroundTransparency = 1
                 DropdownContent.Position = UDim2.new(0, 10, 0, 25)
-                DropdownContent.Size = UDim2.new(1, -20, 0, 12)
+                DropdownContent.Size = (DropdownConfig.FullWidth ~= false)
+                    and UDim2.new(1, -180, 0, 12)
+                    or UDim2.new(1, -20, 0, 12)
                 DropdownContent.Name = "DropdownContent"
                 DropdownContent.Parent = Dropdown
 
-                Dropdown.Size = UDim2.new(1, 0, 0, 76)
-
-                SelectOptionsFrame.AnchorPoint = Vector2.new(0.5, 1)
+                if DropdownConfig.FullWidth ~= false then
+                    Dropdown.Size = UDim2.new(1, 0, 0, 46)
+                    SelectOptionsFrame.AnchorPoint = Vector2.new(1, 0.5)
+                    SelectOptionsFrame.Position = UDim2.new(1, -7, 0.5, 0)
+                    SelectOptionsFrame.Size = UDim2.new(0, 148, 0, 30)
+                else
+                    Dropdown.Size = UDim2.new(1, 0, 0, 76)
+                    SelectOptionsFrame.AnchorPoint = Vector2.new(0.5, 1)
+                    SelectOptionsFrame.Position = UDim2.new(0.5, 0, 1, -7)
+                    SelectOptionsFrame.Size = UDim2.new(1, -20, 0, 28)
+                end
                 SelectOptionsFrame.BackgroundTransparency = 0.95
-                SelectOptionsFrame.Position = UDim2.new(0.5, 0, 1, -7)
-                SelectOptionsFrame.Size = UDim2.new(1, -20, 0, 28)
                 SelectOptionsFrame.Name = "SelectOptionsFrame"
                 SelectOptionsFrame.LayoutOrder = CountDropdown
                 SelectOptionsFrame.Parent = Dropdown
@@ -3533,7 +3609,7 @@ function Zeroin:Window(GuiConfig)
             function Items:AddDivider()
                 local Divider = Instance.new("Frame")
                 Divider.Name = "Divider"
-                MountSectionItem(Divider)
+                MountSectionItem(Divider, true)
                 Divider.AnchorPoint = Vector2.new(0.5, 0)
                 Divider.Position = UDim2.new(0.5, 0, 0, 0)
                 Divider.Size = UDim2.new(1, 0, 0, 2)
@@ -3563,7 +3639,7 @@ function Zeroin:Window(GuiConfig)
 
                 local SubSection = Instance.new("Frame")
                 SubSection.Name = "SubSection"
-                MountSectionItem(SubSection)
+                MountSectionItem(SubSection, true)
                 SubSection.BackgroundTransparency = 1
                 SubSection.Size = UDim2.new(1, 0, 0, 22)
                 SubSection.LayoutOrder = CountItem
