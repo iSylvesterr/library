@@ -1747,7 +1747,7 @@ local Aliases = {
     stat = "chart-no-axes-column-increasing",
     eyes = "eye",
     sword = "swords",
-    discord = "message-circle",
+    discord = "discord-brand",
     star = "star",
     skeleton = "skull",
     payment = "credit-card",
@@ -1767,8 +1767,27 @@ local Aliases = {
     nplnv4 = "badge",
 }
 
+-- Brand icons can live on Footagesus spritesheets rather than standalone
+-- assets. Keep their atlas metadata so consumers render the exact logo tile.
+local BrandIcons = {
+    ["discord-brand"] = {
+        Image = "rbxassetid://86699749765447",
+        ImageRectPosition = Vector2.new(256, 0),
+        ImageRectSize = Vector2.new(128, 128),
+        Pack = "geist",
+        SourceName = "logo-discord",
+    },
+    ["logo-discord"] = {
+        Image = "rbxassetid://86699749765447",
+        ImageRectPosition = Vector2.new(256, 0),
+        ImageRectSize = Vector2.new(128, 128),
+        Pack = "geist",
+        SourceName = "logo-discord",
+    },
+}
+
 local IconPack = {
-    Name = "Footagesus Lucide",
+    Name = "Footagesus Lucide + Geist Brands",
     License = "MIT",
     Source = "https://github.com/FyyWannaFly/FyyUI/tree/main/vendor/footagesus-icons",
     Icons = Lucide,
@@ -1786,18 +1805,36 @@ function IconPack.ResolveName(name)
     return normalize(name)
 end
 
-function IconPack.GetIcon(name)
+function IconPack.GetIconData(name)
     local resolved = normalize(name)
-    return resolved and Lucide[resolved] or nil
+    if not resolved then return nil end
+    if BrandIcons[resolved] then return BrandIcons[resolved] end
+    local image = Lucide[resolved]
+    if not image then return nil end
+    return {
+        Image = image,
+        ImageRectPosition = Vector2.new(0, 0),
+        ImageRectSize = Vector2.new(0, 0),
+        Pack = "lucide",
+        SourceName = resolved,
+    }
+end
+
+function IconPack.GetIcon(name)
+    local data = IconPack.GetIconData(name)
+    return data and data.Image or nil
 end
 
 function IconPack.HasIcon(name)
-    return IconPack.GetIcon(name) ~= nil
+    return IconPack.GetIconData(name) ~= nil
 end
 
 function IconPack.ListIcons()
     local names = {}
     for name in pairs(Lucide) do
+        table.insert(names, name)
+    end
+    for name in pairs(BrandIcons) do
         table.insert(names, name)
     end
     table.sort(names)
