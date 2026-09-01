@@ -1641,23 +1641,82 @@ function Zeroin:Window(GuiConfig)
         TabButton.Parent = Tab
 
         local textOffsetX = 8
+        local TabIconNative
+
+        local function makeLine(parent, size, position, rotation)
+            local line = Instance.new("Frame")
+            line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            line.BorderSizePixel = 0
+            line.AnchorPoint = Vector2.new(0.5, 0.5)
+            line.Size = size
+            line.Position = position
+            line.Rotation = rotation or 0
+            line.Parent = parent
+            local corner = Instance.new("UICorner")
+            corner.CornerRadius = UDim.new(1, 0)
+            corner.Parent = line
+            return line
+        end
+
+        local function makeNativeLucideIcon(iconName)
+            local icon = Instance.new("CanvasGroup")
+            icon.Name = "TabIconNative"
+            icon.Size = UDim2.fromOffset(14, 14)
+            icon.Position = UDim2.new(0, 8, 0.5, 0)
+            icon.AnchorPoint = Vector2.new(0, 0.5)
+            icon.BackgroundTransparency = 1
+            icon.GroupTransparency = CountTab == 0 and 0 or 0.4
+            icon.Parent = Tab
+
+            if iconName == "home" then
+                -- Lucide Home: roof plus open rectangular body.
+                makeLine(icon, UDim2.fromOffset(9, 2), UDim2.fromOffset(4.2, 4), -42)
+                makeLine(icon, UDim2.fromOffset(9, 2), UDim2.fromOffset(9.8, 4), 42)
+                makeLine(icon, UDim2.fromOffset(2, 7), UDim2.fromOffset(2.5, 9.5), 0)
+                makeLine(icon, UDim2.fromOffset(2, 7), UDim2.fromOffset(11.5, 9.5), 0)
+                makeLine(icon, UDim2.fromOffset(10, 2), UDim2.fromOffset(7, 13), 0)
+            elseif iconName == "info" then
+                -- Lucide CircleInfo: stroked circle, dot, and stem.
+                local circle = Instance.new("Frame")
+                circle.BackgroundTransparency = 1
+                circle.Size = UDim2.fromOffset(13, 13)
+                circle.Position = UDim2.fromOffset(0.5, 0.5)
+                circle.Parent = icon
+                local circleCorner = Instance.new("UICorner")
+                circleCorner.CornerRadius = UDim.new(1, 0)
+                circleCorner.Parent = circle
+                local circleStroke = Instance.new("UIStroke")
+                circleStroke.Color = Color3.fromRGB(255, 255, 255)
+                circleStroke.Thickness = 1.5
+                circleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                circleStroke.Parent = circle
+                makeLine(icon, UDim2.fromOffset(2, 2), UDim2.fromOffset(7, 4), 0)
+                makeLine(icon, UDim2.fromOffset(2, 6), UDim2.fromOffset(7, 9), 0)
+            end
+
+            return icon
+        end
 
         if TabConfig.Icon and TabConfig.Icon ~= "" then
-            TabIconImg = Instance.new("ImageLabel")
-            TabIconImg.Name = "TabIcon"
-            TabIconImg.Size = UDim2.fromOffset(14, 14)
-            TabIconImg.Position = UDim2.new(0, 8, 0.5, 0)
-            TabIconImg.AnchorPoint = Vector2.new(0, 0.5)
-            TabIconImg.BackgroundTransparency = 1
-            if Icons and Icons[TabConfig.Icon] then
-                TabIconImg.Image = Icons[TabConfig.Icon]
+            if TabConfig.Icon == "home" or TabConfig.Icon == "info" then
+                TabIconNative = makeNativeLucideIcon(TabConfig.Icon)
             else
-                TabIconImg.Image = TabConfig.Icon
+                TabIconImg = Instance.new("ImageLabel")
+                TabIconImg.Name = "TabIcon"
+                TabIconImg.Size = UDim2.fromOffset(14, 14)
+                TabIconImg.Position = UDim2.new(0, 8, 0.5, 0)
+                TabIconImg.AnchorPoint = Vector2.new(0, 0.5)
+                TabIconImg.BackgroundTransparency = 1
+                if Icons and Icons[TabConfig.Icon] then
+                    TabIconImg.Image = Icons[TabConfig.Icon]
+                else
+                    TabIconImg.Image = resolveImage(TabConfig.Icon)
+                end
+                TabIconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                TabIconImg.ImageTransparency = CountTab == 0 and 0 or 0.4
+                TabIconImg.ScaleType = Enum.ScaleType.Fit
+                TabIconImg.Parent = Tab
             end
-            TabIconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
-            TabIconImg.ImageTransparency = CountTab == 0 and 0 or 0.4
-            TabIconImg.ScaleType = Enum.ScaleType.Fit
-            TabIconImg.Parent = Tab
 
             textOffsetX = 28
         end
@@ -1725,9 +1784,13 @@ function Zeroin:Window(GuiConfig)
                         ):Play()
                         
                         local tIcon = TabFrame:FindFirstChild("TabIcon")
+                        local tNativeIcon = TabFrame:FindFirstChild("TabIconNative")
                         local tName = TabFrame:FindFirstChild("TabName")
                         if tIcon then
                             TweenService:Create(tIcon, TweenInfo.new(0.3), { ImageTransparency = 0.4 }):Play()
+                        end
+                        if tNativeIcon then
+                            TweenService:Create(tNativeIcon, TweenInfo.new(0.3), { GroupTransparency = 0.4 }):Play()
                         end
                         if tName then
                             TweenService:Create(tName, TweenInfo.new(0.3), { TextTransparency = 0.4 }):Play()
@@ -1742,6 +1805,9 @@ function Zeroin:Window(GuiConfig)
                 
                 if TabIconImg then
                     TweenService:Create(TabIconImg, TweenInfo.new(0.6), { ImageTransparency = 0 }):Play()
+                end
+                if TabIconNative then
+                    TweenService:Create(TabIconNative, TweenInfo.new(0.6), { GroupTransparency = 0 }):Play()
                 end
                 TweenService:Create(TabName, TweenInfo.new(0.6), { TextTransparency = 0 }):Play()
 
