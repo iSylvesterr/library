@@ -1955,10 +1955,22 @@ function Zeroin:Window(GuiConfig)
         local Sections = {}
         local CountSection = 0
         function Sections:AddSection(Title, AlwaysOpen)
+            local SectionConfig = {}
+            if type(Title) == "table" then
+                SectionConfig = Title
+                Title = SectionConfig.Title or SectionConfig.Name
+            elseif type(AlwaysOpen) == "table" then
+                SectionConfig = AlwaysOpen
+            end
             local Title = Title or "Title"
+            local LayoutMode = tostring(SectionConfig.Layout or "Grid"):lower()
+            local UseIndependentColumns = LayoutMode == "columns" or LayoutMode == "column"
+            local ColumnGap = math.max(0, tonumber(SectionConfig.ColumnGap) or 6)
+            local ItemGap = math.max(0, tonumber(SectionConfig.ItemGap) or 4)
 
-            -- Sections are intentionally always open. The second argument is
-            -- retained only for backward API compatibility.
+            -- Sections are intentionally always open. A boolean second
+            -- argument is retained only for backward API compatibility;
+            -- a table config enables script-controlled layout behavior.
             local Section = Instance.new("Frame")
             Section.Name = "Section"
             Section.BackgroundTransparency = 1
@@ -2027,7 +2039,7 @@ function Zeroin:Window(GuiConfig)
 
             local RowsLayout = Instance.new("UIListLayout")
             RowsLayout.Name = "RowsLayout"
-            RowsLayout.Padding = UDim.new(0, 4)
+            RowsLayout.Padding = UDim.new(0, ItemGap)
             RowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
             RowsLayout.Parent = SectionAdd
 
@@ -2059,6 +2071,100 @@ function Zeroin:Window(GuiConfig)
             local NextItem = 0
             local PendingRow
             local RowsByIndex = {}
+            local ColumnsRow
+            local ColumnCells = {}
+            local ColumnLayouts = {}
+            local NextColumnOrder = { Left = 0, Right = 0 }
+
+            local function updateColumnsHeight()
+                if not ColumnsRow then return end
+                local leftHeight = ColumnLayouts.Left and ColumnLayouts.Left.AbsoluteContentSize.Y or 0
+                local rightHeight = ColumnLayouts.Right and ColumnLayouts.Right.AbsoluteContentSize.Y or 0
+                local height = math.max(leftHeight, rightHeight)
+                if ColumnCells.Left then ColumnCells.Left.Size = UDim2.new(0.5, -(ColumnGap / 2), 0, leftHeight) end
+                if ColumnCells.Right then ColumnCells.Right.Size = UDim2.new(0.5, -(ColumnGap / 2), 0, rightHeight) end
+                ColumnsRow.Size = UDim2.new(1, 0, 0, height)
+                task.defer(UpdateSizeSection)
+            end
+
+            local function ensureColumnsRow(order)
+                if ColumnsRow then
+                    ColumnsRow.LayoutOrder = math.min(ColumnsRow.LayoutOrder, order)
+                    return ColumnsRow
+                end
+
+                ColumnsRow = Instance.new("Frame")
+                ColumnsRow.Name = "SectionColumns"
+                ColumnsRow:SetAttribute("ZeroinLayout", "Columns")
+                ColumnsRow.BackgroundTransparency = 1
+                ColumnsRow.BorderSizePixel = 0
+                ColumnsRow.LayoutOrder = order
+                ColumnsRow.Size = UDim2.new(1, 0, 0, 0)
+                ColumnsRow.Parent = SectionAdd
+
+                for _, column in ipairs({ "Left", "Right" }) do
+                    local isLeft = column == "Left"
+                    local cell = Instance.new("Frame")
+                    cell.Name = column .. "Column"
+                    cell.BackgroundTransparency = 1
+                    cell.BorderSizePixel = 0
+                    cell.Position = isLeft
+                        and UDim2.fromOffset(0, 0)
+                        or UDim2.new(0.5, ColumnGap / 2, 0, 0)
+                    cell.Size = UDim2.new(0.5, -(ColumnGap / 2), 0, 0)
+                    cell.Parent = ColumnsRow
+                    ColumnCells[column] = cell
+
+                    local list = Instance.new("UIListLayout")
+                    list.Name = column .. "Layout"
+                    list.Padding = UDim.new(0, ItemGap)
+                    list.SortOrder = Enum.SortOrder.LayoutOrder
+                    list.Parent = cell
+                    ColumnLayouts[column] = list
+                    list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateColumnsHeight)
+                end
+
+                task.defer(updateColumnsHeight)
+                return ColumnsRow
+            end
+
+            local function columnOrderOccupied(column, order)
+                local cell = ColumnCells[column]
+                if not cell then return false end
+                for _, child in ipairs(cell:GetChildren()) do
+                    if child:IsA("GuiObject") and child.LayoutOrder == order then
+                        return true
+                    end
+                end
+                return false
+            end
+
+            local function mountIndependentColumnItem(item, column, explicitRow)
+                local order = explicitRow and (explicitRow - 1) or NextColumnOrder[column]
+                ensureColumnsRow(order)
+                if columnOrderOccupied(column, order) then
+                    local requested = order + 1
+                    repeat order = order + 1 until not columnOrderOccupied(column, order)
+                    warn(("Zeroin UI: Row %d Column %s is occupied; using Row %d."):format(requested, column, order + 1))
+                end
+                NextColumnOrder[column] = math.max(NextColumnOrder[column], order + 1)
+                ColumnsRow.LayoutOrder = math.min(ColumnsRow.LayoutOrder, order)
+
+                item:SetAttribute("ZeroinSectionItem", true)
+                item:SetAttribute("ZeroinColumn", column)
+                item:SetAttribute("ZeroinRow", order + 1)
+                item.LayoutOrder = order
+                item.AnchorPoint = Vector2.zero
+                item.Position = UDim2.fromOffset(0, 0)
+                item.Size = UDim2.new(1, 0, item.Size.Y.Scale, item.Size.Y.Offset)
+                item.BackgroundTransparency = 1
+                item.BorderSizePixel = 0
+                item.Parent = ColumnCells[column]
+
+                item:GetPropertyChangedSignal("Size"):Connect(updateColumnsHeight)
+                item:GetPropertyChangedSignal("Visible"):Connect(updateColumnsHeight)
+                task.defer(updateColumnsHeight)
+            end
 
             local function updateRowHeight(row)
                 if not row then return end
@@ -2146,6 +2252,15 @@ function Zeroin:Window(GuiConfig)
 
                 local column = fullWidth and "Full" or requestedColumn
                 local rowIndex
+
+                if UseIndependentColumns and not fullWidth then
+                    if column ~= "Left" and column ~= "Right" then
+                        column = (NextItem % 2 == 0) and "Left" or "Right"
+                        NextItem = NextItem + 1
+                    end
+                    mountIndependentColumnItem(item, column, explicitRow)
+                    return
+                end
 
                 if explicitRow then
                     rowIndex = explicitRow - 1

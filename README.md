@@ -33,7 +33,38 @@ local MainTab = Window:AddTab({
 local FarmSection = MainTab:AddSection("Farming")
 ```
 
-## Sistem Layout: Column, Row, dan FullWidth
+## Sistem Layout: Grid atau Independent Columns
+
+Pilih layout saat membuat section:
+
+```lua
+-- Pair kiri/kanan disinkronkan sebagai baris.
+local GridSection = Tab:AddSection({
+    Title = "Grid Example",
+    Layout = "Grid",
+    ColumnGap = 6,
+    ItemGap = 4
+})
+
+-- Kiri dan kanan memiliki vertical stack independen.
+local ColumnsSection = Tab:AddSection({
+    Title = "Compact Example",
+    Layout = "Columns",
+    ColumnGap = 6,
+    ItemGap = 4
+})
+```
+
+| Mode | Perilaku | Cocok untuk |
+|---|---|---|
+| `Grid` (default) | Tinggi kiri dan kanan disamakan per row | Pasangan komponen dengan tinggi serupa |
+| `Columns` | Jarak vertikal kiri dan kanan dihitung secara independen | Toggle di kiri dan slider/dropdown/input di kanan |
+
+Pada mode `Grid`, slider 70px di kanan membuat row toggle 40px di kiri ikut memiliki tinggi 70px. Pada mode `Columns`, toggle berikutnya langsung berada `ItemGap` pixel di bawah toggle sebelumnya dan tidak dipengaruhi tinggi slider di kanan.
+
+`ColumnGap` mengatur jarak horizontal kiri-kanan. `ItemGap` mengatur jarak vertikal antar-item.
+
+## Column, Row, dan FullWidth
 
 Semua komponen dapat ditempatkan langsung dari script tanpa mengubah library:
 
@@ -46,8 +77,8 @@ Row = 1           -- nomor baris (mulai dari 1)
 
 Prioritas layout:
 
-1. `Column + Row` menempatkan komponen secara eksplisit.
-2. `Column` tanpa `Row` mencari slot kosong berikutnya pada sisi tersebut.
+1. `Column + Row` menempatkan komponen secara eksplisit. Pada `Columns`, `Row` adalah urutan di dalam kolom tersebut.
+2. `Column` tanpa `Row` mencari posisi kosong berikutnya pada sisi tersebut.
 3. `FullWidth` tetap tersedia untuk kompatibilitas script lama.
 4. Tanpa semua properti di atas, library memakai layout default komponen.
 
@@ -55,9 +86,15 @@ Jika slot yang diminta sudah terisi, Zeroin tidak menimpa komponen lama; kompone
 
 `Column = "Left"` atau `"Right"` otomatis menggunakan visual half-width. `Column = "Full"` otomatis menggunakan visual full-width.
 
-### Dua toggle sama-sama di kiri
+### Dua toggle sama-sama di kiri, tetap rapat
 
 ```lua
+local Section = Tab:AddSection({
+    Title = "Farm",
+    Layout = "Columns",
+    ItemGap = 4
+})
+
 Section:AddToggle({
     Title = "Auto Collect",
     Column = "Left",
