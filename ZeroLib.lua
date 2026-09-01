@@ -946,7 +946,8 @@ function Zeroin:Window(GuiConfig)
     LayersTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     LayersTab.BorderSizePixel = 0
     LayersTab.Position = UDim2.new(0, 9, 0, 50)
-    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -95)
+    -- Reserve space for the Discord and account cards at the bottom.
+    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -153)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
@@ -1003,8 +1004,89 @@ function Zeroin:Window(GuiConfig)
 
 
 
-	AccountTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    AccountTab.BackgroundTransparency = 0.9350000023841858
+    local DiscordUrl = "https://discord.gg/9snzkaGkRE"
+
+    local DiscordCard = Instance.new("Frame")
+    DiscordCard.Name = "DiscordCard"
+    DiscordCard.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
+    DiscordCard.BackgroundTransparency = 0
+    DiscordCard.BorderSizePixel = 0
+    DiscordCard.Position = UDim2.new(0, 9, 1, -99)
+    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 46)
+    DiscordCard.Parent = Main
+
+    local DiscordCorner = Instance.new("UICorner")
+    DiscordCorner.CornerRadius = UDim.new(0, 6)
+    DiscordCorner.Parent = DiscordCard
+
+    local DiscordStroke = Instance.new("UIStroke")
+    DiscordStroke.Name = "Outline"
+    DiscordStroke.Color = Color3.fromRGB(34, 91, 68)
+    DiscordStroke.Transparency = 0.35
+    DiscordStroke.Thickness = 1
+    DiscordStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    DiscordStroke.Parent = DiscordCard
+
+    local DiscordIcon = Instance.new("ImageLabel")
+    DiscordIcon.Name = "DiscordIcon"
+    DiscordIcon.BackgroundTransparency = 1
+    DiscordIcon.Image = Icons.discord
+    DiscordIcon.ImageColor3 = Color3.fromRGB(190, 218, 202)
+    DiscordIcon.ImageTransparency = 0.08
+    DiscordIcon.Position = UDim2.new(0, 8, 0.5, -9)
+    DiscordIcon.Size = UDim2.fromOffset(18, 18)
+    DiscordIcon.ScaleType = Enum.ScaleType.Fit
+    DiscordIcon.Parent = DiscordCard
+
+    local DiscordTitle = Instance.new("TextLabel")
+    DiscordTitle.Name = "Title"
+    DiscordTitle.BackgroundTransparency = 1
+    DiscordTitle.Font = Enum.Font.GothamBold
+    DiscordTitle.Text = "Discord"
+    DiscordTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
+    DiscordTitle.TextSize = 11
+    DiscordTitle.TextXAlignment = Enum.TextXAlignment.Left
+    DiscordTitle.Position = UDim2.new(0, 34, 0, 7)
+    DiscordTitle.Size = UDim2.new(1, -40, 0, 14)
+    DiscordTitle.Parent = DiscordCard
+
+    local DiscordLink = Instance.new("TextLabel")
+    DiscordLink.Name = "Link"
+    DiscordLink.BackgroundTransparency = 1
+    DiscordLink.Font = Enum.Font.GothamMedium
+    DiscordLink.Text = "discord.gg/9snzkaGkRE"
+    DiscordLink.TextColor3 = Color3.fromRGB(151, 190, 169)
+    DiscordLink.TextSize = 8
+    DiscordLink.TextTruncate = Enum.TextTruncate.AtEnd
+    DiscordLink.TextXAlignment = Enum.TextXAlignment.Left
+    DiscordLink.Position = UDim2.new(0, 34, 0, 23)
+    DiscordLink.Size = UDim2.new(1, -40, 0, 13)
+    DiscordLink.Parent = DiscordCard
+
+    local DiscordButton = Instance.new("TextButton")
+    DiscordButton.Name = "CopyButton"
+    DiscordButton.BackgroundTransparency = 1
+    DiscordButton.Text = ""
+    DiscordButton.Size = UDim2.fromScale(1, 1)
+    DiscordButton.ZIndex = 4
+    DiscordButton.Parent = DiscordCard
+
+    DiscordButton.Activated:Connect(function()
+        CircleClick(DiscordButton, Mouse.X, Mouse.Y)
+        if setclipboard then
+            local ok = pcall(setclipboard, DiscordUrl)
+            if ok then
+                notif("Discord invite copied to clipboard!", 3, GuiConfig.Color, "Zeroin", "Discord")
+            else
+                notif("Failed to copy Discord invite.", 3, Color3.fromRGB(220, 90, 90), "Zeroin", "Discord")
+            end
+        else
+            notif("Clipboard is not supported by this executor.", 3, Color3.fromRGB(220, 170, 80), "Zeroin", "Discord")
+        end
+    end)
+
+	AccountTab.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
+    AccountTab.BackgroundTransparency = 0
     AccountTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     AccountTab.BorderSizePixel = 0
     AccountTab.Position = UDim2.new(0, 9, 1, -45)
@@ -1014,6 +1096,14 @@ function Zeroin:Window(GuiConfig)
 
     UICorner.CornerRadius = UDim.new(0, 6)
     UICorner.Parent = AccountTab
+
+    local AccountStroke = Instance.new("UIStroke")
+    AccountStroke.Name = "Outline"
+    AccountStroke.Color = Color3.fromRGB(34, 91, 68)
+    AccountStroke.Transparency = 0.35
+    AccountStroke.Thickness = 1
+    AccountStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    AccountStroke.Parent = AccountTab
 
     local AvatarCircle = Instance.new("Frame")
     AvatarCircle.Size = UDim2.new(0, 26, 0, 26)
