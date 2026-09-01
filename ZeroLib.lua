@@ -637,7 +637,6 @@ function Zeroin:Window(GuiConfig)
     local FullScreen = Instance.new("TextButton")
     local ImageLabel3 = Instance.new("ImageLabel")
     local LayersTab = Instance.new("Frame");
-    local AccountTab = Instance.new("Frame");
     local UICorner2 = Instance.new("UICorner");
     local UICorner3 = Instance.new("UICorner")
     local DecideFrame = Instance.new("Frame");
@@ -946,8 +945,8 @@ function Zeroin:Window(GuiConfig)
     LayersTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     LayersTab.BorderSizePixel = 0
     LayersTab.Position = UDim2.new(0, 9, 0, 50)
-    -- Reserve only a compact footer area for Discord and account cards.
-    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -139)
+    -- Reserve a compact footer area for the single Discord card.
+    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -104)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
@@ -1011,8 +1010,8 @@ function Zeroin:Window(GuiConfig)
     DiscordCard.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
     DiscordCard.BackgroundTransparency = 0
     DiscordCard.BorderSizePixel = 0
-    DiscordCard.Position = UDim2.new(0, 9, 1, -85)
-    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 34)
+    DiscordCard.Position = UDim2.new(0, 9, 1, -50)
+    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 40)
     DiscordCard.Parent = Main
 
     local DiscordCorner = Instance.new("UICorner")
@@ -1033,8 +1032,8 @@ function Zeroin:Window(GuiConfig)
     DiscordIcon.Image = Icons.discord
     DiscordIcon.ImageColor3 = Color3.fromRGB(190, 218, 202)
     DiscordIcon.ImageTransparency = 0.08
-    DiscordIcon.Position = UDim2.new(0, 7, 0.5, -7)
-    DiscordIcon.Size = UDim2.fromOffset(14, 14)
+    DiscordIcon.Position = UDim2.new(0, 8, 0.5, -8)
+    DiscordIcon.Size = UDim2.fromOffset(16, 16)
     DiscordIcon.ScaleType = Enum.ScaleType.Fit
     DiscordIcon.Parent = DiscordCard
 
@@ -1044,10 +1043,10 @@ function Zeroin:Window(GuiConfig)
     DiscordTitle.Font = Enum.Font.GothamBold
     DiscordTitle.Text = "Discord"
     DiscordTitle.TextColor3 = Color3.fromRGB(225, 238, 231)
-    DiscordTitle.TextSize = 10
+    DiscordTitle.TextSize = 11
     DiscordTitle.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordTitle.Position = UDim2.new(0, 27, 0, 3)
-    DiscordTitle.Size = UDim2.new(1, -33, 0, 13)
+    DiscordTitle.Position = UDim2.new(0, 31, 0, 4)
+    DiscordTitle.Size = UDim2.new(1, -37, 0, 14)
     DiscordTitle.Parent = DiscordCard
 
     local DiscordLink = Instance.new("TextLabel")
@@ -1056,11 +1055,11 @@ function Zeroin:Window(GuiConfig)
     DiscordLink.Font = Enum.Font.GothamMedium
     DiscordLink.Text = "discord.gg/9snzkaGkRE"
     DiscordLink.TextColor3 = Color3.fromRGB(151, 190, 169)
-    DiscordLink.TextSize = 7
+    DiscordLink.TextSize = 8
     DiscordLink.TextTruncate = Enum.TextTruncate.AtEnd
     DiscordLink.TextXAlignment = Enum.TextXAlignment.Left
-    DiscordLink.Position = UDim2.new(0, 27, 0, 17)
-    DiscordLink.Size = UDim2.new(1, -33, 0, 11)
+    DiscordLink.Position = UDim2.new(0, 31, 0, 21)
+    DiscordLink.Size = UDim2.new(1, -37, 0, 12)
     DiscordLink.Parent = DiscordCard
 
     local DiscordButton = Instance.new("TextButton")
@@ -1083,82 +1082,6 @@ function Zeroin:Window(GuiConfig)
         else
             notif("Clipboard is not supported by this executor.", 3, Color3.fromRGB(220, 170, 80), "Zeroin", "Discord")
         end
-    end)
-
-	AccountTab.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
-    AccountTab.BackgroundTransparency = 0
-    AccountTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    AccountTab.BorderSizePixel = 0
-    AccountTab.Position = UDim2.new(0, 9, 1, -45)
-    AccountTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 35)
-    AccountTab.Name = "AccountTab"
-    AccountTab.Parent = Main
-
-    UICorner.CornerRadius = UDim.new(0, 6)
-    UICorner.Parent = AccountTab
-
-    local AccountStroke = Instance.new("UIStroke")
-    AccountStroke.Name = "Outline"
-    AccountStroke.Color = Color3.fromRGB(34, 91, 68)
-    AccountStroke.Transparency = 0.35
-    AccountStroke.Thickness = 1
-    AccountStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    AccountStroke.Parent = AccountTab
-
-    local AvatarCircle = Instance.new("Frame")
-    AvatarCircle.Size = UDim2.new(0, 26, 0, 26)
-    AvatarCircle.Position = UDim2.new(0, 5, 0.5, -13)
-    AvatarCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    AvatarCircle.BackgroundTransparency = 1
-    AvatarCircle.BorderSizePixel = 0
-    AvatarCircle.ClipsDescendants = true  -- bikin bulat
-    AvatarCircle.Name = "AvatarCircle"
-    AvatarCircle.Parent = AccountTab
-
-    local AvatarCorner = Instance.new("UICorner")
-    AvatarCorner.CornerRadius = UDim.new(1, 0)  -- full bulat
-    AvatarCorner.Parent = AvatarCircle
-
-    local AvatarImg = Instance.new("ImageLabel")
-    AvatarImg.Size = UDim2.new(1, 0, 1, 0)
-    AvatarImg.BackgroundTransparency = 1
-    AvatarImg.BorderSizePixel = 0
-    AvatarImg.Name = "AvatarImg"
-    AvatarImg.Parent = AvatarCircle
-
-    -- Nama player di sebelah kanan avatar
-    local AccountName = Instance.new("TextLabel")
-    AccountName.Font = Enum.Font.GothamBold
-    -- AccountName.Text = game:GetService("Players").LocalPlayer.Name
-    AccountName.TextSize = 11
-    AccountName.TextColor3 = Color3.fromRGB(231, 231, 231)
-    AccountName.TextXAlignment = Enum.TextXAlignment.Left
-    AccountName.BackgroundTransparency = 1
-    AccountName.Position = UDim2.new(0, 36, 0, 0)
-    AccountName.Size = UDim2.new(1, -40, 1, 0)
-    AccountName.TextTruncate = Enum.TextTruncate.AtEnd  -- potong kalau kepanjangan
-    AccountName.Parent = AccountTab
-
-    local playerName = game:GetService("Players").LocalPlayer.Name
-
-    if #playerName > 3 then
-        local hiddenLength = #playerName - 3
-        local visible = string.sub(playerName, -3)
-        AccountName.Text = string.rep("*", hiddenLength) .. visible
-    else
-        AccountName.Text = playerName
-    end
-
-    -- Ambil foto avatar
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    spawn(function()
-        local url, _ = Players:GetUserThumbnailAsync(
-            LocalPlayer.UserId,
-            Enum.ThumbnailType.HeadShot,
-            Enum.ThumbnailSize.Size420x420
-        )
-        AvatarImg.Image = url
     end)
 
     UICorner2.CornerRadius = UDim.new(0, 2)
