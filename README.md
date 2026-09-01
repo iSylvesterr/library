@@ -612,6 +612,16 @@ Window:DestroyGui()              -- alias lama, sekarang full cleanup
 
 > Library tidak dapat menebak semua resource yang dibuat script pengguna. Semua connection, loop, ESP, instance, hook wrapper, dan perubahan state milik feature harus didaftarkan melalui API lifecycle atau dipulihkan dalam callback toggle `false`/`OnClose`.
 
+## Automatic Game Name Chip
+
+Topbar otomatis menampilkan nama game aktif dengan tampilan yang sama seperti chip FPS dan executor:
+
+```text
+[Gamepad] Nama Game | [Chart] FPS | [Plug] Executor
+```
+
+Nama dideteksi melalui `MarketplaceService:GetProductInfo(game.PlaceId).Name` secara asynchronous, dengan fallback ke `game.Name`. Nama yang melebihi 20 karakter dipotong dengan ellipsis agar topbar tetap rapi; nama lengkap dan PlaceId tersimpan pada attributes `FullGameName` dan `PlaceId` di `GameFrame`. Tidak perlu mengisi nama game pada config Window.
+
 ## Window Controls
 
 - Minimize: tombol minimize dengan animasi ringan.

@@ -925,9 +925,53 @@ function Zeroin:Window(GuiConfig)
         return icon
     end
 
+    local function compactStatusText(value, maxLength)
+        value = tostring(value or "Unknown")
+        if #value > maxLength then
+            return value:sub(1, math.max(1, maxLength - 1)) .. "…"
+        end
+        return value
+    end
+
+    local GameFrame = Instance.new("Frame")
+    GameFrame.Name = "GameFrame"
+    styleStatusChip(GameFrame, 1)
+    makeChipIcon(GameFrame, resolveIcon("gamepad-2"), 1)
+
+    local GameTextLabel = Instance.new("TextLabel")
+    GameTextLabel.Name = "GameText"
+    GameTextLabel.LayoutOrder = 2
+    GameTextLabel.Size = UDim2.new(0, 0, 1, 0)
+    GameTextLabel.BackgroundTransparency = 1
+    GameTextLabel.Font = Enum.Font.GothamMedium
+    GameTextLabel.Text = compactStatusText(game.Name, 20)
+    GameTextLabel.TextColor3 = Color3.fromRGB(190, 218, 202)
+    GameTextLabel.TextSize = 10
+    GameTextLabel.TextXAlignment = Enum.TextXAlignment.Center
+    GameTextLabel.AutomaticSize = Enum.AutomaticSize.X
+    GameTextLabel.Parent = GameFrame
+    GameFrame:SetAttribute("FullGameName", tostring(game.Name))
+    GameFrame:SetAttribute("PlaceId", game.PlaceId)
+
+    -- Product info gives the experience's public place name. Resolve it in a
+    -- managed task so a slow MarketplaceService response never blocks the UI.
+    trackCleanup(task.spawn(function()
+        local detectedName = tostring(game.Name)
+        local ok, productInfo = pcall(function()
+            return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+        end)
+        if ok and type(productInfo) == "table" and productInfo.Name and productInfo.Name ~= "" then
+            detectedName = tostring(productInfo.Name)
+        end
+        if not isDestroyed and GameFrame.Parent then
+            GameTextLabel.Text = compactStatusText(detectedName, 20)
+            GameFrame:SetAttribute("FullGameName", detectedName)
+        end
+    end))
+
     local FooterFrame = Instance.new("Frame")
     FooterFrame.Name = "FooterFrame"
-    styleStatusChip(FooterFrame, 1)
+    styleStatusChip(FooterFrame, 2)
     makeChipIcon(FooterFrame, Icons.stat, 1)
 
     TextLabel1.Name = "FooterText"
@@ -962,11 +1006,11 @@ function Zeroin:Window(GuiConfig)
 
     local execName = tostring((identifyexecutor and identifyexecutor()) or "Unknown")
     execName = execName:gsub("%s*[Vv]ersion.*$", "")
-    if #execName > 12 then execName = execName:sub(1, 11) .. "…" end
+    execName = compactStatusText(execName, 12)
 
     local Executor = Instance.new("Frame")
     Executor.Name = "Executor"
-    styleStatusChip(Executor, 2)
+    styleStatusChip(Executor, 3)
     makeChipIcon(Executor, Icons.plug, 1)
 
     local ExecutorTextLabel = Instance.new("TextLabel")
