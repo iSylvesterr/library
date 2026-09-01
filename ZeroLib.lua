@@ -3393,7 +3393,10 @@ function Zeroin:Window(GuiConfig)
                 -- deterministic even while the popup overlay is active.
                 DropdownButton.Size = UDim2.fromScale(1, 1)
                 DropdownButton.Position = UDim2.fromOffset(0, 0)
-                DropdownButton.ZIndex = 120
+                DropdownButton.ZIndex = 123
+                DropdownButton.Active = true
+                DropdownButton.Selectable = true
+                DropdownButton.AutoButtonColor = false
                 DropdownButton.Parent = SelectOptionsFrame
 
                 OptionSelecting.Font = Enum.Font.GothamBold
@@ -3562,7 +3565,7 @@ function Zeroin:Window(GuiConfig)
                     if cell and cell:IsA("GuiObject") then cell.ZIndex = open and 89 or 1 end
                     if row and row:IsA("GuiObject") then row.ZIndex = open and 88 or 1 end
                     SelectOptionsFrame.ZIndex = open and 91 or 1
-                    DropdownButton.ZIndex = 120
+                    DropdownButton.ZIndex = 123
                     SectionOverlay.Active = open
                     if open then updatePopupPosition() end
                     updateInlineMenuSize()
