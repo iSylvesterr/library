@@ -1128,8 +1128,9 @@ function Zeroin:Window(GuiConfig)
 	WindowImg2.BackgroundTransparency = 1
 	WindowImg2.ImageTransparency = 0.8
 	WindowImg2.BorderSizePixel = 0
-	WindowImg2.Size = UDim2.new(0.68, 0, 0.9, 0)
-	WindowImg2.Position = UDim2.new(0.32, 0, 0.125, 0)
+    WindowImg2.AnchorPoint = Vector2.new(0.5, 0.5)
+	WindowImg2.Size = UDim2.new(0.78, 0, 0.94, 0)
+	WindowImg2.Position = UDim2.new(0.5, 0, 0.5, 0)
 	WindowImg2.ScaleType = Enum.ScaleType.Fit
 	WindowImg2.Name = "WindowImg2"
 	WindowImg2.ZIndex = 0
