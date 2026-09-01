@@ -670,6 +670,8 @@ function Zeroin:Window(GuiConfig)
     GuiConfig.Color2       = GuiConfig.Color2 or ThemeColors.BackgroundTop
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
+    GuiConfig.Discord      = GuiConfig.Discord or "https://discord.gg/9snzkaGkRE"
+    GuiConfig.BuiltInInfo  = GuiConfig.BuiltInInfo ~= false
 
     CURRENT_VERSION        = GuiConfig.Version
     LoadConfigFromFile()
@@ -953,6 +955,9 @@ function Zeroin:Window(GuiConfig)
         return value
     end
 
+    local detectedGameName = tostring(game.Name)
+    local gameNameListeners = {}
+
     local GameFrame = Instance.new("Frame")
     GameFrame.Name = "GameFrame"
     styleStatusChip(GameFrame, 1)
@@ -964,13 +969,13 @@ function Zeroin:Window(GuiConfig)
     GameTextLabel.Size = UDim2.new(0, 0, 1, 0)
     GameTextLabel.BackgroundTransparency = 1
     GameTextLabel.Font = Enum.Font.GothamMedium
-    GameTextLabel.Text = compactStatusText(game.Name, 20)
+    GameTextLabel.Text = compactStatusText(detectedGameName, 20)
     GameTextLabel.TextColor3 = Color3.fromRGB(190, 218, 202)
     GameTextLabel.TextSize = 10
     GameTextLabel.TextXAlignment = Enum.TextXAlignment.Center
     GameTextLabel.AutomaticSize = Enum.AutomaticSize.X
     GameTextLabel.Parent = GameFrame
-    GameFrame:SetAttribute("FullGameName", tostring(game.Name))
+    GameFrame:SetAttribute("FullGameName", detectedGameName)
     GameFrame:SetAttribute("PlaceId", game.PlaceId)
 
     local function updateTopTitleSpace()
@@ -986,7 +991,7 @@ function Zeroin:Window(GuiConfig)
     -- Product info gives the experience's public place name. Resolve it in a
     -- managed task so a slow MarketplaceService response never blocks the UI.
     trackCleanup(task.spawn(function()
-        local detectedName = tostring(game.Name)
+        local detectedName = detectedGameName
         local ok, productInfo = pcall(function()
             return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
         end)
@@ -994,8 +999,12 @@ function Zeroin:Window(GuiConfig)
             detectedName = tostring(productInfo.Name)
         end
         if not isDestroyed and GameFrame.Parent then
-            GameTextLabel.Text = compactStatusText(detectedName, 20)
-            GameFrame:SetAttribute("FullGameName", detectedName)
+            detectedGameName = detectedName
+            GameTextLabel.Text = compactStatusText(detectedGameName, 20)
+            GameFrame:SetAttribute("FullGameName", detectedGameName)
+            for _, listener in ipairs(gameNameListeners) do
+                task.spawn(listener, detectedGameName)
+            end
             task.defer(updateTopTitleSpace)
         end
     end))
@@ -1195,7 +1204,7 @@ function Zeroin:Window(GuiConfig)
 
 
 
-    local DiscordUrl = "https://discord.gg/9snzkaGkRE"
+    local DiscordUrl = GuiConfig.Discord
 
     local DiscordCard = Instance.new("Frame")
     DiscordCard.Name = "DiscordCard"
@@ -1245,7 +1254,7 @@ function Zeroin:Window(GuiConfig)
     DiscordLink.Name = "Link"
     DiscordLink.BackgroundTransparency = 1
     DiscordLink.Font = Enum.Font.GothamMedium
-    DiscordLink.Text = "discord.gg/9snzkaGkRE"
+    DiscordLink.Text = DiscordUrl:gsub("^https?://", "")
     DiscordLink.TextColor3 = Color3.fromRGB(151, 190, 169)
     DiscordLink.TextSize = 8
     DiscordLink.TextTruncate = Enum.TextTruncate.AtEnd
@@ -1262,18 +1271,23 @@ function Zeroin:Window(GuiConfig)
     DiscordButton.ZIndex = 4
     DiscordButton.Parent = DiscordCard
 
-    DiscordButton.Activated:Connect(function()
-        CircleClick(DiscordButton, Mouse.X, Mouse.Y)
+    local function copyDiscordInvite()
         if setclipboard then
             local ok = pcall(setclipboard, DiscordUrl)
             if ok then
                 notif("Discord invite copied to clipboard!", 3, GuiConfig.Color, "Zeroin", "Discord")
-            else
-                notif("Failed to copy Discord invite.", 3, Color3.fromRGB(220, 90, 90), "Zeroin", "Discord")
+                return true
             end
+            notif("Failed to copy Discord invite.", 3, Color3.fromRGB(220, 90, 90), "Zeroin", "Discord")
         else
             notif("Clipboard is not supported by this executor.", 3, Color3.fromRGB(220, 170, 80), "Zeroin", "Discord")
         end
+        return false
+    end
+
+    DiscordButton.Activated:Connect(function()
+        CircleClick(DiscordButton, Mouse.X, Mouse.Y)
+        copyDiscordInvite()
     end)
 
     UICorner2.CornerRadius = UDim.new(0, 2)
@@ -1943,6 +1957,7 @@ function Zeroin:Window(GuiConfig)
 
     local CountTab = 0
     local CountDropdown = 0
+    local BuiltInInfoTab
     local PageTransitionToken = 0
 
     local function SetSectionArrowsVisible(visible)
@@ -1967,6 +1982,11 @@ function Zeroin:Window(GuiConfig)
         local TabConfig = TabConfig or {}
         TabConfig.Name = TabConfig.Name or "Tab"
         TabConfig.Icon = TabConfig.Icon or ""
+
+        -- Script lama yang masih membuat tab Info tidak menghasilkan duplikat.
+        if BuiltInInfoTab and tostring(TabConfig.Name):lower() == "info" then
+            return BuiltInInfoTab
+        end
 
         local ScrolLayers = Instance.new("ScrollingFrame");
         local UIListLayout1 = Instance.new("UIListLayout");
@@ -4331,6 +4351,74 @@ function Zeroin:Window(GuiConfig)
         local safeName = TabConfig.Name:gsub("%s+", "_")
         _G[safeName] = Sections
         return Sections
+    end
+
+    if GuiConfig.BuiltInInfo then
+        BuiltInInfoTab = Tabs:AddTab({
+            Name = "Info",
+            Icon = "info"
+        })
+
+        local InfoSection = BuiltInInfoTab:AddSection({
+            Title = "Info Script Hub",
+            Layout = "Grid",
+            ItemGap = 4
+        })
+
+        InfoSection:AddParagraph({
+            Title = "Welcome to " .. tostring(GuiConfig.Title),
+            Content = "Welcome! This hub is designed to keep every feature organized, responsive, and easy to use. Select a tab from the sidebar to get started.",
+            Icon = "sparkles",
+            Column = "Full",
+            Row = 1
+        })
+
+        local function scriptInfoContent(gameName)
+            return string.format(
+                "<b>Hub:</b> %s\n<b>Current game:</b> %s\n<b>Version:</b> %s\n<b>Executor:</b> %s",
+                tostring(GuiConfig.Title),
+                tostring(gameName),
+                tostring(GuiConfig.Version),
+                tostring(execName)
+            )
+        end
+
+        local ScriptInfoParagraph = InfoSection:AddParagraph({
+            Title = "Script Information",
+            Content = scriptInfoContent(detectedGameName),
+            Icon = "badge-info",
+            Column = "Full",
+            Row = 2
+        })
+
+        table.insert(gameNameListeners, function(gameName)
+            if not isDestroyed then
+                ScriptInfoParagraph:SetContent(scriptInfoContent(gameName))
+            end
+        end)
+
+        InfoSection:AddParagraph({
+            Title = "Quick Guide",
+            Content = "Use the search field to find features quickly. Press F3 or the floating Zeroin logo to minimize and restore the window. Closing the window automatically cleans the previous Zeroin UI before the next execution.",
+            Icon = "book-open-check",
+            Column = "Full",
+            Row = 3
+        })
+
+        InfoSection:AddParagraph({
+            Title = "Community & Support",
+            Content = "Join the official Discord community for announcements, updates, support, and new script releases. The button below copies the invite link automatically.",
+            Icon = "messages-square",
+            Column = "Full",
+            Row = 4
+        })
+
+        InfoSection:AddButton({
+            Title = "Join Discord",
+            Column = "Full",
+            Row = 5,
+            Callback = copyDiscordInvite
+        })
     end
 
     -- ═══════════════════════════════════════════════════

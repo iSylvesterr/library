@@ -21,6 +21,43 @@ local Window = Zeroin:Window({
 })
 ```
 
+## Built-in Info Tab
+
+Setiap `Window` otomatis membuat tab `Info` sebagai tab pertama. Script pengguna tidak perlu menulis `Window:AddTab({ Name = "Info" })`.
+
+Isi bawaan:
+
+```text
+Info Script Hub
+├── Welcome to <Window Title>
+├── Script Information
+│   ├── Hub
+│   ├── Current game (auto-detected)
+│   ├── Version
+│   └── Executor
+├── Quick Guide
+├── Community & Support
+└── Join Discord
+```
+
+Tombol `Join Discord` otomatis menyalin invite yang sama dengan footer card dan menampilkan notification. Atur datanya dari config Window:
+
+```lua
+local Window = Zeroin:Window({
+    Title = "My Script Hub",
+    Version = "1.2.0",
+    Discord = "https://discord.gg/yourinvite"
+})
+```
+
+Tab Info dapat dimatikan bila benar-benar tidak diperlukan:
+
+```lua
+BuiltInInfo = false
+```
+
+Untuk kompatibilitas, script lama yang masih memanggil `AddTab({ Name = "Info" })` akan menerima tab Info bawaan dan tidak membuat duplikat.
+
 ## Membuat Tab dan Section
 
 ```lua
