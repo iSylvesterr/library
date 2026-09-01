@@ -33,9 +33,84 @@ local MainTab = Window:AddTab({
 local FarmSection = MainTab:AddSection("Farming")
 ```
 
-## Sistem Layout: FullWidth
+## Sistem Layout: Column, Row, dan FullWidth
 
-Setiap komponen mendukung properti `FullWidth`.
+Semua komponen dapat ditempatkan langsung dari script tanpa mengubah library:
+
+```lua
+Column = "Left"  -- sisi kiri
+Column = "Right" -- sisi kanan
+Column = "Full"  -- satu baris penuh
+Row = 1           -- nomor baris (mulai dari 1)
+```
+
+Prioritas layout:
+
+1. `Column + Row` menempatkan komponen secara eksplisit.
+2. `Column` tanpa `Row` mencari slot kosong berikutnya pada sisi tersebut.
+3. `FullWidth` tetap tersedia untuk kompatibilitas script lama.
+4. Tanpa semua properti di atas, library memakai layout default komponen.
+
+Jika slot yang diminta sudah terisi, Zeroin tidak menimpa komponen lama; komponen baru dipindahkan ke row kosong berikutnya pada kolom yang sama.
+
+`Column = "Left"` atau `"Right"` otomatis menggunakan visual half-width. `Column = "Full"` otomatis menggunakan visual full-width.
+
+### Dua toggle sama-sama di kiri
+
+```lua
+Section:AddToggle({
+    Title = "Auto Collect",
+    Column = "Left",
+    Row = 1
+})
+
+Section:AddToggle({
+    Title = "Auto Sell",
+    Column = "Left",
+    Row = 2
+})
+```
+
+Hasil:
+
+```text
+Auto Collect | kosong
+Auto Sell    | kosong
+```
+
+### Mengisi sisi kanan secara bebas
+
+```lua
+Section:AddDropdown({
+    Title = "Target",
+    Column = "Right",
+    Row = 2,
+    Options = {"Nearest", "Highest"}
+})
+```
+
+Hasil:
+
+```text
+Auto Collect | kosong
+Auto Sell    | Target dropdown
+```
+
+### Full row eksplisit
+
+```lua
+Section:AddSlider({
+    Title = "Range",
+    Column = "Full",
+    Row = 3,
+    Min = 10,
+    Max = 100
+})
+```
+
+### Kompatibilitas FullWidth
+
+Setiap komponen masih mendukung properti `FullWidth`.
 
 | Komponen | Default | Untuk mengubah |
 |---|---:|---|

@@ -2058,6 +2058,7 @@ function Zeroin:Window(GuiConfig)
 
             local NextItem = 0
             local PendingRow
+            local RowsByIndex = {}
 
             local function updateRowHeight(row)
                 if not row then return end
@@ -2085,40 +2086,101 @@ function Zeroin:Window(GuiConfig)
             end
 
             local function makeRow(order)
+                if RowsByIndex[order] then return RowsByIndex[order] end
                 local row = Instance.new("Frame")
                 row.Name = "SectionRow"
+                row:SetAttribute("ZeroinRow", order + 1)
                 row.BackgroundTransparency = 1
                 row.BorderSizePixel = 0
                 row.LayoutOrder = order
                 row.Size = UDim2.new(1, 0, 0, 0)
                 row.Parent = SectionAdd
+                RowsByIndex[order] = row
                 return row
             end
 
-            local function MountSectionItem(item, fullWidth)
-                local row, cell, column
+            local function rowHasSlot(row, column)
+                if not row then return false end
+                if column == "Full" then
+                    return not row:FindFirstChild("FullCell")
+                        and not row:FindFirstChild("LeftCell")
+                        and not row:FindFirstChild("RightCell")
+                end
+                return not row:FindFirstChild("FullCell")
+                    and not row:FindFirstChild(column .. "Cell")
+            end
 
-                if fullWidth then
-                    -- Finish a pending half-row, then mount this item alone.
-                    if NextItem % 2 == 1 then NextItem = NextItem + 1 end
-                    row = makeRow(math.floor(NextItem / 2))
-                    cell = Instance.new("Frame")
+            local function findAvailableRow(column, startIndex)
+                local index = math.max(0, startIndex or 0)
+                while not rowHasSlot(RowsByIndex[index], column) and RowsByIndex[index] do
+                    index = index + 1
+                end
+                return index
+            end
+
+            local function MountSectionItem(item, config, defaultFullWidth)
+                config = config or {}
+                local requestedColumn = config.Column
+                if type(requestedColumn) == "string" then
+                    requestedColumn = requestedColumn:sub(1, 1):upper() .. requestedColumn:sub(2):lower()
+                end
+                if requestedColumn ~= "Left" and requestedColumn ~= "Right" and requestedColumn ~= "Full" then
+                    requestedColumn = nil
+                end
+
+                -- Column is the primary public layout API. Normalize
+                -- FullWidth so component-specific visual layouts (dropdown,
+                -- slider, etc.) automatically match the requested column.
+                if requestedColumn == "Left" or requestedColumn == "Right" then
+                    config.FullWidth = false
+                elseif requestedColumn == "Full" then
+                    config.FullWidth = true
+                end
+
+                local explicitRow = tonumber(config.Row)
+                if explicitRow then explicitRow = math.max(1, math.floor(explicitRow)) end
+
+                local fullWidth = requestedColumn == "Full"
+                    or (requestedColumn == nil and config.FullWidth == true)
+                    or (requestedColumn == nil and config.FullWidth == nil and defaultFullWidth)
+
+                local column = fullWidth and "Full" or requestedColumn
+                local rowIndex
+
+                if explicitRow then
+                    rowIndex = explicitRow - 1
+                    column = column or "Left"
+                    if not rowHasSlot(RowsByIndex[rowIndex], column) and RowsByIndex[rowIndex] then
+                        warn(("Zeroin UI: Row %d Column %s is occupied; using next free row."):format(explicitRow, column))
+                        rowIndex = findAvailableRow(column, rowIndex + 1)
+                    end
+                elseif column then
+                    rowIndex = findAvailableRow(column, 0)
+                else
+                    -- Legacy automatic sequence: left, right, then next row.
+                    column = (NextItem % 2 == 0) and "Left" or "Right"
+                    rowIndex = math.floor(NextItem / 2)
+                    if not rowHasSlot(RowsByIndex[rowIndex], column) and RowsByIndex[rowIndex] then
+                        rowIndex = findAvailableRow(column, rowIndex)
+                    end
+                    NextItem = math.max(NextItem + 1, (rowIndex * 2) + (column == "Right" and 2 or 1))
+                end
+
+                local row = makeRow(rowIndex)
+                local cell = Instance.new("Frame")
+
+                if column == "Full" then
                     cell.Name = "FullCell"
                     cell.Position = UDim2.fromOffset(0, 0)
                     cell.Size = UDim2.new(1, 0, 0, item.Size.Y.Offset)
-                    column = "Full"
-                    NextItem = NextItem + 2
+                    NextItem = math.max(NextItem, (rowIndex + 1) * 2)
                     PendingRow = nil
                 else
-                    local isLeft = NextItem % 2 == 0
-                    row = isLeft and makeRow(math.floor(NextItem / 2)) or PendingRow
-                    if isLeft then PendingRow = row end
-                    cell = Instance.new("Frame")
-                    cell.Name = isLeft and "LeftCell" or "RightCell"
+                    local isLeft = column == "Left"
+                    cell.Name = column .. "Cell"
                     cell.Position = isLeft and UDim2.fromOffset(0, 0) or UDim2.new(0.5, 3, 0, 0)
                     cell.Size = UDim2.new(0.5, -3, 0, item.Size.Y.Offset)
-                    column = isLeft and "Left" or "Right"
-                    NextItem = NextItem + 1
+                    NextItem = math.max(NextItem, (rowIndex * 2) + (isLeft and 1 or 2))
                 end
 
                 cell.BackgroundTransparency = 1
@@ -2127,6 +2189,7 @@ function Zeroin:Window(GuiConfig)
 
                 item:SetAttribute("ZeroinSectionItem", true)
                 item:SetAttribute("ZeroinColumn", column)
+                item:SetAttribute("ZeroinRow", rowIndex + 1)
                 item.LayoutOrder = 0
                 item.AnchorPoint = Vector2.zero
                 item.Position = UDim2.fromOffset(0, 0)
@@ -2168,7 +2231,7 @@ function Zeroin:Window(GuiConfig)
                 Paragraph.LayoutOrder = CountItem
                 Paragraph.Size = UDim2.new(1, 0, 0, 46)
                 Paragraph.Name = "Paragraph"
-                MountSectionItem(Paragraph, ParagraphConfig.FullWidth ~= false)
+                MountSectionItem(Paragraph, ParagraphConfig, true)
 
                 UICorner14.CornerRadius = UDim.new(0, 4)
                 UICorner14.Parent = Paragraph
@@ -2320,7 +2383,7 @@ function Zeroin:Window(GuiConfig)
                 Panel.BackgroundTransparency = 0.935
                 Panel.Size = UDim2.new(1, 0, 0, baseHeight)
                 Panel.LayoutOrder = CountItem
-                MountSectionItem(Panel, PanelConfig.FullWidth ~= false)
+                MountSectionItem(Panel, PanelConfig, true)
 
                 local UICorner = Instance.new("UICorner")
                 UICorner.CornerRadius = UDim.new(0, 4)
@@ -2455,7 +2518,7 @@ function Zeroin:Window(GuiConfig)
                 Button.BackgroundTransparency = 1
                 Button.Size = UDim2.new(1, 0, 0, 40)
                 Button.LayoutOrder = CountItem
-                MountSectionItem(Button, ButtonConfig.FullWidth ~= false)
+                MountSectionItem(Button, ButtonConfig, true)
 
                 local UICorner = Instance.new("UICorner")
                 UICorner.CornerRadius = UDim.new(0, 4)
@@ -2627,7 +2690,7 @@ function Zeroin:Window(GuiConfig)
                 Toggle.BorderSizePixel = 0
                 Toggle.LayoutOrder = CountItem
                 Toggle.Name = "Toggle"
-                MountSectionItem(Toggle, ToggleConfig.FullWidth == true)
+                MountSectionItem(Toggle, ToggleConfig, false)
 
                 UICorner20.CornerRadius = UDim.new(0, 4)
                 UICorner20.Parent = Toggle
@@ -2960,7 +3023,7 @@ function Zeroin:Window(GuiConfig)
                 Slider.LayoutOrder = CountItem
                 Slider.Size = UDim2.new(1, 0, 0, 46)
                 Slider.Name = "Slider"
-                MountSectionItem(Slider, SliderConfig.FullWidth ~= false)
+                MountSectionItem(Slider, SliderConfig, true)
 
                 UICorner15.CornerRadius = UDim.new(0, 4)
                 UICorner15.Parent = Slider
@@ -3249,7 +3312,7 @@ function Zeroin:Window(GuiConfig)
                 Input.LayoutOrder = CountItem
                 Input.Size = UDim2.new(1, 0, 0, 46)
                 Input.Name = "Input"
-                MountSectionItem(Input, InputConfig.FullWidth ~= false)
+                MountSectionItem(Input, InputConfig, true)
 
                 UICorner12.CornerRadius = UDim.new(0, 4)
                 UICorner12.Parent = Input
@@ -3397,7 +3460,7 @@ function Zeroin:Window(GuiConfig)
                 Dropdown.LayoutOrder = CountItem
                 Dropdown.Size = UDim2.new(1, 0, 0, 46)
                 Dropdown.Name = "Dropdown"
-                MountSectionItem(Dropdown, DropdownConfig.FullWidth ~= false)
+                MountSectionItem(Dropdown, DropdownConfig, true)
 
                 DropdownButton.Text = ""
                 DropdownButton.BackgroundTransparency = 1
@@ -3875,7 +3938,7 @@ function Zeroin:Window(GuiConfig)
             function Items:AddDivider()
                 local Divider = Instance.new("Frame")
                 Divider.Name = "Divider"
-                MountSectionItem(Divider, true)
+                MountSectionItem(Divider, { Column = "Full" }, true)
                 Divider.AnchorPoint = Vector2.new(0.5, 0)
                 Divider.Position = UDim2.new(0.5, 0, 0, 0)
                 Divider.Size = UDim2.new(1, 0, 0, 2)
@@ -3905,7 +3968,7 @@ function Zeroin:Window(GuiConfig)
 
                 local SubSection = Instance.new("Frame")
                 SubSection.Name = "SubSection"
-                MountSectionItem(SubSection, true)
+                MountSectionItem(SubSection, { Column = "Full" }, true)
                 SubSection.BackgroundTransparency = 1
                 SubSection.Size = UDim2.new(1, 0, 0, 22)
                 SubSection.LayoutOrder = CountItem
