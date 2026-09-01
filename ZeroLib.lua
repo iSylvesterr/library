@@ -1457,9 +1457,10 @@ function Zeroin:Window(GuiConfig)
         MainButton.ScaleType = Enum.ScaleType.Fit
 
         local ToggleUIStroke = Instance.new("UIStroke")
-        ToggleUIStroke.Color = Color3.fromRGB(255, 255, 255)
+        ToggleUIStroke.Color = ThemeColors.Border
         ToggleUIStroke.Thickness = 1.2
-        ToggleUIStroke.Transparency = 0.5
+        ToggleUIStroke.Transparency = 0.18
+        ToggleUIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
         ToggleUIStroke.Parent = MainButton
 
         local UICorner = Instance.new("UICorner")
