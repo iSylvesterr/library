@@ -495,6 +495,18 @@ Section:AddSubSection("Advanced")
 
 ## Notification
 
+Default notification memakai logo Zeroin no-background. Icon mengikuti `NotificationIcon`, lalu fallback ke `LogoHUB`, lalu asset no-background bawaan `124404129684886`.
+
+```lua
+local Window = Zeroin:Window({
+    Title = "Zeroin",
+    LogoHUB = "124404129684886",
+    NotificationIcon = "124404129684886" -- optional override
+})
+```
+
+Notification biasa tidak perlu menentukan icon lagi:
+
 ```lua
 Zeroin:MakeNotify({
     Title = "Zeroin",

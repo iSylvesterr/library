@@ -397,7 +397,10 @@ function CircleClick(Button, X, Y)
     end)
 end
 
-local Zeroin = {}
+local DEFAULT_ZEROIN_NOTIFICATION_LOGO = "124404129684886"
+local Zeroin = {
+    NotificationIcon = DEFAULT_ZEROIN_NOTIFICATION_LOGO,
+}
 
 function Zeroin:GetIcon(name)
     return IconPack.GetIcon(name)
@@ -420,7 +423,7 @@ function Zeroin:MakeNotify(NotifyConfig)
     NotifyConfig.Title = NotifyConfig.Title or "Zeroin"
     NotifyConfig.Description = NotifyConfig.Description or "Notification"
     NotifyConfig.Content = NotifyConfig.Content or "Content"
-    NotifyConfig.Icon = NotifyConfig.Icon or "bell"
+    NotifyConfig.Icon = NotifyConfig.Icon or Zeroin.NotificationIcon or DEFAULT_ZEROIN_NOTIFICATION_LOGO
     NotifyConfig.Color = NotifyConfig.Color or Color3.fromRGB(150, 150, 150)
     NotifyConfig.Time = NotifyConfig.Time or 0.5
     NotifyConfig.Delay = NotifyConfig.Delay or 5
@@ -673,9 +676,13 @@ function Zeroin:Window(GuiConfig)
     GuiConfig.Color2       = GuiConfig.Color2 or ThemeColors.BackgroundTop
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
+    GuiConfig.NotificationIcon = GuiConfig.NotificationIcon
+        or GuiConfig.LogoHUB
+        or DEFAULT_ZEROIN_NOTIFICATION_LOGO
     GuiConfig.Discord      = GuiConfig.Discord or "https://discord.gg/9snzkaGkRE"
     GuiConfig.BuiltInInfo  = GuiConfig.BuiltInInfo ~= false
 
+    Zeroin.NotificationIcon = GuiConfig.NotificationIcon
     CURRENT_VERSION        = GuiConfig.Version
     LoadConfigFromFile()
 
