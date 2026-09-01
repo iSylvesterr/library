@@ -3,5 +3,7 @@
 
 # Kecuali file ini (biar tetep bisa di-push ke Github)
 !NewUI.lua
+!ZeroLib.lua
+!README.md
 !.gitignore
 !.agents/
