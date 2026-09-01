@@ -2637,10 +2637,10 @@ function Zeroin:Window(GuiConfig)
                 ToggleTitle.TextSize = 13
                 ToggleTitle.TextColor3 = Color3.fromRGB(231, 231, 231)
                 ToggleTitle.TextXAlignment = Enum.TextXAlignment.Left
-                ToggleTitle.TextYAlignment = Enum.TextYAlignment.Top
+                ToggleTitle.TextYAlignment = Enum.TextYAlignment.Center
                 ToggleTitle.BackgroundTransparency = 1
-                ToggleTitle.Position = UDim2.new(0, 10, 0, 10)
-                ToggleTitle.Size = UDim2.new(1, -100, 0, 13)
+                ToggleTitle.Position = UDim2.new(0, 10, 0, 0)
+                ToggleTitle.Size = UDim2.new(1, -100, 1, 0)
                 ToggleTitle.Name = "ToggleTitle"
                 ToggleTitle.Parent = Toggle
 
@@ -2663,43 +2663,63 @@ function Zeroin:Window(GuiConfig)
                 ToggleContent.TextSize = 12
                 ToggleContent.TextTransparency = 0.6
                 ToggleContent.TextXAlignment = Enum.TextXAlignment.Left
-                ToggleContent.TextYAlignment = Enum.TextYAlignment.Bottom
+                ToggleContent.TextYAlignment = Enum.TextYAlignment.Top
                 ToggleContent.BackgroundTransparency = 1
+                ToggleContent.TextWrapped = true
                 ToggleContent.Size = UDim2.new(1, -100, 0, 12)
                 ToggleContent.Name = "ToggleContent"
                 ToggleContent.Parent = Toggle
 
-                if ToggleConfig.Title2 ~= "" then
-                    Toggle.Size = UDim2.new(1, 0, 0, 57)
-                    ToggleContent.Position = UDim2.new(0, 10, 0, 36)
-                    ToggleTitle2.Visible = true
-                else
-                    Toggle.Size = UDim2.new(1, 0, 0, 46)
-                    ToggleContent.Position = UDim2.new(0, 10, 0, 23)
-                    ToggleTitle2.Visible = false
-                end
+                local hasTitle2 = ToggleConfig.Title2 ~= ""
+                local hasDescription = ToggleConfig.Content ~= ""
+                local updatingToggleLayout = false
 
-                ToggleContent.Size = UDim2.new(1, -100, 0,
-                    12 + (12 * (ToggleContent.TextBounds.X // ToggleContent.AbsoluteSize.X)))
-                ToggleContent.TextWrapped = true
-                if ToggleConfig.Title2 ~= "" then
-                    Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 47)
-                else
-                    Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 33)
-                end
+                local function UpdateToggleLayout()
+                    if updatingToggleLayout then return end
+                    updatingToggleLayout = true
 
-                ToggleContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                    ToggleContent.TextWrapped = false
-                    ToggleContent.Size = UDim2.new(1, -100, 0,
-                        12 + (12 * (ToggleContent.TextBounds.X // ToggleContent.AbsoluteSize.X)))
-                    if ToggleConfig.Title2 ~= "" then
-                        Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 47)
+                    if not hasDescription and not hasTitle2 then
+                        -- Compact title-only row: title is vertically centered.
+                        Toggle.Size = UDim2.new(1, 0, 0, 40)
+                        ToggleTitle.Position = UDim2.fromOffset(10, 0)
+                        ToggleTitle.Size = UDim2.new(1, -100, 1, 0)
+                        ToggleTitle.TextYAlignment = Enum.TextYAlignment.Center
+                        ToggleTitle2.Visible = false
+                        ToggleContent.Visible = false
                     else
-                        Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 33)
+                        ToggleTitle.Position = UDim2.fromOffset(10, 7)
+                        ToggleTitle.Size = UDim2.new(1, -100, 0, 14)
+                        ToggleTitle.TextYAlignment = Enum.TextYAlignment.Top
+
+                        local descriptionY
+                        if hasTitle2 then
+                            ToggleTitle2.Visible = true
+                            ToggleTitle2.Position = UDim2.fromOffset(10, 21)
+                            descriptionY = 36
+                        else
+                            ToggleTitle2.Visible = false
+                            descriptionY = 23
+                        end
+
+                        if hasDescription then
+                            ToggleContent.Visible = true
+                            ToggleContent.Position = UDim2.fromOffset(10, descriptionY)
+                            local contentHeight = math.max(12, math.ceil(ToggleContent.TextBounds.Y))
+                            ToggleContent.Size = UDim2.new(1, -100, 0, contentHeight)
+                            Toggle.Size = UDim2.new(1, 0, 0, descriptionY + contentHeight + 9)
+                        else
+                            ToggleContent.Visible = false
+                            Toggle.Size = UDim2.new(1, 0, 0, 42)
+                        end
                     end
-                    ToggleContent.TextWrapped = true
-                    UpdateSizeSection()
-                end)
+
+                    updatingToggleLayout = false
+                    task.defer(UpdateSizeSection)
+                end
+
+                task.defer(UpdateToggleLayout)
+                ToggleContent:GetPropertyChangedSignal("TextBounds"):Connect(UpdateToggleLayout)
+                ToggleContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateToggleLayout)
 
                 ToggleButton.Font = Enum.Font.SourceSans
                 ToggleButton.Text = ""
