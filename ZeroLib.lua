@@ -1796,6 +1796,34 @@ function Zeroin:Window(GuiConfig)
     DropPageLayout.Parent = DropdownFolder
     --// Tabs
     local Tabs = {}
+
+    -- The public Window object is Tabs. Forward lifecycle methods from the
+    -- internal controller so scripts can manage every feature from Window.
+    function Tabs:AddCleanup(resource)
+        return GuiFunc:AddCleanup(resource)
+    end
+    function Tabs:OnClose(callback)
+        return GuiFunc:OnClose(callback)
+    end
+    function Tabs:CreateCleanupToken()
+        return GuiFunc:CreateCleanupToken()
+    end
+    function Tabs:Spawn(callback)
+        return GuiFunc:Spawn(callback)
+    end
+    function Tabs:IsDestroyed()
+        return GuiFunc:IsDestroyed()
+    end
+    function Tabs:Destroy()
+        return GuiFunc:Destroy()
+    end
+    function Tabs:Close()
+        return GuiFunc:Close()
+    end
+    function Tabs:DestroyGui()
+        return GuiFunc:DestroyGui()
+    end
+
     local CountTab = 0
     local CountDropdown = 0
     local PageTransitionToken = 0
