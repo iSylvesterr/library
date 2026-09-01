@@ -3571,6 +3571,10 @@ function Zeroin:Window(GuiConfig)
                     updateInlineMenuSize()
                 end
 
+                DropdownButton.Activated:Connect(function()
+                    setMenuOpen(not MenuOpen)
+                end)
+
                 local function pointInside(guiObject, point)
                     if not guiObject or not guiObject.Visible then return false end
                     local position = guiObject.AbsolutePosition
@@ -3599,13 +3603,9 @@ function Zeroin:Window(GuiConfig)
 
                     local point = Vector2.new(input.Position.X, input.Position.Y)
 
-                    -- Coordinate-based selector toggling is deterministic even
-                    -- when the popup portal/overlay is rendered above sibling
-                    -- rows in CoreGui.
-                    if pointInside(SelectOptionsFrame, point) then
-                        setMenuOpen(not MenuOpen)
-                        return
-                    end
+                    -- The selector button owns open/close toggling. The global
+                    -- handler only dismisses clicks outside the selector/menu.
+                    if pointInside(SelectOptionsFrame, point) then return end
 
                     if not pointInside(DropdownContainer, point) then
                         setMenuOpen(false)
