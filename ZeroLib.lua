@@ -2242,7 +2242,8 @@ function Zeroin:Window(GuiConfig)
                 or Enum.TextXAlignment.Left
             SectionTitle.TextYAlignment = Enum.TextYAlignment.Top
             SectionTitle.BackgroundTransparency = 1
-            SectionTitle.Position = UDim2.fromOffset(6, 0)
+            -- Lower only the title text; the section box geometry stays fixed.
+            SectionTitle.Position = UDim2.fromOffset(6, 2)
             SectionTitle.Size = UDim2.new(1, -12, 0, 18)
             SectionTitle.Visible = not SectionConfig.HideTitle
             SectionTitle.Parent = SectionReal
