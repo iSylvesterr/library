@@ -2027,7 +2027,8 @@ function Zeroin:Window(GuiConfig)
         ScrolLayers.Name = "ScrolLayers"
         ScrolLayers.Parent = LayersFolder
 
-        UIListLayout1.Padding = UDim.new(0, 3)
+        -- Give each section title breathing room from the previous box outline.
+        UIListLayout1.Padding = UDim.new(0, 8)
         UIListLayout1.SortOrder = Enum.SortOrder.LayoutOrder
         UIListLayout1.Parent = ScrolLayers
 
