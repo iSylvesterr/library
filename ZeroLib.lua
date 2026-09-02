@@ -2027,8 +2027,9 @@ function Zeroin:Window(GuiConfig)
         ScrolLayers.Name = "ScrolLayers"
         ScrolLayers.Parent = LayersFolder
 
-        -- Give each section title breathing room from the previous box outline.
-        UIListLayout1.Padding = UDim.new(0, 8)
+        -- Balanced section rhythm: enough separation from the previous box
+        -- without making stacked sections feel disconnected.
+        UIListLayout1.Padding = UDim.new(0, 5)
         UIListLayout1.SortOrder = Enum.SortOrder.LayoutOrder
         UIListLayout1.Parent = ScrolLayers
 
@@ -2225,7 +2226,7 @@ function Zeroin:Window(GuiConfig)
             SectionReal.BackgroundTransparency = 1
             SectionReal.BorderSizePixel = 0
             SectionReal.Position = UDim2.fromOffset(0, 0)
-            SectionReal.Size = UDim2.new(1, 0, 0, SectionConfig.HideTitle and 0 or 27)
+            SectionReal.Size = UDim2.new(1, 0, 0, SectionConfig.HideTitle and 0 or 24)
             SectionReal.Parent = Section
 
             local SectionTitle = Instance.new("TextLabel")
@@ -2246,7 +2247,7 @@ function Zeroin:Window(GuiConfig)
             SectionTitle.Visible = not SectionConfig.HideTitle
             SectionTitle.Parent = SectionReal
 
-            local SectionContentOffset = SectionConfig.HideTitle and 0 or 27
+            local SectionContentOffset = SectionConfig.HideTitle and 0 or 24
             local SectionAdd = Instance.new("Frame")
             SectionAdd.Name = "SectionAdd"
             SectionAdd.BackgroundColor3 = Color3.fromRGB(10, 40, 29)
