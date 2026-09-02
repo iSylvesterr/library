@@ -388,7 +388,7 @@ print(Dropdown:GetValue())
 Dropdown:Clear()
 ```
 
-Dropdown menampilkan maksimal 5 opsi. Opsi tambahan dapat dicari dengan search atau internal scroll. Klik di luar atau Escape menutup popup. Popup memakai animasi `0.16s`: fade dan scale `0.96→1` saat buka, lalu `1→0.96` saat tutup, disertai pergeseran vertikal 5px dan rotasi chevron. Tween lama otomatis dibatalkan ketika selector diklik cepat agar state tidak glitch.
+Dropdown menampilkan maksimal 5 opsi. Opsi tambahan dapat dicari dengan search atau internal scroll. Klik di luar atau Escape menutup popup. Popup dirender melalui portal global di luar window content sehingga dropdown paling bawah tidak terpotong. Panel menempel 6px di sisi kanan window jika ruang cukup, atau otomatis pindah ke kiri ketika window mepet kanan. Posisi vertikal mengikuti selector lalu di-clamp ke tinggi visual window; lebar responsif 42% window dengan batas 200–260px. Popup ikut bergerak saat window di-drag/resized. Animasi `0.16s` memakai fade, scale `0.96→1`, horizontal slide dari arah window, dan rotasi chevron. Tween lama otomatis dibatalkan ketika selector diklik cepat agar state tidak glitch.
 
 ## Slider
 

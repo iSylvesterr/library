@@ -798,6 +798,20 @@ function Zeroin:Window(GuiConfig)
     ZeroinOnTop.ResetOnSpawn = false
     ZeroinOnTop.Parent = game:GetService("CoreGui")
 
+    -- Global dropdown portal. Popup menus live outside the scroll/page tree so
+    -- bottom-row dropdowns can never be clipped by the window content.
+    local DropdownPortal = Instance.new("Frame")
+    DropdownPortal.Name = "DropdownPortal"
+    DropdownPortal.BackgroundTransparency = 1
+    DropdownPortal.BorderSizePixel = 0
+    DropdownPortal.Position = UDim2.fromOffset(0, 0)
+    DropdownPortal.Size = UDim2.fromScale(1, 1)
+    DropdownPortal.Active = false
+    DropdownPortal.ZIndex = 190
+    DropdownPortal.Parent = ZeroinOnTop
+
+    local ActiveDropdownCloser
+
     DropShadowHolder.BackgroundTransparency = 1
 	--DropShadowHolder.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     DropShadowHolder.BorderSizePixel = 0
@@ -3938,12 +3952,12 @@ function Zeroin:Window(GuiConfig)
                 DropdownContainer.BorderSizePixel = 0
                 DropdownContainer.ClipsDescendants = true
                 DropdownContainer.Active = true
-                DropdownContainer.AnchorPoint = Vector2.new(1, 0)
-                DropdownContainer.Size = UDim2.fromOffset(154, 0)
+                DropdownContainer.AnchorPoint = Vector2.new(0, 0)
+                DropdownContainer.Size = UDim2.fromOffset(220, 0)
                 DropdownContainer.Visible = false
                 DropdownContainer.GroupTransparency = 1
                 DropdownContainer.ZIndex = 100
-                DropdownContainer.Parent = SectionOverlay
+                DropdownContainer.Parent = DropdownPortal
 
                 local MenuCorner = Instance.new("UICorner")
                 MenuCorner.CornerRadius = UDim.new(0, 6)
@@ -4051,26 +4065,63 @@ function Zeroin:Window(GuiConfig)
                     return count
                 end
 
-                updateInlineMenuSize = function()
+                local PopupSide = "Right"
+                local PopupFinalPosition = UDim2.fromOffset(0, 0)
+                local PopupHiddenPosition = UDim2.fromOffset(0, 0)
+
+                local function calculatePopupGeometry()
+                    local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+                        or Vector2.new(1920, 1080)
+                    local windowPosition = Main.AbsolutePosition
+                    local windowSize = Main.AbsoluteSize
+                    local popupWidth = math.clamp(math.floor(windowSize.X * 0.42), 200, 260)
+
                     local visibleCount = math.max(1, countVisibleOptions())
-                    local listHeight = math.min(visibleCount, MaxVisibleOptions) * 32
-                    local menuHeight = 40 + listHeight
-                    DropdownContainer.Size = UDim2.fromOffset(154, menuHeight)
-                    Dropdown:SetAttribute("MenuOpen", MenuOpen)
+                    local desiredHeight = 40 + math.min(visibleCount, MaxVisibleOptions) * 32
+                    local popupHeight = math.min(desiredHeight, math.max(104, windowSize.Y - 12))
+
+                    local gap = 6
+                    local rightSpace = viewportSize.X - (windowPosition.X + windowSize.X)
+                    local leftSpace = windowPosition.X
+                    if rightSpace >= popupWidth + gap then
+                        PopupSide = "Right"
+                    elseif leftSpace >= popupWidth + gap then
+                        PopupSide = "Left"
+                    else
+                        PopupSide = rightSpace >= leftSpace and "Right" or "Left"
+                    end
+
+                    local popupX = PopupSide == "Right"
+                        and (windowPosition.X + windowSize.X + gap)
+                        or (windowPosition.X - popupWidth - gap)
+                    popupX = math.clamp(popupX, 4, math.max(4, viewportSize.X - popupWidth - 4))
+
+                    -- Start near the selected row, but never leave the visual
+                    -- top/bottom bounds of the Zeroin window.
+                    local preferredY = SelectOptionsFrame.AbsolutePosition.Y
+                    local minY = windowPosition.Y + 6
+                    local maxY = windowPosition.Y + windowSize.Y - popupHeight - 6
+                    local popupY = math.clamp(preferredY, minY, math.max(minY, maxY))
+                    local hiddenX = popupX + (PopupSide == "Right" and -10 or 10)
+
+                    DropdownContainer.Size = UDim2.fromOffset(popupWidth, popupHeight)
+                    PopupFinalPosition = UDim2.fromOffset(popupX, popupY)
+                    PopupHiddenPosition = UDim2.fromOffset(hiddenX, popupY)
+                    DropdownContainer:SetAttribute("PopupSide", PopupSide)
+                    DropdownContainer:SetAttribute("SourceDropdown", DropdownConfig.Title)
+                    DropdownContainer:SetAttribute("PopupWidth", popupWidth)
+                    DropdownContainer:SetAttribute("PopupHeight", popupHeight)
                 end
 
-                local function getPopupPosition(yOffset)
-                    -- Position relative to the section portal, directly below
-                    -- the selector, so it moves naturally with section scroll.
-                    local dropdownRight = Dropdown.AbsolutePosition.X + Dropdown.AbsoluteSize.X
-                    local popupX = dropdownRight - SectionOverlay.AbsolutePosition.X - 7
-                    local popupY = Dropdown.AbsolutePosition.Y - SectionOverlay.AbsolutePosition.Y + 43
-                    return UDim2.fromOffset(popupX, popupY + (yOffset or 0))
+                updateInlineMenuSize = function()
+                    calculatePopupGeometry()
+                    Dropdown:SetAttribute("MenuOpen", MenuOpen)
                 end
 
                 local function updatePopupPosition()
                     if DropdownContainer.Visible then
-                        DropdownContainer.Position = getPopupPosition(MenuOpen and 0 or -5)
+                        calculatePopupGeometry()
+                        DropdownContainer.Position = MenuOpen and PopupFinalPosition or PopupHiddenPosition
                     end
                 end
 
@@ -4110,27 +4161,31 @@ function Zeroin:Window(GuiConfig)
                     if row and row:IsA("GuiObject") then row.ZIndex = 88 end
                     SelectOptionsFrame.ZIndex = 91
                     DropdownButton.ZIndex = 123
-                    SectionOverlay.Active = true
+                    DropdownPortal.Active = false
                     Dropdown:SetAttribute("MenuOpen", MenuOpen)
                     updateInlineMenuSize()
 
                     playMenuTween(OptionImg, tweenInfo, { Rotation = open and 180 or 0 })
 
                     if open then
+                        if ActiveDropdownCloser and ActiveDropdownCloser ~= setMenuOpen then
+                            pcall(ActiveDropdownCloser, false, true)
+                        end
+                        ActiveDropdownCloser = setMenuOpen
                         DropdownContainer.Visible = true
                         DropdownContainer.Active = true
-                        DropdownContainer.Position = getPopupPosition(-5)
+                        DropdownContainer.Position = PopupHiddenPosition
                         DropdownContainer.GroupTransparency = 1
                         MenuScale.Scale = 0.96
                         playMenuTween(DropdownContainer, tweenInfo, {
-                            Position = getPopupPosition(0),
+                            Position = PopupFinalPosition,
                             GroupTransparency = 0,
                         })
                         playMenuTween(MenuScale, tweenInfo, { Scale = 1 })
                     else
                         SearchBox:ReleaseFocus()
                         playMenuTween(DropdownContainer, tweenInfo, {
-                            Position = getPopupPosition(-5),
+                            Position = PopupHiddenPosition,
                             GroupTransparency = 1,
                         })
                         playMenuTween(MenuScale, tweenInfo, { Scale = 0.96 })
@@ -4144,7 +4199,10 @@ function Zeroin:Window(GuiConfig)
                             if row and row:IsA("GuiObject") then row.ZIndex = 1 end
                             SelectOptionsFrame.ZIndex = 1
                             DropdownButton.ZIndex = 123
-                            SectionOverlay.Active = false
+                            if ActiveDropdownCloser == setMenuOpen then
+                                ActiveDropdownCloser = nil
+                                DropdownPortal.Active = false
+                            end
                         end)
                     end
                 end
@@ -4194,6 +4252,12 @@ function Zeroin:Window(GuiConfig)
                     if MenuOpen then updatePopupPosition() end
                 end)
                 Dropdown:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+                    if MenuOpen then updatePopupPosition() end
+                end)
+                Main:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
+                    if MenuOpen then updatePopupPosition() end
+                end)
+                Main:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     if MenuOpen then updatePopupPosition() end
                 end)
 
