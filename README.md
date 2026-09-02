@@ -672,6 +672,41 @@ Topbar otomatis menampilkan nama game aktif dengan tampilan yang sama seperti ch
 
 Nama dideteksi melalui `MarketplaceService:GetProductInfo(game.PlaceId).Name` secara asynchronous, dengan fallback ke `game.Name`. Nama yang melebihi 20 karakter dipotong dengan ellipsis agar topbar tetap rapi; nama lengkap dan PlaceId tersimpan pada attributes `FullGameName` dan `PlaceId` di `GameFrame`. Tidak perlu mengisi nama game pada config Window.
 
+## Mobile Responsive Layout
+
+Zeroin otomatis mengaktifkan mobile layout ketika device touch-only atau viewport portrait. Tidak perlu mengubah `Column`/`Row` pada script.
+
+```text
+Desktop:
+Auto Steal | Auto Treadmill
+
+Mobile:
+Auto Steal
+Auto Treadmill
+```
+
+Perilaku mobile:
+
+- Window mengikuti viewport dengan margin aman.
+- Tinggi window bertambah agar scrolling nyaman.
+- Sidebar diperkecil maksimal 104px.
+- Komponen `Left` dan `Right` otomatis menjadi full-width dan ditumpuk berdasarkan `Row` (Left lalu Right).
+- Toggle title memiliki area aman dari switch dan memakai ellipsis jika benar-benar terlalu panjang.
+- Keybind tersembunyi pada mobile.
+- Game-name chip dan title topbar disembunyikan lebih dulu; FPS, executor, logo, dan window controls tetap tersedia.
+- Dropdown adaptive side popup tetap di-clamp ke viewport.
+
+Untuk menguji mobile layout pada desktop:
+
+```lua
+local Window = Zeroin:Window({
+    Title = "Zeroin",
+    ForceMobile = true
+})
+```
+
+`ForceMobile` hanya untuk testing; jangan diperlukan pada device mobile asli.
+
 ## Window Controls
 
 - Minimize: tombol minimize dengan animasi ringan.

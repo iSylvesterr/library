@@ -251,7 +251,7 @@ local function safeSize(pxWidth, pxHeight)
     return UDim2.new(scaleX, 0, scaleY, 0)
 end
 
-local function MakeDraggable(topbarobject, object, trackConnection)
+local function MakeDraggable(topbarobject, object, trackConnection, defaultWidth, defaultHeight, mobileLayout)
     local function CustomPos(topbarobject, object)
         local Dragging, DragInput, DragStart, StartPosition
 
@@ -300,12 +300,12 @@ local function MakeDraggable(topbarobject, object, trackConnection)
         local minSizeX, minSizeY
         local defSizeX, defSizeY
 
-        if isMobile then
-            minSizeX, minSizeY = 100, 100
-            defSizeX, defSizeY = 470, 270
+        if mobileLayout then
+            minSizeX, minSizeY = 300, 300
+            defSizeX, defSizeY = defaultWidth or 470, defaultHeight or 520
         else
-            minSizeX, minSizeY = 100, 100
-            defSizeX, defSizeY = 586, 364
+            minSizeX, minSizeY = 420, 280
+            defSizeX, defSizeY = defaultWidth or 586, defaultHeight or 364
         end
 
         object.Size = UDim2.new(0, defSizeX, 0, defSizeY)
@@ -682,6 +682,20 @@ function Zeroin:Window(GuiConfig)
     GuiConfig.Discord      = GuiConfig.Discord or "https://discord.gg/9snzkaGkRE"
     GuiConfig.BuiltInInfo  = GuiConfig.BuiltInInfo ~= false
 
+    local currentViewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or viewport
+    local UseMobileLayout = GuiConfig.ForceMobile == true
+        or isMobile
+        or currentViewport.Y > currentViewport.X
+    local DefaultWindowWidth = UseMobileLayout
+        and math.max(300, math.min(586, currentViewport.X - 20))
+        or 586
+    local DefaultWindowHeight = UseMobileLayout
+        and math.max(300, math.min(620, currentViewport.Y - 64))
+        or 364
+    local EffectiveTabWidth = UseMobileLayout
+        and math.min(104, GuiConfig["Tab Width"])
+        or GuiConfig["Tab Width"]
+
     Zeroin.NotificationIcon = GuiConfig.NotificationIcon
     CURRENT_VERSION        = GuiConfig.Version
     LoadConfigFromFile()
@@ -817,11 +831,8 @@ function Zeroin:Window(GuiConfig)
     DropShadowHolder.BorderSizePixel = 0
     DropShadowHolder.AnchorPoint = Vector2.new(0.5, 0.5)
     DropShadowHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
-    if isMobile then
-        DropShadowHolder.Size = UDim2.new(0, 470, 0, 270)
-    else
-        DropShadowHolder.Size = UDim2.new(0, 586, 0, 364)
-    end
+    DropShadowHolder.Size = UDim2.fromOffset(DefaultWindowWidth, DefaultWindowHeight)
+    DropShadowHolder:SetAttribute("MobileLayout", UseMobileLayout)
     DropShadowHolder.ZIndex = 0
     DropShadowHolder.Name = "DropShadowHolder"
     DropShadowHolder.Parent = ZeroinOnTop
@@ -893,6 +904,7 @@ function Zeroin:Window(GuiConfig)
     TextLabel.BorderSizePixel = 0
     TextLabel.Size = UDim2.new(1, -100, 1, 0)
     TextLabel.Position = UDim2.new(0, 38, 0, 0)
+    TextLabel.Visible = not UseMobileLayout
     TextLabel.Parent = Top
 
     local LogoImg = Instance.new("ImageLabel")
@@ -1001,10 +1013,13 @@ function Zeroin:Window(GuiConfig)
     GameTextLabel.Parent = GameFrame
     GameFrame:SetAttribute("FullGameName", detectedGameName)
     GameFrame:SetAttribute("PlaceId", game.PlaceId)
+    GameFrame.Visible = not UseMobileLayout
 
     local function updateTopTitleSpace()
         if not GameFrame.Parent or not TextLabel.Parent then return end
-        local available = GameFrame.AbsolutePosition.X - TextLabel.AbsolutePosition.X - 8
+        local statusLeft = UseMobileLayout and RightContainer.AbsolutePosition.X
+            or GameFrame.AbsolutePosition.X
+        local available = statusLeft - TextLabel.AbsolutePosition.X - 8
         TextLabel.Size = UDim2.new(0, math.max(0, available), 1, 0)
     end
     GameFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateTopTitleSpace)
@@ -1171,7 +1186,7 @@ function Zeroin:Window(GuiConfig)
     -- Center the sidebar content between the window edge and divider.
     LayersTab.Position = UDim2.new(0, 8, 0, 50)
     -- Equal 8px gutters on both sides when Tab Width is 130.
-    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"] - 3, 1, -104)
+    LayersTab.Size = UDim2.new(0, EffectiveTabWidth - 3, 1, -104)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
@@ -1181,7 +1196,7 @@ function Zeroin:Window(GuiConfig)
     TabDivider.BackgroundColor3 = ThemeColors.Border
     TabDivider.BackgroundTransparency = 0.65
     TabDivider.BorderSizePixel = 0
-    TabDivider.Position = UDim2.new(0, GuiConfig["Tab Width"] + 13, 0, 38)
+    TabDivider.Position = UDim2.new(0, EffectiveTabWidth + 13, 0, 38)
     TabDivider.Size = UDim2.new(0, 1, 1, -38)
     TabDivider.Parent = Main
 
@@ -1236,7 +1251,7 @@ function Zeroin:Window(GuiConfig)
     DiscordCard.BackgroundTransparency = 0
     DiscordCard.BorderSizePixel = 0
     DiscordCard.Position = UDim2.new(0, 8, 1, -50)
-    DiscordCard.Size = UDim2.new(0, GuiConfig["Tab Width"] - 3, 0, 40)
+    DiscordCard.Size = UDim2.new(0, EffectiveTabWidth - 3, 0, 40)
     DiscordCard.Parent = Main
 
     local DiscordCorner = Instance.new("UICorner")
@@ -1331,8 +1346,8 @@ function Zeroin:Window(GuiConfig)
     Layers.BackgroundTransparency = 0.9990000128746033
     Layers.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Layers.BorderSizePixel = 0
-    Layers.Position = UDim2.new(0, GuiConfig["Tab Width"] + 18, 0, 50)
-    Layers.Size = UDim2.new(1, -(GuiConfig["Tab Width"] + 9 + 18), 1, -59)
+    Layers.Position = UDim2.new(0, EffectiveTabWidth + 18, 0, 50)
+    Layers.Size = UDim2.new(1, -(EffectiveTabWidth + 9 + 18), 1, -59)
     Layers.Name = "Layers"
     Layers.Parent = Main
 
@@ -1812,7 +1827,14 @@ function Zeroin:Window(GuiConfig)
     GuiFunc:ToggleUI()
 
     DropShadowHolder.Size = UDim2.new(0, 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X, 0, 350)
-    MakeDraggable(Top, DropShadowHolder, trackCleanup)
+    MakeDraggable(
+        Top,
+        DropShadowHolder,
+        trackCleanup,
+        DefaultWindowWidth,
+        DefaultWindowHeight,
+        UseMobileLayout
+    )
     local isFullscreen = false
     local originalSize = DropShadowHolder.Size
     local originalPos  = DropShadowHolder.Position
@@ -2486,7 +2508,10 @@ function Zeroin:Window(GuiConfig)
                 -- FullWidth so component-specific visual layouts (dropdown,
                 -- slider, etc.) automatically match the requested column.
                 if requestedColumn == "Left" or requestedColumn == "Right" then
-                    config.FullWidth = false
+                    -- Mobile stacks both sides as full-width cards. Component
+                    -- internals (input/dropdown label geometry) should also use
+                    -- their full-width variant.
+                    config.FullWidth = UseMobileLayout and true or false
                 elseif requestedColumn == "Full" then
                     config.FullWidth = true
                 end
@@ -2500,6 +2525,56 @@ function Zeroin:Window(GuiConfig)
 
                 local column = fullWidth and "Full" or requestedColumn
                 local rowIndex
+
+                if UseMobileLayout and not fullWidth then
+                    if column ~= "Left" and column ~= "Right" then
+                        column = (NextItem % 2 == 0) and "Left" or "Right"
+                        NextItem = NextItem + 1
+                    end
+                    local mobileRow = explicitRow and (explicitRow - 1)
+                        or math.floor(NextItem / 2)
+                    local mobileOrder = mobileRow * 3 + (column == "Right" and 1 or 0)
+
+                    local row = Instance.new("Frame")
+                    row.Name = "SectionRow"
+                    row:SetAttribute("ZeroinRow", mobileRow + 1)
+                    row:SetAttribute("ZeroinMobileStack", true)
+                    row.BackgroundTransparency = 1
+                    row.BorderSizePixel = 0
+                    row.LayoutOrder = mobileOrder
+                    row.Size = UDim2.new(1, 0, 0, item.Size.Y.Offset)
+                    row.Parent = SectionAdd
+
+                    local cell = Instance.new("Frame")
+                    cell.Name = "FullCell"
+                    cell.BackgroundTransparency = 1
+                    cell.BorderSizePixel = 0
+                    cell.Size = UDim2.new(1, 0, 0, item.Size.Y.Offset)
+                    cell.Parent = row
+
+                    item:SetAttribute("ZeroinSectionItem", true)
+                    item:SetAttribute("ZeroinColumn", column)
+                    item:SetAttribute("ZeroinRow", mobileRow + 1)
+                    item:SetAttribute("ZeroinMobileStack", true)
+                    item.LayoutOrder = 0
+                    item.AnchorPoint = Vector2.zero
+                    item.Position = UDim2.fromOffset(0, 0)
+                    item.Size = UDim2.new(1, 0, item.Size.Y.Scale, item.Size.Y.Offset)
+                    item.BackgroundTransparency = 1
+                    item.BorderSizePixel = 0
+                    item.Parent = cell
+
+                    local function refreshMobileRow()
+                        local height = item.Visible and item.Size.Y.Offset or 0
+                        cell.Size = UDim2.new(1, 0, 0, height)
+                        row.Size = UDim2.new(1, 0, 0, height)
+                        task.defer(UpdateSizeSection)
+                    end
+                    item:GetPropertyChangedSignal("Size"):Connect(refreshMobileRow)
+                    item:GetPropertyChangedSignal("Visible"):Connect(refreshMobileRow)
+                    task.defer(refreshMobileRow)
+                    return
+                end
 
                 if UseIndependentColumns and not fullWidth then
                     if column ~= "Left" and column ~= "Right" then
@@ -2529,7 +2604,9 @@ function Zeroin:Window(GuiConfig)
                     NextItem = math.max(NextItem + 1, (rowIndex * 2) + (column == "Right" and 2 or 1))
                 end
 
-                local row = makeRow(rowIndex)
+                local layoutRowIndex = UseMobileLayout and (rowIndex * 3) or rowIndex
+                local row = makeRow(layoutRowIndex)
+                if UseMobileLayout then row:SetAttribute("ZeroinRow", rowIndex + 1) end
                 local cell = Instance.new("Frame")
 
                 if column == "Full" then
@@ -3072,9 +3149,11 @@ function Zeroin:Window(GuiConfig)
                 ToggleTitle.TextColor3 = Color3.fromRGB(231, 231, 231)
                 ToggleTitle.TextXAlignment = Enum.TextXAlignment.Left
                 ToggleTitle.TextYAlignment = Enum.TextYAlignment.Center
+                ToggleTitle.TextTruncate = Enum.TextTruncate.AtEnd
                 ToggleTitle.BackgroundTransparency = 1
                 ToggleTitle.Position = UDim2.new(0, 10, 0, 0)
-                ToggleTitle.Size = UDim2.new(1, -100, 1, 0)
+                local toggleTextRightInset = UseMobileLayout and 62 or 100
+                ToggleTitle.Size = UDim2.new(1, -toggleTextRightInset, 1, 0)
                 ToggleTitle.Name = "ToggleTitle"
                 ToggleTitle.Parent = Toggle
 
@@ -3087,7 +3166,7 @@ function Zeroin:Window(GuiConfig)
                 ToggleTitle2.TextYAlignment = Enum.TextYAlignment.Top
                 ToggleTitle2.BackgroundTransparency = 1
                 ToggleTitle2.Position = UDim2.new(0, 10, 0, 23)
-                ToggleTitle2.Size = UDim2.new(1, -100, 0, 12)
+                ToggleTitle2.Size = UDim2.new(1, -toggleTextRightInset, 0, 12)
                 ToggleTitle2.Name = "ToggleTitle2"
                 ToggleTitle2.Parent = Toggle
 
@@ -3100,7 +3179,7 @@ function Zeroin:Window(GuiConfig)
                 ToggleContent.TextYAlignment = Enum.TextYAlignment.Top
                 ToggleContent.BackgroundTransparency = 1
                 ToggleContent.TextWrapped = true
-                ToggleContent.Size = UDim2.new(1, -100, 0, 12)
+                ToggleContent.Size = UDim2.new(1, -toggleTextRightInset, 0, 12)
                 ToggleContent.Name = "ToggleContent"
                 ToggleContent.Parent = Toggle
 
@@ -3117,13 +3196,13 @@ function Zeroin:Window(GuiConfig)
                         -- ItemGap total exactly 76px, matching one dropdown.
                         Toggle.Size = UDim2.new(1, 0, 0, 37)
                         ToggleTitle.Position = UDim2.fromOffset(10, 0)
-                        ToggleTitle.Size = UDim2.new(1, -100, 1, 0)
+                        ToggleTitle.Size = UDim2.new(1, -toggleTextRightInset, 1, 0)
                         ToggleTitle.TextYAlignment = Enum.TextYAlignment.Center
                         ToggleTitle2.Visible = false
                         ToggleContent.Visible = false
                     else
                         ToggleTitle.Position = UDim2.fromOffset(10, 7)
-                        ToggleTitle.Size = UDim2.new(1, -100, 0, 14)
+                        ToggleTitle.Size = UDim2.new(1, -toggleTextRightInset, 0, 14)
                         ToggleTitle.TextYAlignment = Enum.TextYAlignment.Top
 
                         local descriptionY
@@ -3140,7 +3219,7 @@ function Zeroin:Window(GuiConfig)
                             ToggleContent.Visible = true
                             ToggleContent.Position = UDim2.fromOffset(10, descriptionY)
                             local contentHeight = math.max(12, math.ceil(ToggleContent.TextBounds.Y))
-                            ToggleContent.Size = UDim2.new(1, -100, 0, contentHeight)
+                            ToggleContent.Size = UDim2.new(1, -toggleTextRightInset, 0, contentHeight)
                             Toggle.Size = UDim2.new(1, 0, 0, descriptionY + contentHeight + 9)
                         else
                             ToggleContent.Visible = false
