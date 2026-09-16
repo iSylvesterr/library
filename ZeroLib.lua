@@ -174,7 +174,22 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
-local CoreGui = game:GetService("CoreGui")
+local CoreGui = (function()
+    local env = (getgenv and getgenv()) or _G
+    if env and env.__ZeroinUIHost and typeof(env.__ZeroinUIHost) == "Instance" then
+        return env.__ZeroinUIHost
+    end
+    if gethui then
+        local ok, h = pcall(gethui)
+        if ok and h then return h end
+    end
+    local ok, cg = pcall(game.GetService, game, "CoreGui")
+    if ok and cg then
+        local testOk = pcall(function() local f = Instance.new("Folder"); f.Parent = cg; f:Destroy() end)
+        if testOk then return cg end
+    end
+    return LocalPlayer:WaitForChild("PlayerGui")
+end)()
 local viewport = workspace.CurrentCamera.ViewportSize
 
 -- Zeroin visual identity: sampled from the supplied black/emerald reference.
@@ -807,7 +822,7 @@ function Zeroin:Window(GuiConfig)
     ZeroinOnTop.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     ZeroinOnTop.Name = "ZeroinOnTop"
     ZeroinOnTop.ResetOnSpawn = false
-    ZeroinOnTop.Parent = game:GetService("CoreGui")
+    ZeroinOnTop.Parent = CoreGui
 
     -- Global dropdown portal. Popup menus live outside the scroll/page tree so
     -- bottom-row dropdowns can never be clipped by the window content.
