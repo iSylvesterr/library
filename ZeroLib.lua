@@ -4741,14 +4741,14 @@ function Zeroin:Window(GuiConfig)
                     BubbleCorner.Parent = Bubble
 
                     local BubblePadding = Instance.new("UIPadding")
-                    BubblePadding.PaddingTop = UDim.new(0, 4)
-                    BubblePadding.PaddingBottom = UDim.new(0, 4)
-                    BubblePadding.PaddingLeft = UDim.new(0, 6)
-                    BubblePadding.PaddingRight = UDim.new(0, 6)
+                    BubblePadding.PaddingTop = UDim.new(0, 6)
+                    BubblePadding.PaddingBottom = UDim.new(0, 6)
+                    BubblePadding.PaddingLeft = UDim.new(0, 10)
+                    BubblePadding.PaddingRight = UDim.new(0, 10)
                     BubblePadding.Parent = Bubble
 
                     local BubbleLayout = Instance.new("UIListLayout")
-                    BubbleLayout.Padding = UDim.new(0, 1)
+                    BubbleLayout.Padding = UDim.new(0, 4)
                     BubbleLayout.SortOrder = Enum.SortOrder.LayoutOrder
                     BubbleLayout.HorizontalAlignment = isSelf and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
                     BubbleLayout.Parent = Bubble
@@ -4757,7 +4757,7 @@ function Zeroin:Window(GuiConfig)
                         local NameLabel = Instance.new("TextLabel")
                         NameLabel.Name = "SenderName"
                         NameLabel.Font = Enum.Font.GothamBold
-                        NameLabel.TextSize = 9
+                        NameLabel.TextSize = 11
                         NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
                         NameLabel.Text = senderName
                         NameLabel.BackgroundTransparency = 1
@@ -4779,20 +4779,41 @@ function Zeroin:Window(GuiConfig)
                     MsgLabel.Parent = Bubble
 
                     local SizeConstraint = Instance.new("UISizeConstraint")
-                    SizeConstraint.MaxSize = Vector2.new(290, 9999)
+                    SizeConstraint.MaxSize = Vector2.new(320, 9999)
                     SizeConstraint.Parent = MsgLabel
 
                     if msgData.buttonText then
+                        local BottomRow = Instance.new("Frame")
+                        BottomRow.Name = "BottomRow"
+                        BottomRow.BackgroundTransparency = 1
+                        BottomRow.Size = UDim2.new(1, 0, 0, 24)
+                        BottomRow.Parent = Bubble
+
+                        local TimeLabel = Instance.new("TextLabel")
+                        TimeLabel.Name = "TimeText"
+                        TimeLabel.Font = Enum.Font.Gotham
+                        TimeLabel.TextSize = 9
+                        TimeLabel.TextColor3 = Color3.fromRGB(130, 170, 150)
+                        TimeLabel.Text = timeStr
+                        TimeLabel.BackgroundTransparency = 1
+                        TimeLabel.AnchorPoint = Vector2.new(0, 0.5)
+                        TimeLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                        TimeLabel.Size = UDim2.new(0, 60, 1, 0)
+                        TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        TimeLabel.Parent = BottomRow
+
                         local ActionBtn = Instance.new("TextButton")
                         ActionBtn.Name = "ActionBtn"
-                        ActionBtn.Size = UDim2.new(1, 0, 0, 22)
+                        ActionBtn.AnchorPoint = Vector2.new(1, 0.5)
+                        ActionBtn.Position = UDim2.new(1, 0, 0.5, 0)
+                        ActionBtn.Size = UDim2.new(0, 105, 0, 22)
                         ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 205, 122)
                         ActionBtn.BorderSizePixel = 0
                         ActionBtn.Font = Enum.Font.GothamBold
-                        ActionBtn.TextSize = 10
+                        ActionBtn.TextSize = 11
                         ActionBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
-                        ActionBtn.Text = msgData.buttonText .. "  →"
-                        ActionBtn.Parent = Bubble
+                        ActionBtn.Text = msgData.buttonText .. " →"
+                        ActionBtn.Parent = BottomRow
 
                         local ActionCorner = Instance.new("UICorner")
                         ActionCorner.CornerRadius = UDim.new(0, 5)
@@ -4803,17 +4824,17 @@ function Zeroin:Window(GuiConfig)
                                 task.spawn(msgData.onButtonClick)
                             end)
                         end
+                    else
+                        local TimeLabel = Instance.new("TextLabel")
+                        TimeLabel.Name = "TimeText"
+                        TimeLabel.Font = Enum.Font.Gotham
+                        TimeLabel.TextSize = 8
+                        TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
+                        TimeLabel.Text = timeStr
+                        TimeLabel.BackgroundTransparency = 1
+                        TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
+                        TimeLabel.Parent = Bubble
                     end
-
-                    local TimeLabel = Instance.new("TextLabel")
-                    TimeLabel.Name = "TimeText"
-                    TimeLabel.Font = Enum.Font.Gotham
-                    TimeLabel.TextSize = 8
-                    TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
-                    TimeLabel.Text = timeStr
-                    TimeLabel.BackgroundTransparency = 1
-                    TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
-                    TimeLabel.Parent = Bubble
 
                     scrollToBottom()
                 end
