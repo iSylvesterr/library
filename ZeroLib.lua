@@ -4677,7 +4677,7 @@ function Zeroin:Window(GuiConfig)
                 SendBtn.Font = Enum.Font.GothamBold
                 SendBtn.TextSize = 11
                 SendBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
-                SendBtn.Text = "Kirim"
+                SendBtn.Text = "Send"
                 SendBtn.Parent = BottomBar
 
                 local SendCorner = Instance.new("UICorner")
