@@ -4723,7 +4723,8 @@ function Zeroin:Window(GuiConfig)
 
                     local Bubble = Instance.new("Frame")
                     Bubble.Name = "Bubble"
-                    Bubble.BackgroundColor3 = isSelf and Color3.fromRGB(0, 165, 96) or Color3.fromRGB(16, 52, 38)
+                    local defaultBg = isSelf and Color3.fromRGB(0, 165, 96) or Color3.fromRGB(16, 52, 38)
+                    Bubble.BackgroundColor3 = msgData.bubbleColor or defaultBg
                     Bubble.BorderSizePixel = 0
                     Bubble.AutomaticSize = Enum.AutomaticSize.XY
                     Bubble.Parent = BubbleRow
@@ -4826,7 +4827,44 @@ function Zeroin:Window(GuiConfig)
                     SizeConstraint.MaxSize = Vector2.new(320, 9999)
                     SizeConstraint.Parent = MsgLabel
 
-                    if not msgData.buttonText then
+                    if msgData.actions and type(msgData.actions) == "table" and #msgData.actions > 0 then
+                        local ActionsRow = Instance.new("Frame")
+                        ActionsRow.Name = "ActionsRow"
+                        ActionsRow.BackgroundTransparency = 1
+                        ActionsRow.Size = UDim2.new(1, 0, 0, 22)
+                        ActionsRow.Parent = Bubble
+
+                        local ActionsLayout = Instance.new("UIListLayout")
+                        ActionsLayout.FillDirection = Enum.FillDirection.Horizontal
+                        ActionsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+                        ActionsLayout.Padding = UDim.new(0, 6)
+                        ActionsLayout.Parent = ActionsRow
+
+                        for _, act in ipairs(msgData.actions) do
+                            local Btn = Instance.new("TextButton")
+                            Btn.Name = "ActionBtn"
+                            Btn.Size = UDim2.new(0, act.width or 84, 0, 20)
+                            Btn.BackgroundColor3 = act.color or Color3.fromRGB(0, 205, 122)
+                            Btn.BorderSizePixel = 0
+                            Btn.Font = Enum.Font.GothamBold
+                            Btn.TextSize = 9
+                            Btn.TextColor3 = act.textColor or Color3.fromRGB(4, 25, 16)
+                            Btn.Text = act.text or "Button"
+                            Btn.Parent = ActionsRow
+
+                            local Corner = Instance.new("UICorner")
+                            Corner.CornerRadius = UDim.new(0, 4)
+                            Corner.Parent = Btn
+
+                            if type(act.onClick) == "function" then
+                                Btn.MouseButton1Click:Connect(function()
+                                    task.spawn(act.onClick)
+                                end)
+                            end
+                        end
+                    end
+
+                    if not msgData.buttonText and not msgData.actions then
                         local TimeLabel = Instance.new("TextLabel")
                         TimeLabel.Name = "TimeText"
                         TimeLabel.Font = Enum.Font.Gotham
