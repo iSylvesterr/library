@@ -3892,7 +3892,7 @@ function Zeroin:Window(GuiConfig)
                     SaveConfig()
                 end
                 function InputFunc:GetValue()
-                    return self.Value or InputTextBox.Text
+                    return InputTextBox.Text
                 end
 
                 InputFunc:Set(InputFunc.Value)
@@ -4709,6 +4709,7 @@ function Zeroin:Window(GuiConfig)
                 function ChatFunc:AddMessage(msgData)
                     msgOrder = msgOrder + 1
                     local isSelf = msgData.from == "self" or msgData.isSelf == true
+                    local isOwner = msgData.variant == "owner" or msgData.owner == true
                     local senderName = msgData.sender or (isSelf and "You" or PartnerName)
                     local text = tostring(msgData.text or "")
                     local timeStr = msgData.time or os.date("%H:%M")
@@ -4723,7 +4724,8 @@ function Zeroin:Window(GuiConfig)
 
                     local Bubble = Instance.new("Frame")
                     Bubble.Name = "Bubble"
-                    local defaultBg = isSelf and Color3.fromRGB(0, 165, 96) or Color3.fromRGB(16, 52, 38)
+                    local defaultBg = isOwner and Color3.fromRGB(20, 48, 34)
+                        or (isSelf and Color3.fromRGB(0, 165, 96) or Color3.fromRGB(16, 52, 38))
                     Bubble.BackgroundColor3 = msgData.bubbleColor or defaultBg
                     Bubble.BorderSizePixel = 0
                     Bubble.AutomaticSize = Enum.AutomaticSize.XY
@@ -4741,6 +4743,26 @@ function Zeroin:Window(GuiConfig)
                     BubbleCorner.CornerRadius = UDim.new(0, 6)
                     BubbleCorner.Parent = Bubble
 
+                    if isOwner then
+                        local OwnerStroke = Instance.new("UIStroke")
+                        OwnerStroke.Name = "OwnerStroke"
+                        OwnerStroke.Color = Color3.fromRGB(245, 194, 74)
+                        OwnerStroke.Transparency = 0.08
+                        OwnerStroke.Thickness = 1.4
+                        OwnerStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                        OwnerStroke.Parent = Bubble
+
+                        local OwnerGradient = Instance.new("UIGradient")
+                        OwnerGradient.Name = "OwnerGradient"
+                        OwnerGradient.Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(22, 70, 47)),
+                            ColorSequenceKeypoint.new(0.62, Color3.fromRGB(13, 51, 35)),
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(63, 52, 24)),
+                        })
+                        OwnerGradient.Rotation = isSelf and 180 or 0
+                        OwnerGradient.Parent = Bubble
+                    end
+
                     local BubblePadding = Instance.new("UIPadding")
                     BubblePadding.PaddingTop = UDim.new(0, 4)
                     BubblePadding.PaddingBottom = UDim.new(0, 4)
@@ -4754,7 +4776,30 @@ function Zeroin:Window(GuiConfig)
                     BubbleLayout.HorizontalAlignment = isSelf and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
                     BubbleLayout.Parent = Bubble
 
-                    if not isSelf then
+                    if isOwner then
+                        local OwnerBadge = Instance.new("TextLabel")
+                        OwnerBadge.Name = "SenderName"
+                        OwnerBadge.Font = Enum.Font.GothamBold
+                        OwnerBadge.TextSize = 9
+                        OwnerBadge.TextColor3 = Color3.fromRGB(38, 29, 8)
+                        OwnerBadge.Text = "ZEROIN OWNER  •  " .. timeStr
+                        OwnerBadge.BackgroundColor3 = Color3.fromRGB(245, 194, 74)
+                        OwnerBadge.BackgroundTransparency = 0.02
+                        OwnerBadge.BorderSizePixel = 0
+                        OwnerBadge.AutomaticSize = Enum.AutomaticSize.XY
+                        OwnerBadge.Parent = Bubble
+
+                        local OwnerBadgePadding = Instance.new("UIPadding")
+                        OwnerBadgePadding.PaddingTop = UDim.new(0, 3)
+                        OwnerBadgePadding.PaddingBottom = UDim.new(0, 3)
+                        OwnerBadgePadding.PaddingLeft = UDim.new(0, 6)
+                        OwnerBadgePadding.PaddingRight = UDim.new(0, 6)
+                        OwnerBadgePadding.Parent = OwnerBadge
+
+                        local OwnerBadgeCorner = Instance.new("UICorner")
+                        OwnerBadgeCorner.CornerRadius = UDim.new(0, 4)
+                        OwnerBadgeCorner.Parent = OwnerBadge
+                    elseif not isSelf then
                         if msgData.buttonText then
                             local HeaderRow = Instance.new("Frame")
                             HeaderRow.Name = "HeaderRow"
@@ -4814,7 +4859,8 @@ function Zeroin:Window(GuiConfig)
                     MsgLabel.Name = "MsgText"
                     MsgLabel.Font = Enum.Font.Gotham
                     MsgLabel.TextSize = 10
-                    MsgLabel.TextColor3 = isSelf and Color3.fromRGB(4, 25, 16) or Color3.fromRGB(240, 248, 242)
+                    MsgLabel.TextColor3 = isOwner and Color3.fromRGB(255, 248, 220)
+                        or (isSelf and Color3.fromRGB(4, 25, 16) or Color3.fromRGB(240, 248, 242))
                     MsgLabel.Text = text
                     MsgLabel.TextWrapped = true
                     MsgLabel.BackgroundTransparency = 1
@@ -4864,7 +4910,7 @@ function Zeroin:Window(GuiConfig)
                         end
                     end
 
-                    if not msgData.buttonText and not msgData.actions then
+                    if not isOwner and not msgData.buttonText and not msgData.actions then
                         local TimeLabel = Instance.new("TextLabel")
                         TimeLabel.Name = "TimeText"
                         TimeLabel.Font = Enum.Font.Gotham
