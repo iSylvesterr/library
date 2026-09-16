@@ -4623,7 +4623,7 @@ function Zeroin:Window(GuiConfig)
                 MessagesScroll.Parent = ChatFrame
 
                 local MsgLayout = Instance.new("UIListLayout")
-                MsgLayout.Padding = UDim.new(0, 4)
+                MsgLayout.Padding = UDim.new(0, 3)
                 MsgLayout.SortOrder = Enum.SortOrder.LayoutOrder
                 MsgLayout.Parent = MessagesScroll
 
@@ -4741,14 +4741,14 @@ function Zeroin:Window(GuiConfig)
                     BubbleCorner.Parent = Bubble
 
                     local BubblePadding = Instance.new("UIPadding")
-                    BubblePadding.PaddingTop = UDim.new(0, 6)
-                    BubblePadding.PaddingBottom = UDim.new(0, 6)
-                    BubblePadding.PaddingLeft = UDim.new(0, 10)
-                    BubblePadding.PaddingRight = UDim.new(0, 10)
+                    BubblePadding.PaddingTop = UDim.new(0, 4)
+                    BubblePadding.PaddingBottom = UDim.new(0, 4)
+                    BubblePadding.PaddingLeft = UDim.new(0, 8)
+                    BubblePadding.PaddingRight = UDim.new(0, 8)
                     BubblePadding.Parent = Bubble
 
                     local BubbleLayout = Instance.new("UIListLayout")
-                    BubbleLayout.Padding = UDim.new(0, 4)
+                    BubbleLayout.Padding = UDim.new(0, 2)
                     BubbleLayout.SortOrder = Enum.SortOrder.LayoutOrder
                     BubbleLayout.HorizontalAlignment = isSelf and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
                     BubbleLayout.Parent = Bubble
@@ -4758,19 +4758,19 @@ function Zeroin:Window(GuiConfig)
                             local HeaderRow = Instance.new("Frame")
                             HeaderRow.Name = "HeaderRow"
                             HeaderRow.BackgroundTransparency = 1
-                            HeaderRow.Size = UDim2.new(1, 0, 0, 20)
+                            HeaderRow.Size = UDim2.new(1, 0, 0, 18)
                             HeaderRow.Parent = Bubble
 
                             local NameLabel = Instance.new("TextLabel")
                             NameLabel.Name = "SenderName"
                             NameLabel.Font = Enum.Font.GothamBold
-                            NameLabel.TextSize = 11
+                            NameLabel.TextSize = 10
                             NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
-                            NameLabel.Text = senderName
+                            NameLabel.Text = senderName .. "  •  " .. timeStr
                             NameLabel.BackgroundTransparency = 1
                             NameLabel.AnchorPoint = Vector2.new(0, 0.5)
                             NameLabel.Position = UDim2.new(0, 0, 0.5, 0)
-                            NameLabel.Size = UDim2.new(1, -105, 1, 0)
+                            NameLabel.Size = UDim2.new(1, -90, 1, 0)
                             NameLabel.TextXAlignment = Enum.TextXAlignment.Left
                             NameLabel.Parent = HeaderRow
 
@@ -4778,11 +4778,11 @@ function Zeroin:Window(GuiConfig)
                             ActionBtn.Name = "ActionBtn"
                             ActionBtn.AnchorPoint = Vector2.new(1, 0.5)
                             ActionBtn.Position = UDim2.new(1, 0, 0.5, 0)
-                            ActionBtn.Size = UDim2.new(0, 95, 0, 20)
+                            ActionBtn.Size = UDim2.new(0, 84, 0, 18)
                             ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 205, 122)
                             ActionBtn.BorderSizePixel = 0
                             ActionBtn.Font = Enum.Font.GothamBold
-                            ActionBtn.TextSize = 10
+                            ActionBtn.TextSize = 9
                             ActionBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
                             ActionBtn.Text = msgData.buttonText .. " →"
                             ActionBtn.Parent = HeaderRow
@@ -4800,7 +4800,7 @@ function Zeroin:Window(GuiConfig)
                             local NameLabel = Instance.new("TextLabel")
                             NameLabel.Name = "SenderName"
                             NameLabel.Font = Enum.Font.GothamBold
-                            NameLabel.TextSize = 11
+                            NameLabel.TextSize = 10
                             NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
                             NameLabel.Text = senderName
                             NameLabel.BackgroundTransparency = 1
@@ -4812,7 +4812,7 @@ function Zeroin:Window(GuiConfig)
                     local MsgLabel = Instance.new("TextLabel")
                     MsgLabel.Name = "MsgText"
                     MsgLabel.Font = Enum.Font.Gotham
-                    MsgLabel.TextSize = 11
+                    MsgLabel.TextSize = 10
                     MsgLabel.TextColor3 = isSelf and Color3.fromRGB(4, 25, 16) or Color3.fromRGB(240, 248, 242)
                     MsgLabel.Text = text
                     MsgLabel.TextWrapped = true
@@ -4826,15 +4826,17 @@ function Zeroin:Window(GuiConfig)
                     SizeConstraint.MaxSize = Vector2.new(320, 9999)
                     SizeConstraint.Parent = MsgLabel
 
-                    local TimeLabel = Instance.new("TextLabel")
-                    TimeLabel.Name = "TimeText"
-                    TimeLabel.Font = Enum.Font.Gotham
-                    TimeLabel.TextSize = 8
-                    TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
-                    TimeLabel.Text = timeStr
-                    TimeLabel.BackgroundTransparency = 1
-                    TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
-                    TimeLabel.Parent = Bubble
+                    if not msgData.buttonText then
+                        local TimeLabel = Instance.new("TextLabel")
+                        TimeLabel.Name = "TimeText"
+                        TimeLabel.Font = Enum.Font.Gotham
+                        TimeLabel.TextSize = 8
+                        TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
+                        TimeLabel.Text = timeStr
+                        TimeLabel.BackgroundTransparency = 1
+                        TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
+                        TimeLabel.Parent = Bubble
+                    end
 
                     scrollToBottom()
                 end
