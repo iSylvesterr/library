@@ -4773,14 +4773,15 @@ function Zeroin:Window(GuiConfig)
                     local BubbleLayout = Instance.new("UIListLayout")
                     BubbleLayout.Padding = UDim.new(0, 2)
                     BubbleLayout.SortOrder = Enum.SortOrder.LayoutOrder
-                    BubbleLayout.HorizontalAlignment = isSelf and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
+                    BubbleLayout.HorizontalAlignment = isOwner and Enum.HorizontalAlignment.Center
+                        or (isSelf and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left)
                     BubbleLayout.Parent = Bubble
 
                     if isOwner then
                         local OwnerBadge = Instance.new("TextLabel")
                         OwnerBadge.Name = "SenderName"
-                        OwnerBadge.Font = Enum.Font.GothamBold
-                        OwnerBadge.TextSize = 9
+                        OwnerBadge.Font = Enum.Font.GothamBlack
+                        OwnerBadge.TextSize = 10
                         OwnerBadge.TextColor3 = Color3.fromRGB(38, 29, 8)
                         OwnerBadge.Text = "ZEROIN OWNER  •  " .. timeStr
                         OwnerBadge.BackgroundColor3 = Color3.fromRGB(245, 194, 74)
@@ -4857,8 +4858,8 @@ function Zeroin:Window(GuiConfig)
 
                     local MsgLabel = Instance.new("TextLabel")
                     MsgLabel.Name = "MsgText"
-                    MsgLabel.Font = Enum.Font.Gotham
-                    MsgLabel.TextSize = 10
+                    MsgLabel.Font = isOwner and Enum.Font.GothamBold or Enum.Font.Gotham
+                    MsgLabel.TextSize = isOwner and 11 or 10
                     MsgLabel.TextColor3 = isOwner and Color3.fromRGB(255, 248, 220)
                         or (isSelf and Color3.fromRGB(4, 25, 16) or Color3.fromRGB(240, 248, 242))
                     MsgLabel.Text = text
@@ -4866,7 +4867,8 @@ function Zeroin:Window(GuiConfig)
                     MsgLabel.BackgroundTransparency = 1
                     MsgLabel.Size = UDim2.new(0, 0, 0, 0)
                     MsgLabel.AutomaticSize = Enum.AutomaticSize.XY
-                    MsgLabel.TextXAlignment = isSelf and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left
+                    MsgLabel.TextXAlignment = isOwner and Enum.TextXAlignment.Center
+                        or (isSelf and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left)
                     MsgLabel.Parent = Bubble
 
                     local SizeConstraint = Instance.new("UISizeConstraint")
