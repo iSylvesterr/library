@@ -4876,6 +4876,12 @@ function Zeroin:Window(GuiConfig)
                 return SubSection
             end
 
+            Items.Frame = Section
+            function Items:SetVisible(val)
+                Section.Visible = val == true
+                task.defer(UpdateSizeScroll)
+            end
+
             CountSection = CountSection + 1
             return Items
         end
