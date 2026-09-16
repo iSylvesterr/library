@@ -683,15 +683,12 @@ function Zeroin:Window(GuiConfig)
     GuiConfig.BuiltInInfo  = GuiConfig.BuiltInInfo ~= false
 
     local currentViewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or viewport
+    local isPortrait = currentViewport.Y > currentViewport.X
     local UseMobileLayout = GuiConfig.ForceMobile == true
-        or isMobile
-        or currentViewport.Y > currentViewport.X
-    local DefaultWindowWidth = UseMobileLayout
-        and math.max(300, math.min(586, currentViewport.X - 20))
-        or 586
-    local DefaultWindowHeight = UseMobileLayout
-        and math.max(300, math.min(620, currentViewport.Y - 64))
-        or 364
+        or isPortrait
+        or (isMobile and currentViewport.X < 500)
+    local DefaultWindowWidth = math.max(320, math.min(586, currentViewport.X - 20))
+    local DefaultWindowHeight = math.max(280, math.min(UseMobileLayout and 620 or 364, currentViewport.Y - (isMobile and 36 or 64)))
     local EffectiveTabWidth = UseMobileLayout
         and math.min(104, GuiConfig["Tab Width"])
         or GuiConfig["Tab Width"]
@@ -2508,10 +2505,7 @@ function Zeroin:Window(GuiConfig)
                 -- FullWidth so component-specific visual layouts (dropdown,
                 -- slider, etc.) automatically match the requested column.
                 if requestedColumn == "Left" or requestedColumn == "Right" then
-                    -- Mobile stacks both sides as full-width cards. Component
-                    -- internals (input/dropdown label geometry) should also use
-                    -- their full-width variant.
-                    config.FullWidth = UseMobileLayout and true or false
+                    config.FullWidth = (UseMobileLayout and not UseIndependentColumns) and true or false
                 elseif requestedColumn == "Full" then
                     config.FullWidth = true
                 end
@@ -2526,7 +2520,7 @@ function Zeroin:Window(GuiConfig)
                 local column = fullWidth and "Full" or requestedColumn
                 local rowIndex
 
-                if UseMobileLayout and not fullWidth then
+                if UseMobileLayout and not UseIndependentColumns and not fullWidth then
                     if column ~= "Left" and column ~= "Right" then
                         column = (NextItem % 2 == 0) and "Left" or "Right"
                         NextItem = NextItem + 1
@@ -4522,6 +4516,287 @@ function Zeroin:Window(GuiConfig)
                 Elements[configKey] = DropdownFunc
                 windowElementKeys[configKey] = true
                 return DropdownFunc
+            end
+
+            function Items:AddChatBox(ChatConfig)
+                ChatConfig = ChatConfig or {}
+                local Title = ChatConfig.Title or "Partner Chat"
+                local Height = math.max(160, tonumber(ChatConfig.Height) or 220)
+                local Placeholder = ChatConfig.Placeholder or "Ketik pesan..."
+                local OnSend = ChatConfig.OnSend or function() end
+                local PartnerName = ChatConfig.Partner or "No Partner"
+                local ChatFunc = {}
+
+                local ChatFrame = Instance.new("Frame")
+                ChatFrame.Name = "ChatBox"
+                ChatFrame.BackgroundColor3 = Color3.fromRGB(8, 26, 18)
+                ChatFrame.BackgroundTransparency = 0.25
+                ChatFrame.BorderSizePixel = 0
+                ChatFrame.ClipsDescendants = true
+                ChatFrame.Size = UDim2.new(1, 0, 0, Height)
+                ChatFrame.LayoutOrder = CountItem
+                MountSectionItem(ChatFrame, ChatConfig, true)
+
+                local Corner = Instance.new("UICorner")
+                Corner.CornerRadius = UDim.new(0, 6)
+                Corner.Parent = ChatFrame
+
+                local Stroke = Instance.new("UIStroke")
+                Stroke.Color = Color3.fromRGB(34, 91, 68)
+                Stroke.Transparency = 0.25
+                Stroke.Thickness = 1
+                Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                Stroke.Parent = ChatFrame
+
+                local Header = Instance.new("Frame")
+                Header.Name = "ChatHeader"
+                Header.Size = UDim2.new(1, 0, 0, 26)
+                Header.BackgroundColor3 = Color3.fromRGB(5, 32, 22)
+                Header.BackgroundTransparency = 0.3
+                Header.BorderSizePixel = 0
+                Header.Parent = ChatFrame
+
+                local HeaderCorner = Instance.new("UICorner")
+                HeaderCorner.CornerRadius = UDim.new(0, 6)
+                HeaderCorner.Parent = Header
+
+                local HeaderTitle = Instance.new("TextLabel")
+                HeaderTitle.Name = "HeaderTitle"
+                HeaderTitle.Font = Enum.Font.GothamBold
+                HeaderTitle.TextSize = 11
+                HeaderTitle.TextColor3 = ThemeColors.AccentBright or Color3.fromRGB(0, 229, 137)
+                HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
+                HeaderTitle.BackgroundTransparency = 1
+                HeaderTitle.Position = UDim2.fromOffset(8, 0)
+                HeaderTitle.Size = UDim2.new(0.5, -8, 1, 0)
+                HeaderTitle.Text = Title
+                HeaderTitle.Parent = Header
+
+                local PartnerStatus = Instance.new("TextLabel")
+                PartnerStatus.Name = "PartnerStatus"
+                PartnerStatus.Font = Enum.Font.GothamMedium
+                PartnerStatus.TextSize = 10
+                PartnerStatus.TextColor3 = Color3.fromRGB(160, 200, 180)
+                PartnerStatus.TextXAlignment = Enum.TextXAlignment.Right
+                PartnerStatus.BackgroundTransparency = 1
+                PartnerStatus.Position = UDim2.new(0.5, 0, 0, 0)
+                PartnerStatus.Size = UDim2.new(0.5, -8, 1, 0)
+                PartnerStatus.Text = PartnerName
+                PartnerStatus.Parent = Header
+
+                local HeaderLine = Instance.new("Frame")
+                HeaderLine.Size = UDim2.new(1, 0, 0, 1)
+                HeaderLine.Position = UDim2.new(0, 0, 1, -1)
+                HeaderLine.BackgroundColor3 = Color3.fromRGB(34, 91, 68)
+                HeaderLine.BackgroundTransparency = 0.5
+                HeaderLine.BorderSizePixel = 0
+                HeaderLine.Parent = Header
+
+                local MessagesScroll = Instance.new("ScrollingFrame")
+                MessagesScroll.Name = "MessagesScroll"
+                MessagesScroll.BackgroundTransparency = 1
+                MessagesScroll.BorderSizePixel = 0
+                MessagesScroll.Position = UDim2.fromOffset(6, 28)
+                MessagesScroll.Size = UDim2.new(1, -12, 1, -60)
+                MessagesScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+                MessagesScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                MessagesScroll.ScrollBarThickness = 3
+                MessagesScroll.ScrollBarImageColor3 = ThemeColors.Accent or Color3.fromRGB(0, 205, 122)
+                MessagesScroll.Parent = ChatFrame
+
+                local MsgLayout = Instance.new("UIListLayout")
+                MsgLayout.Padding = UDim.new(0, 4)
+                MsgLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                MsgLayout.Parent = MessagesScroll
+
+                local MsgPadding = Instance.new("UIPadding")
+                MsgPadding.PaddingTop = UDim.new(0, 4)
+                MsgPadding.PaddingBottom = UDim.new(0, 4)
+                MsgPadding.PaddingLeft = UDim.new(0, 4)
+                MsgPadding.PaddingRight = UDim.new(0, 6)
+                MsgPadding.Parent = MessagesScroll
+
+                local BottomBar = Instance.new("Frame")
+                BottomBar.Name = "BottomBar"
+                BottomBar.Size = UDim2.new(1, -12, 0, 26)
+                BottomBar.Position = UDim2.new(0, 6, 1, -29)
+                BottomBar.BackgroundTransparency = 1
+                BottomBar.Parent = ChatFrame
+
+                local InputBg = Instance.new("Frame")
+                InputBg.Name = "InputBg"
+                InputBg.Size = UDim2.new(1, -54, 1, 0)
+                InputBg.BackgroundColor3 = Color3.fromRGB(15, 48, 34)
+                InputBg.BackgroundTransparency = 0.2
+                InputBg.BorderSizePixel = 0
+                InputBg.Parent = BottomBar
+
+                local InputCorner = Instance.new("UICorner")
+                InputCorner.CornerRadius = UDim.new(0, 5)
+                InputCorner.Parent = InputBg
+
+                local InputBox = Instance.new("TextBox")
+                InputBox.Name = "ChatInput"
+                InputBox.BackgroundTransparency = 1
+                InputBox.Position = UDim2.fromOffset(6, 0)
+                InputBox.Size = UDim2.new(1, -12, 1, 0)
+                InputBox.Font = Enum.Font.Gotham
+                InputBox.TextSize = 11
+                InputBox.TextColor3 = Color3.fromRGB(240, 255, 245)
+                InputBox.PlaceholderColor3 = Color3.fromRGB(120, 160, 140)
+                InputBox.PlaceholderText = Placeholder
+                InputBox.TextXAlignment = Enum.TextXAlignment.Left
+                InputBox.ClearTextOnFocus = false
+                InputBox.Text = ""
+                InputBox.Parent = InputBg
+
+                local SendBtn = Instance.new("TextButton")
+                SendBtn.Name = "SendButton"
+                SendBtn.Size = UDim2.new(0, 50, 1, 0)
+                SendBtn.Position = UDim2.new(1, -50, 0, 0)
+                SendBtn.BackgroundColor3 = ThemeColors.Accent or Color3.fromRGB(0, 205, 122)
+                SendBtn.BorderSizePixel = 0
+                SendBtn.Font = Enum.Font.GothamBold
+                SendBtn.TextSize = 11
+                SendBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
+                SendBtn.Text = "Kirim"
+                SendBtn.Parent = BottomBar
+
+                local SendCorner = Instance.new("UICorner")
+                SendCorner.CornerRadius = UDim.new(0, 5)
+                SendCorner.Parent = SendBtn
+
+                local msgOrder = 0
+                local function scrollToBottom()
+                    task.defer(function()
+                        MessagesScroll.CanvasPosition = Vector2.new(0, MessagesScroll.AbsoluteCanvasSize.Y)
+                    end)
+                end
+
+                local function doSend()
+                    local text = InputBox.Text:gsub("^%s+", ""):gsub("%s+$", "")
+                    if text ~= "" then
+                        InputBox.Text = ""
+                        task.spawn(OnSend, text)
+                    end
+                end
+
+                SendBtn.MouseButton1Click:Connect(doSend)
+                InputBox.FocusLost:Connect(function(enterPressed)
+                    if enterPressed then
+                        doSend()
+                    end
+                end)
+
+                function ChatFunc:AddMessage(msgData)
+                    msgOrder = msgOrder + 1
+                    local isSelf = msgData.from == "self" or msgData.isSelf == true
+                    local senderName = msgData.sender or (isSelf and "You" or PartnerName)
+                    local text = tostring(msgData.text or "")
+                    local timeStr = msgData.time or os.date("%H:%M")
+
+                    local BubbleRow = Instance.new("Frame")
+                    BubbleRow.Name = "BubbleRow"
+                    BubbleRow.BackgroundTransparency = 1
+                    BubbleRow.Size = UDim2.new(1, 0, 0, 0)
+                    BubbleRow.AutomaticSize = Enum.AutomaticSize.Y
+                    BubbleRow.LayoutOrder = msgOrder
+                    BubbleRow.Parent = MessagesScroll
+
+                    local Bubble = Instance.new("Frame")
+                    Bubble.Name = "Bubble"
+                    Bubble.BackgroundColor3 = isSelf and Color3.fromRGB(0, 165, 96) or Color3.fromRGB(16, 52, 38)
+                    Bubble.BorderSizePixel = 0
+                    Bubble.AutomaticSize = Enum.AutomaticSize.XY
+                    Bubble.Parent = BubbleRow
+
+                    if isSelf then
+                        Bubble.AnchorPoint = Vector2.new(1, 0)
+                        Bubble.Position = UDim2.fromScale(1, 0)
+                    else
+                        Bubble.AnchorPoint = Vector2.new(0, 0)
+                        Bubble.Position = UDim2.fromScale(0, 0)
+                    end
+
+                    local BubbleCorner = Instance.new("UICorner")
+                    BubbleCorner.CornerRadius = UDim.new(0, 6)
+                    BubbleCorner.Parent = Bubble
+
+                    local BubblePadding = Instance.new("UIPadding")
+                    BubblePadding.PaddingTop = UDim.new(0, 4)
+                    BubblePadding.PaddingBottom = UDim.new(0, 4)
+                    BubblePadding.PaddingLeft = UDim.new(0, 6)
+                    BubblePadding.PaddingRight = UDim.new(0, 6)
+                    BubblePadding.Parent = Bubble
+
+                    local BubbleLayout = Instance.new("UIListLayout")
+                    BubbleLayout.Padding = UDim.new(0, 1)
+                    BubbleLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                    BubbleLayout.HorizontalAlignment = isSelf and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
+                    BubbleLayout.Parent = Bubble
+
+                    if not isSelf then
+                        local NameLabel = Instance.new("TextLabel")
+                        NameLabel.Name = "SenderName"
+                        NameLabel.Font = Enum.Font.GothamBold
+                        NameLabel.TextSize = 9
+                        NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
+                        NameLabel.Text = senderName
+                        NameLabel.BackgroundTransparency = 1
+                        NameLabel.AutomaticSize = Enum.AutomaticSize.XY
+                        NameLabel.Parent = Bubble
+                    end
+
+                    local MsgLabel = Instance.new("TextLabel")
+                    MsgLabel.Name = "MsgText"
+                    MsgLabel.Font = Enum.Font.Gotham
+                    MsgLabel.TextSize = 11
+                    MsgLabel.TextColor3 = isSelf and Color3.fromRGB(4, 25, 16) or Color3.fromRGB(240, 248, 242)
+                    MsgLabel.Text = text
+                    MsgLabel.TextWrapped = true
+                    MsgLabel.BackgroundTransparency = 1
+                    MsgLabel.Size = UDim2.new(0, 0, 0, 0)
+                    MsgLabel.AutomaticSize = Enum.AutomaticSize.XY
+                    MsgLabel.TextXAlignment = isSelf and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left
+                    MsgLabel.Parent = Bubble
+
+                    local SizeConstraint = Instance.new("UISizeConstraint")
+                    SizeConstraint.MaxSize = Vector2.new(240, 9999)
+                    SizeConstraint.Parent = MsgLabel
+
+                    local TimeLabel = Instance.new("TextLabel")
+                    TimeLabel.Name = "TimeText"
+                    TimeLabel.Font = Enum.Font.Gotham
+                    TimeLabel.TextSize = 8
+                    TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
+                    TimeLabel.Text = timeStr
+                    TimeLabel.BackgroundTransparency = 1
+                    TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
+                    TimeLabel.Parent = Bubble
+
+                    scrollToBottom()
+                end
+
+                function ChatFunc:Clear()
+                    for _, child in ipairs(MessagesScroll:GetChildren()) do
+                        if child:IsA("Frame") and child.Name == "BubbleRow" then
+                            child:Destroy()
+                        end
+                    end
+                    msgOrder = 0
+                end
+
+                function ChatFunc:SetPartner(name, statusText)
+                    PartnerName = name or "No Partner"
+                    PartnerStatus.Text = PartnerName .. (statusText and (" • " .. statusText) or "")
+                end
+
+                function ChatFunc:SetTitle(title)
+                    HeaderTitle.Text = title
+                end
+
+                CountItem = CountItem + 1
+                return ChatFunc
             end
 
             function Items:AddDivider()
