@@ -4754,15 +4754,59 @@ function Zeroin:Window(GuiConfig)
                     BubbleLayout.Parent = Bubble
 
                     if not isSelf then
-                        local NameLabel = Instance.new("TextLabel")
-                        NameLabel.Name = "SenderName"
-                        NameLabel.Font = Enum.Font.GothamBold
-                        NameLabel.TextSize = 11
-                        NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
-                        NameLabel.Text = senderName
-                        NameLabel.BackgroundTransparency = 1
-                        NameLabel.AutomaticSize = Enum.AutomaticSize.XY
-                        NameLabel.Parent = Bubble
+                        if msgData.buttonText then
+                            local HeaderRow = Instance.new("Frame")
+                            HeaderRow.Name = "HeaderRow"
+                            HeaderRow.BackgroundTransparency = 1
+                            HeaderRow.Size = UDim2.new(1, 0, 0, 20)
+                            HeaderRow.Parent = Bubble
+
+                            local NameLabel = Instance.new("TextLabel")
+                            NameLabel.Name = "SenderName"
+                            NameLabel.Font = Enum.Font.GothamBold
+                            NameLabel.TextSize = 11
+                            NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
+                            NameLabel.Text = senderName
+                            NameLabel.BackgroundTransparency = 1
+                            NameLabel.AnchorPoint = Vector2.new(0, 0.5)
+                            NameLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                            NameLabel.Size = UDim2.new(1, -105, 1, 0)
+                            NameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                            NameLabel.Parent = HeaderRow
+
+                            local ActionBtn = Instance.new("TextButton")
+                            ActionBtn.Name = "ActionBtn"
+                            ActionBtn.AnchorPoint = Vector2.new(1, 0.5)
+                            ActionBtn.Position = UDim2.new(1, 0, 0.5, 0)
+                            ActionBtn.Size = UDim2.new(0, 95, 0, 20)
+                            ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 205, 122)
+                            ActionBtn.BorderSizePixel = 0
+                            ActionBtn.Font = Enum.Font.GothamBold
+                            ActionBtn.TextSize = 10
+                            ActionBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
+                            ActionBtn.Text = msgData.buttonText .. " →"
+                            ActionBtn.Parent = HeaderRow
+
+                            local ActionCorner = Instance.new("UICorner")
+                            ActionCorner.CornerRadius = UDim.new(0, 4)
+                            ActionCorner.Parent = ActionBtn
+
+                            if type(msgData.onButtonClick) == "function" then
+                                ActionBtn.MouseButton1Click:Connect(function()
+                                    task.spawn(msgData.onButtonClick)
+                                end)
+                            end
+                        else
+                            local NameLabel = Instance.new("TextLabel")
+                            NameLabel.Name = "SenderName"
+                            NameLabel.Font = Enum.Font.GothamBold
+                            NameLabel.TextSize = 11
+                            NameLabel.TextColor3 = Color3.fromRGB(150, 230, 180)
+                            NameLabel.Text = senderName
+                            NameLabel.BackgroundTransparency = 1
+                            NameLabel.AutomaticSize = Enum.AutomaticSize.XY
+                            NameLabel.Parent = Bubble
+                        end
                     end
 
                     local MsgLabel = Instance.new("TextLabel")
@@ -4782,59 +4826,15 @@ function Zeroin:Window(GuiConfig)
                     SizeConstraint.MaxSize = Vector2.new(320, 9999)
                     SizeConstraint.Parent = MsgLabel
 
-                    if msgData.buttonText then
-                        local BottomRow = Instance.new("Frame")
-                        BottomRow.Name = "BottomRow"
-                        BottomRow.BackgroundTransparency = 1
-                        BottomRow.Size = UDim2.new(1, 0, 0, 24)
-                        BottomRow.Parent = Bubble
-
-                        local TimeLabel = Instance.new("TextLabel")
-                        TimeLabel.Name = "TimeText"
-                        TimeLabel.Font = Enum.Font.Gotham
-                        TimeLabel.TextSize = 9
-                        TimeLabel.TextColor3 = Color3.fromRGB(130, 170, 150)
-                        TimeLabel.Text = timeStr
-                        TimeLabel.BackgroundTransparency = 1
-                        TimeLabel.AnchorPoint = Vector2.new(0, 0.5)
-                        TimeLabel.Position = UDim2.new(0, 0, 0.5, 0)
-                        TimeLabel.Size = UDim2.new(0, 60, 1, 0)
-                        TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
-                        TimeLabel.Parent = BottomRow
-
-                        local ActionBtn = Instance.new("TextButton")
-                        ActionBtn.Name = "ActionBtn"
-                        ActionBtn.AnchorPoint = Vector2.new(1, 0.5)
-                        ActionBtn.Position = UDim2.new(1, 0, 0.5, 0)
-                        ActionBtn.Size = UDim2.new(0, 105, 0, 22)
-                        ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 205, 122)
-                        ActionBtn.BorderSizePixel = 0
-                        ActionBtn.Font = Enum.Font.GothamBold
-                        ActionBtn.TextSize = 11
-                        ActionBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
-                        ActionBtn.Text = msgData.buttonText .. " →"
-                        ActionBtn.Parent = BottomRow
-
-                        local ActionCorner = Instance.new("UICorner")
-                        ActionCorner.CornerRadius = UDim.new(0, 5)
-                        ActionCorner.Parent = ActionBtn
-
-                        if type(msgData.onButtonClick) == "function" then
-                            ActionBtn.MouseButton1Click:Connect(function()
-                                task.spawn(msgData.onButtonClick)
-                            end)
-                        end
-                    else
-                        local TimeLabel = Instance.new("TextLabel")
-                        TimeLabel.Name = "TimeText"
-                        TimeLabel.Font = Enum.Font.Gotham
-                        TimeLabel.TextSize = 8
-                        TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
-                        TimeLabel.Text = timeStr
-                        TimeLabel.BackgroundTransparency = 1
-                        TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
-                        TimeLabel.Parent = Bubble
-                    end
+                    local TimeLabel = Instance.new("TextLabel")
+                    TimeLabel.Name = "TimeText"
+                    TimeLabel.Font = Enum.Font.Gotham
+                    TimeLabel.TextSize = 8
+                    TimeLabel.TextColor3 = isSelf and Color3.fromRGB(12, 50, 30) or Color3.fromRGB(130, 170, 150)
+                    TimeLabel.Text = timeStr
+                    TimeLabel.BackgroundTransparency = 1
+                    TimeLabel.AutomaticSize = Enum.AutomaticSize.XY
+                    TimeLabel.Parent = Bubble
 
                     scrollToBottom()
                 end
