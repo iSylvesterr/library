@@ -3891,6 +3891,9 @@ function Zeroin:Window(GuiConfig)
                     ConfigData[configKey] = Value
                     SaveConfig()
                 end
+                function InputFunc:GetValue()
+                    return self.Value or InputTextBox.Text
+                end
 
                 InputFunc:Set(InputFunc.Value)
 
