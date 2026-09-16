@@ -702,8 +702,8 @@ function Zeroin:Window(GuiConfig)
     local UseMobileLayout = GuiConfig.ForceMobile == true
         or isPortrait
         or (isMobile and currentViewport.X < 500)
-    local DefaultWindowWidth = math.max(320, math.min(586, currentViewport.X - 20))
-    local DefaultWindowHeight = math.max(280, math.min(UseMobileLayout and 620 or 364, currentViewport.Y - (isMobile and 36 or 64)))
+    local DefaultWindowWidth = math.max(320, math.min(615, currentViewport.X - 20))
+    local DefaultWindowHeight = math.max(280, math.min(UseMobileLayout and 620 or 430, currentViewport.Y - (isMobile and 36 or 64)))
     local EffectiveTabWidth = UseMobileLayout
         and math.min(104, GuiConfig["Tab Width"])
         or GuiConfig["Tab Width"]
@@ -4779,8 +4779,31 @@ function Zeroin:Window(GuiConfig)
                     MsgLabel.Parent = Bubble
 
                     local SizeConstraint = Instance.new("UISizeConstraint")
-                    SizeConstraint.MaxSize = Vector2.new(240, 9999)
+                    SizeConstraint.MaxSize = Vector2.new(290, 9999)
                     SizeConstraint.Parent = MsgLabel
+
+                    if msgData.buttonText then
+                        local ActionBtn = Instance.new("TextButton")
+                        ActionBtn.Name = "ActionBtn"
+                        ActionBtn.Size = UDim2.new(1, 0, 0, 22)
+                        ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 205, 122)
+                        ActionBtn.BorderSizePixel = 0
+                        ActionBtn.Font = Enum.Font.GothamBold
+                        ActionBtn.TextSize = 10
+                        ActionBtn.TextColor3 = Color3.fromRGB(4, 25, 16)
+                        ActionBtn.Text = msgData.buttonText .. "  →"
+                        ActionBtn.Parent = Bubble
+
+                        local ActionCorner = Instance.new("UICorner")
+                        ActionCorner.CornerRadius = UDim.new(0, 5)
+                        ActionCorner.Parent = ActionBtn
+
+                        if type(msgData.onButtonClick) == "function" then
+                            ActionBtn.MouseButton1Click:Connect(function()
+                                task.spawn(msgData.onButtonClick)
+                            end)
+                        end
+                    end
 
                     local TimeLabel = Instance.new("TextLabel")
                     TimeLabel.Name = "TimeText"
